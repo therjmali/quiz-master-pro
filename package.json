@@ -143,7 +143,7 @@
     "googleapis": "171.2.0",
     "intercom-client": "7.0.3",
     "jsforce": "3.10.14",
-    "magic-string": "^0.30.17",
+    "magic-string": "^1.4.5",
     "openai": "6.29.0",
     "playwright-core": "^1.55.0",
     "postcss": "^8.5.3",
