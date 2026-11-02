@@ -1,0 +1,69 @@
+name: Verify
+
+# Gate for every change: type-check, production build, repository/file integrity,
+# and a real-Chrome test that the built app works with the network switched off.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Types, build, repository files, offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      VITE_BASE: /${{ github.event.repository.name }}/
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Verify repository files (source tree)
+        run: npm run verify:repo
+
+      - name: Build production bundle
+        run: npm run build:fast
+
+      - name: Verify build output (precache, no remote assets, SPA fallback)
+        run: npm run verify:dist
+
+      - name: Offline test in real Chrome
+        run: npm run test:offline
+
+      - name: Upload test screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: offline-test-results
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  workflows:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color

@@ -1,0 +1,231 @@
+#!/usr/bin/env node
+/**
+ * Repository integrity check. Zero dependencies.
+ *
+ *   node scripts/verify-repo.mjs           check the source tree (files, config, icons, workflows, secrets)
+ *   node scripts/verify-repo.mjs --dist    additionally check the production build in dist/
+ *
+ * Exits with code 1 if any check fails, so it can gate CI.
+ */
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const checkDist = process.argv.includes('--dist');
+
+const results = [];
+const pass = (name, detail = '') => results.push({ ok: true, name, detail });
+const fail = (name, detail = '') => results.push({ ok: false, name, detail });
+const check = (name, condition, detail = '') => (condition ? pass(name) : fail(name, detail));
+const read = rel => readFileSync(path.join(ROOT, rel), 'utf8');
+const exists = rel => existsSync(path.join(ROOT, rel));
+
+function pngSize(rel) {
+  const buf = readFileSync(path.join(ROOT, rel));
+  const signature = buf.subarray(0, 8).toString('hex');
+  if (signature !== '89504e470d0a1a0a') return null;
+  return { w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) };
+}
+
+function walk(dir, base = '') {
+  return readdirSync(dir).flatMap(name => {
+    const rel = base ? `${base}/${name}` : name;
+    return statSync(path.join(dir, name)).isDirectory() ? walk(path.join(dir, name), rel) : [rel];
+  });
+}
+
+// ---------------------------------------------------------------- required files
+const REQUIRED = [
+  'README.md', 'CHANGELOG.md', 'package.json', 'package-lock.json', '.npmrc', '.gitignore', '.env.example',
+  'index.html', 'vite.config.ts', 'tsconfig.json', 'capacitor.config.ts',
+  'build/vite-plugins.ts', 'build/sw.template.js',
+  'public/manifest.webmanifest', 'public/favicon.svg',
+  'src/main.tsx', 'src/App.tsx',
+  'scripts/android-prepare.sh', 'scripts/verify-apk.sh', 'scripts/emulator-smoke.sh',
+  'scripts/offline-smoke.mjs', 'scripts/generate-icons.py',
+  '.github/workflows/ci.yml', '.github/workflows/pages.yml', '.github/workflows/android.yml',
+];
+for (const f of REQUIRED) check(`file exists: ${f}`, exists(f), 'missing');
+
+// ---------------------------------------------------------------- package.json
+let pkg = {};
+try {
+  pkg = JSON.parse(read('package.json'));
+  pass('package.json is valid JSON');
+} catch (e) {
+  fail('package.json is valid JSON', String(e));
+}
+check('package version is semver', /^\d+\.\d+\.\d+$/.test(pkg.version ?? ''), `got "${pkg.version}"`);
+for (const s of ['dev', 'build', 'typecheck', 'verify:repo', 'verify:dist', 'test:offline', 'android:prepare']) {
+  check(`npm script: ${s}`, Boolean(pkg.scripts?.[s]), 'missing');
+}
+check('CHANGELOG mentions current version', exists('CHANGELOG.md') && read('CHANGELOG.md').includes(`[${pkg.version}]`), `no [${pkg.version}] heading`);
+
+// ---------------------------------------------------------------- PWA manifest + icons
+try {
+  const manifest = JSON.parse(read('public/manifest.webmanifest'));
+  pass('manifest is valid JSON');
+  check('manifest has name, short_name, start_url, display', ['name', 'short_name', 'start_url', 'display'].every(k => manifest[k]));
+  check('manifest display is standalone', manifest.display === 'standalone');
+  check('manifest start_url/scope are relative (work under any base path)', manifest.start_url === './' && manifest.scope === './');
+  const icons = manifest.icons ?? [];
+  check('manifest has a 192px and a 512px icon', icons.some(i => i.sizes === '192x192') && icons.some(i => i.sizes === '512x512'));
+  check('manifest has a maskable icon', icons.some(i => (i.purpose ?? '').includes('maskable')));
+  for (const icon of icons) {
+    const rel = `public/${icon.src}`;
+    const size = exists(rel) ? pngSize(rel) : null;
+    const [w, h] = icon.sizes.split('x').map(Number);
+    check(`icon ${icon.src} is a PNG of ${icon.sizes}`, size && size.w === w && size.h === h, size ? `actual ${size.w}x${size.h}` : 'missing or not PNG');
+  }
+} catch (e) {
+  fail('manifest is valid JSON', String(e));
+}
+for (const f of ['public/icons/apple-touch-icon.png', 'public/icons/favicon-32.png']) {
+  check(`file exists: ${f}`, exists(f), 'missing');
+}
+
+// ---------------------------------------------------------------- Android resources
+const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+for (const [name, scale] of Object.entries(DENSITIES)) {
+  for (const [file, dp] of [['ic_launcher.png', 48], ['ic_launcher_round.png', 48], ['ic_launcher_foreground.png', 108]]) {
+    const rel = `android-res/mipmap-${name}/${file}`;
+    const want = Math.round(dp * scale);
+    const size = exists(rel) ? pngSize(rel) : null;
+    check(`android icon ${name}/${file} is ${want}px`, size && size.w === want && size.h === want, size ? `actual ${size.w}x${size.h}` : 'missing');
+  }
+}
+check('android adaptive-icon background colour defined', exists('android-res/values/ic_launcher_background.xml') && read('android-res/values/ic_launcher_background.xml').includes('ic_launcher_background'));
+
+// ---------------------------------------------------------------- Capacitor
+if (exists('capacitor.config.ts')) {
+  const cap = read('capacitor.config.ts');
+  const appId = /appId:\s*'([^']+)'/.exec(cap)?.[1] ?? '';
+  check('capacitor appId is a valid reverse-domain id', /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(appId), `got "${appId}"`);
+  check("capacitor webDir is 'dist'", /webDir:\s*'dist'/.test(cap));
+  check('capacitor uses the https androidScheme', /androidScheme:\s*'https'/.test(cap));
+}
+
+// ---------------------------------------------------------------- index.html (source)
+if (exists('index.html')) {
+  const html = read('index.html');
+  check('index.html has no remote script/stylesheet', !/<(script|link)[^>]+(src|href)="https?:\/\//.test(html), 'remote resource found');
+  check('index.html links the web manifest', html.includes('manifest.webmanifest'));
+  check('index.html declares theme-color', html.includes('name="theme-color"'));
+  check('index.html has a real <title>', /<title>(?!Zite App)[^<]+<\/title>/.test(html));
+}
+
+// ---------------------------------------------------------------- service worker template
+if (exists('build/sw.template.js')) {
+  const sw = read('build/sw.template.js');
+  check('sw template has exactly one build-id stamp', sw.split('__BUILD_ID__').length - 1 === 1);
+  check('sw template has exactly one precache stamp', sw.split('__PRECACHE_MANIFEST__').length - 1 === 1);
+}
+check('public/ has no un-stamped sw.js (would be shipped as-is)', !exists('public/sw.js'));
+
+// ---------------------------------------------------------------- workflows
+for (const wf of ['ci.yml', 'pages.yml', 'android.yml']) {
+  const rel = `.github/workflows/${wf}`;
+  if (!exists(rel)) continue;
+  const text = read(rel);
+  check(`${wf}: has name, on, jobs`, /^name:/m.test(text) && /^on:/m.test(text) && /^jobs:/m.test(text));
+  check(`${wf}: no tab characters`, !text.includes('\t'));
+}
+if (exists('.github/workflows/android.yml')) {
+  const text = read('.github/workflows/android.yml');
+  check('android.yml runs the APK verifier', text.includes('scripts/verify-apk.sh'));
+  check('android.yml runs the emulator smoke test', text.includes('scripts/emulator-smoke.sh'));
+}
+
+// ---------------------------------------------------------------- .gitignore hygiene
+if (exists('.gitignore')) {
+  const gi = read('.gitignore');
+  for (const entry of ['node_modules', 'dist', 'android/', '*.keystore', '.env']) {
+    check(`.gitignore covers ${entry}`, gi.split('\n').some(l => l.trim() === entry || l.trim() === `${entry}/` || l.trim().startsWith(entry)));
+  }
+}
+
+// ---------------------------------------------------------------- secret scan
+const SECRET_PATTERNS = [
+  ['GitHub token', /\b(github_pat_[A-Za-z0-9_]{20,}|gh[pousr]_[A-Za-z0-9]{30,})\b/],
+  ['AWS access key', /\bAKIA[0-9A-Z]{16}\b/],
+  ['Google API key', /\bAIza[0-9A-Za-z_-]{35}\b/],
+  ['Anthropic/OpenAI key', /\b(sk-ant-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{40,})\b/],
+  ['Slack token', /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/],
+  ['Private key block', /-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/],
+];
+let files = [];
+try {
+  files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+} catch {
+  files = walk(ROOT).filter(f => !/^(node_modules|dist|android|\.git)\//.test(f));
+}
+const SKIP_EXT = /\.(png|jpe?g|gif|webp|ico|woff2?|ttf|otf|zip|pdf|keystore|jks)$/i;
+const leaks = [];
+for (const f of files) {
+  if (f === 'package-lock.json' || SKIP_EXT.test(f) || !exists(f)) continue;
+  let text;
+  try { text = read(f); } catch { continue; }
+  for (const [label, re] of SECRET_PATTERNS) if (re.test(text)) leaks.push(`${f} (${label})`);
+}
+check(`no secrets in ${files.length} scanned files`, leaks.length === 0, leaks.join(', '));
+
+// ---------------------------------------------------------------- production build (dist/)
+if (checkDist) {
+  const DIST = path.join(ROOT, 'dist');
+  const d = rel => path.join(DIST, rel);
+  if (!existsSync(DIST)) {
+    fail('dist/ exists (run `npm run build` first)');
+  } else {
+    const all = walk(DIST);
+    for (const f of ['index.html', '404.html', 'sw.js', 'manifest.webmanifest', 'favicon.svg']) check(`dist/${f} exists`, existsSync(d(f)));
+
+    const html = readFileSync(d('index.html'), 'utf8');
+    check('dist/index.html has no remote script/stylesheet', !/<(script|link)[^>]+(src|href)="https?:\/\//.test(html), 'remote resource found');
+    check('dist/index.html does not load the Zite runtime', !html.includes('app-runtime.js'));
+    check('dist/404.html matches index.html (SPA fallback)', existsSync(d('404.html')) && readFileSync(d('404.html'), 'utf8') === html);
+
+    // Everything index.html references must be a real file in dist/ (base-path aware).
+    const base = (/href="([^"]*)manifest\.webmanifest"/.exec(html)?.[1]) ?? '/';
+    const refs = [...html.matchAll(/(?:src|href)="([^"#?]+)"/g)].map(m => m[1]).filter(u => u.startsWith(base));
+    const missing = refs.map(u => u.slice(base.length)).filter(rel => rel && !all.includes(rel));
+    check(`all ${refs.length} local references in index.html resolve to files`, missing.length === 0, missing.join(', '));
+
+    // Service worker: stamped, syntactically valid, and the precache list is exactly the build.
+    const sw = existsSync(d('sw.js')) ? readFileSync(d('sw.js'), 'utf8') : '';
+    check('sw.js placeholders are stamped', sw !== '' && !sw.includes('__BUILD_ID__') && !sw.includes('__PRECACHE_MANIFEST__'));
+    const listText = /const PRECACHE = (\[.*\]);/.exec(sw)?.[1];
+    let precache = [];
+    try { precache = JSON.parse(listText ?? '[]'); pass('sw.js precache manifest parses'); } catch (e) { fail('sw.js precache manifest parses', String(e)); }
+    const expected = new Set(all.filter(f => f !== 'sw.js' && f !== '404.html' && !f.endsWith('.map')).map(f => `./${f}`));
+    expected.add('./');
+    const listed = new Set(precache);
+    const notCached = [...expected].filter(f => !listed.has(f));
+    const phantom = [...listed].filter(f => !expected.has(f));
+    check(`precache covers all ${expected.size} build files`, notCached.length === 0, `not precached: ${notCached.slice(0, 5).join(', ')}`);
+    check('precache lists no files that do not exist', phantom.length === 0, `phantom: ${phantom.slice(0, 5).join(', ')}`);
+    check('precache includes the app shell and manifest', listed.has('./index.html') && listed.has('./manifest.webmanifest'));
+    check('precache includes bundled fonts (offline typography)', precache.some(f => f.endsWith('.woff2')));
+    check('precache includes JS and CSS', precache.some(f => f.endsWith('.js')) && precache.some(f => f.endsWith('.css')));
+
+    // Fonts must not come from Google any more.
+    const css = all.filter(f => f.endsWith('.css')).map(f => readFileSync(d(f), 'utf8')).join('\n');
+    check('no Google Fonts requests in CSS', !/fonts\.(googleapis|gstatic)\.com/.test(css));
+
+    const bytes = all.reduce((n, f) => n + statSync(d(f)).size, 0);
+    pass(`dist size ${(bytes / 1024 / 1024).toFixed(1)} MiB across ${all.length} files`);
+  }
+}
+
+// ---------------------------------------------------------------- report
+const width = Math.max(...results.map(r => r.name.length));
+for (const r of results) {
+  console.log(`${r.ok ? 'PASS' : 'FAIL'}  ${r.name.padEnd(width)}${r.ok || !r.detail ? '' : `  -> ${r.detail}`}`);
+}
+const failed = results.filter(r => !r.ok);
+console.log(`\n${results.length - failed.length}/${results.length} checks passed${checkDist ? ' (source + dist)' : ''}`);
+if (failed.length) {
+  console.error(`${failed.length} check(s) failed`);
+  process.exit(1);
+}

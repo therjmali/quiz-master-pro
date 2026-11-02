@@ -1,0 +1,58 @@
+name: Deploy web app (GitHub Pages)
+
+# Publishes the installable offline PWA. Repository variable ZITE_RUNNER_URL (optional) points the
+# online-only features (AI generation, cloud sync, e-mail) at a hosted backend.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: actions/configure-pages@v5
+
+      - name: Build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_ZITE_RUNNER_URL: ${{ vars.ZITE_RUNNER_URL }}
+        run: npm run build
+
+      - name: Verify build output
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/
+        run: npm run verify:dist
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

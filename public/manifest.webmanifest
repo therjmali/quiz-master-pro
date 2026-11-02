@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "R.J QUIZ — Quiz Master Pro",
+  "short_name": "R.J QUIZ",
+  "description": "Offline-first quiz, flashcard, notes and revision app for exam preparation.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0a10",
+  "theme_color": "#0a0a10",
+  "lang": "en",
+  "categories": ["education", "productivity"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

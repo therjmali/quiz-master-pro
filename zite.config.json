@@ -1,0 +1,33 @@
+{
+  "accessMode": "external",
+  "authentication": {
+    "signup": "open",
+    "authenticationMethods": {
+      "magicLink": true,
+      "googleSignIn": true,
+      "sso": false
+    }
+  },
+  "seoSettings": {
+    "title": "R.J QUIZ",
+    "description": "Quiz Master Pro",
+    "thumbnailUrl": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/widgetid-default/rBCujLc3HFhrGeiFobWGXv/file_0000000009348211ba3083d9e16cb7d9.png",
+    "faviconUrl": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/widgetid-default/ecj75nCGx8g2BFtuyebWiy/file_0000000009348211ba3083d9e16cb7d9.png"
+  },
+  "pwaSettings": {
+    "enabled": true,
+    "title": "R . J QUIZ",
+    "appIconUrl": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/pwa/79e343aca71ee1fa/source-11227a026b66de881b701ff87064a060",
+    "icons": {
+      "icon192Url": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/pwa/79e343aca71ee1fa/icon-192.png",
+      "icon512Url": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/pwa/79e343aca71ee1fa/icon-512.png",
+      "appleTouchIconUrl": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/pwa/79e343aca71ee1fa/apple-touch-icon.png",
+      "favicon32Url": "https://images.fillout.com/orgid-716001/flowpublicid-atbirpeh2j/pwa/79e343aca71ee1fa/favicon-32.png"
+    },
+    "backgroundColor": "#ffffff"
+  },
+  "id": "atbirpeh2j",
+  "integrationSettings": {
+    "email": {}
+  }
+}

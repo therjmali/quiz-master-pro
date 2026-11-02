@@ -1,0 +1,24 @@
+# dependencies & build output
+node_modules/
+dist/
+.tsbuildinfo
+*.tsbuildinfo
+
+# local env / secrets
+.env
+.env.*
+!.env.example
+*.keystore
+*.jks
+keystore.properties
+
+# generated native project (created fresh by CI: npm run android:prepare)
+android/
+capacitor-cordova-android-plugins/
+
+# platform junk
+.DS_Store
+Thumbs.db
+__zite__*
+test-results/
+playwright-report/

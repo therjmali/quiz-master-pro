@@ -1,0 +1,340 @@
+{
+  "tables": [
+    {
+      "id": "t5JmwTZfJeF",
+      "sdkName": "users",
+      "name": "Users",
+      "primaryFieldId": "fx4zDPfAZci",
+      "fields": [
+        {
+          "id": "fx4zDPfAZci",
+          "sdkName": "email",
+          "definition": {
+            "name": "Email",
+            "type": "email",
+            "template": {}
+          }
+        },
+        {
+          "id": "f8kZLh53fwr",
+          "sdkName": "displayName",
+          "definition": {
+            "name": "Display Name",
+            "type": "single_line_text",
+            "template": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "tc95FawvVy8",
+      "sdkName": "quizHistory",
+      "name": "Quiz History",
+      "primaryFieldId": "fqX3c3TXGR9",
+      "fields": [
+        {
+          "id": "fqX3c3TXGR9",
+          "sdkName": "questionPreview",
+          "definition": {
+            "name": "Question Preview",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "fws6LsmTc9v",
+          "sdkName": "score",
+          "definition": {
+            "name": "Score",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fpGwUoDMowu",
+          "sdkName": "maxScore",
+          "definition": {
+            "name": "Max Score",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "f85qdjRHmUL",
+          "sdkName": "percentage",
+          "definition": {
+            "name": "Percentage",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fiT3w1doJzv",
+          "sdkName": "totalQuestions",
+          "definition": {
+            "name": "Total Questions",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fuq4ohY3G8A",
+          "sdkName": "correctCount",
+          "definition": {
+            "name": "Correct Count",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fk3khCCAvr9",
+          "sdkName": "wrongCount",
+          "definition": {
+            "name": "Wrong Count",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fgvKU53jW7d",
+          "sdkName": "skippedCount",
+          "definition": {
+            "name": "Skipped Count",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fpSvhaLVTdq",
+          "sdkName": "timeTakenSeconds",
+          "definition": {
+            "name": "Time Taken Seconds",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "feFcxpLLjd7",
+          "sdkName": "quizDataJson",
+          "definition": {
+            "name": "Quiz Data JSON",
+            "type": "long_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "f6t7YRSMB2b",
+          "sdkName": "userAnswersJson",
+          "definition": {
+            "name": "User Answers JSON",
+            "type": "long_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "f9ynJyH28db",
+          "sdkName": "difficulty",
+          "definition": {
+            "name": "Difficulty",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "5x6m",
+                  "label": "Mixed",
+                  "color": "blue"
+                },
+                {
+                  "value": "ifYp",
+                  "label": "Easy",
+                  "color": "green"
+                },
+                {
+                  "value": "6bW5",
+                  "label": "Medium",
+                  "color": "yellow"
+                },
+                {
+                  "value": "6VgC",
+                  "label": "Hard",
+                  "color": "red"
+                },
+                {
+                  "value": "6cXt",
+                  "label": "all",
+                  "color": "purple"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fceEw9AUjcT",
+          "sdkName": "userEmail",
+          "definition": {
+            "name": "User Email",
+            "type": "email",
+            "template": {}
+          }
+        },
+        {
+          "id": "f96bwXbTKYv",
+          "sdkName": "createdAt",
+          "definition": {
+            "name": "Created At",
+            "type": "created_at",
+            "template": {
+              "timezone": "",
+              "dateFormat": "local",
+              "timeFormat": "12h",
+              "displayTimeZone": false
+            }
+          }
+        },
+        {
+          "id": "ft3MEiqeWhX",
+          "sdkName": "quizTitle",
+          "definition": {
+            "name": "Quiz Title",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "fwVyFqEZcRf",
+          "sdkName": "subject",
+          "definition": {
+            "name": "Subject",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "ft6yTWgDJxT",
+          "sdkName": "gain",
+          "definition": {
+            "name": "Gain",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 2
+            }
+          }
+        },
+        {
+          "id": "fkUHywq92ZR",
+          "sdkName": "penalty",
+          "definition": {
+            "name": "Penalty",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 2
+            }
+          }
+        },
+        {
+          "id": "f8cn4GMYhrT",
+          "sdkName": "isTrashed",
+          "definition": {
+            "name": "Is Trashed",
+            "type": "checkbox",
+            "template": {
+              "defaultValue": false
+            }
+          }
+        },
+        {
+          "id": "foaKe17yxeY",
+          "sdkName": "localTimestamp",
+          "definition": {
+            "name": "Local Timestamp",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fwKzj9Hjuqp",
+          "sdkName": "attemptType",
+          "definition": {
+            "name": "Attempt Type",
+            "type": "single_select",
+            "template": {
+              "options": [
+                {
+                  "value": "8Pg5",
+                  "label": "Main",
+                  "color": "blue"
+                },
+                {
+                  "value": "tPTA",
+                  "label": "Practice",
+                  "color": "green"
+                }
+              ],
+              "disableColors": false
+            }
+          }
+        },
+        {
+          "id": "fmrALDxDwXg",
+          "sdkName": "attemptNumber",
+          "definition": {
+            "name": "Attempt Number",
+            "type": "number",
+            "template": {
+              "numberFormat": "local",
+              "decimalPlaces": 1
+            }
+          }
+        },
+        {
+          "id": "fbU4Q4NvNuQ",
+          "sdkName": "parentQuizId",
+          "definition": {
+            "name": "Parent Quiz Id",
+            "type": "single_line_text",
+            "template": {}
+          }
+        },
+        {
+          "id": "fgh2qeegFek",
+          "sdkName": "notes",
+          "definition": {
+            "name": "Notes",
+            "type": "long_text",
+            "template": {}
+          }
+        }
+      ]
+    }
+  ]
+}
