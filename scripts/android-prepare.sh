@@ -35,26 +35,6 @@ if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
 fi
 
-# System bars: match the dark app instead of the default white status/navigation bars.
-STYLES="$RES/values/styles.xml"
-if [ -f "$STYLES" ] && ! grep -q 'android:statusBarColor' "$STYLES"; then
-  python3 - "$STYLES" <<'PY'
-import re, sys
-path = sys.argv[1]
-xml = open(path, encoding="utf-8").read()
-items = (
-    '        <item name="android:statusBarColor">#0A0A10</item>\n'
-    '        <item name="android:navigationBarColor">#0A0A10</item>\n'
-    '        <item name="android:windowLightStatusBar">false</item>\n'
-    '        <item name="android:windowLightNavigationBar">false</item>\n'
-)
-pattern = re.compile(r'(<style name="AppTheme\.NoActionBar"[^>]*>)(.*?)(</style>)', re.S)
-if not pattern.search(xml):
-    sys.exit("AppTheme.NoActionBar not found in styles.xml")
-open(path, "w", encoding="utf-8").write(pattern.sub(lambda m: m.group(1) + m.group(2) + items + "    " + m.group(3), xml, count=1))
-PY
-fi
-
 # Version
 sed -i -E "s/versionCode [0-9]+/versionCode ${VERSION_CODE}/; s/versionName \"[^\"]*\"/versionName \"${VERSION_NAME}\"/" "$GRADLE"
 grep -q "versionCode ${VERSION_CODE}" "$GRADLE" || { echo "failed to set versionCode in $GRADLE" >&2; exit 1; }
