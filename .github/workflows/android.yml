@@ -145,6 +145,8 @@ jobs:
     needs: apk
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -155,6 +157,9 @@ jobs:
 
       - name: Locate APK
         run: echo "APK_PATH=$(find apk -name '*.apk' | head -1)" >> "$GITHUB_ENV"
+
+      - name: Install Pillow (screenshot analysis)
+        run: python3 -m pip install --quiet pillow
 
       - name: Enable KVM
         run: |
@@ -180,6 +185,20 @@ jobs:
           path: smoke-output/
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Publish screenshots (manual runs only)
+        if: always() && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=smoke-screenshots
+          gh release view "$TAG" > /dev/null 2>&1 || gh release create "$TAG" --prerelease \
+            --title "Emulator smoke-test screenshots (manual runs)" \
+            --notes "Screenshots taken on an Android emulator during the most recent manual build: first launch and offline cold start." \
+            --target "$GITHUB_SHA"
+          for f in smoke-output/*.png; do
+            [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber
+          done
 
   release:
     name: Publish GitHub Release

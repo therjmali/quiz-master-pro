@@ -72,14 +72,32 @@ check_running() {
   # A blank or single-colour screen compresses to a few KiB; a rendered UI is far larger.
   if [ "$size" -gt 25000 ]; then ok "$label: screen is rendered ($((size / 1024)) KiB screenshot)"; else bad "$label: screen looks blank ($size bytes)"; fi
 
-  # The WebView must expose real web content (text / content descriptions), not just an empty shell.
+  # Proof the WebView painted real app content: a rendered UI has gradients, cards and text covering a
+  # meaningful part of the screen, while a blank page or a browser error page is almost one flat colour.
+  local metrics frac uniq
+  metrics=$(python3 - "$shot" <<'PY' 2>/dev/null
+import sys
+from collections import Counter
+from PIL import Image
+im = Image.open(sys.argv[1]).convert("RGB")
+im = im.resize((max(1, im.width // 4), max(1, im.height // 4)))
+px = list(im.getdata())
+top, n = Counter(px).most_common(1)[0]
+print(f"{1 - n / len(px):.4f} {len(set(px))}")
+PY
+)
+  frac=${metrics% *}; uniq=${metrics#* }
+  info "$label: pixels differing from dominant colour: ${frac:-?}, distinct colours: ${uniq:-?}"
+  if [ -n "$metrics" ] && awk -v f="$frac" -v u="$uniq" 'BEGIN { exit !(f >= 0.06 && u >= 150) }'; then
+    ok "$label: app UI is painted (content covers $(awk -v f="$frac" 'BEGIN { printf "%.0f", f * 100 }')% of the screen)"
+  else
+    bad "$label: screen looks blank or like an error page (differing=$frac, colours=$uniq)"
+  fi
+
+  # Informational: the accessibility tree of a WebView is often empty for uiautomator.
   adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
   adb pull /sdcard/ui.xml "$ui" >/dev/null 2>&1
-  local nodes; nodes=$(grep -oE '(text|content-desc)="[^"]+"' "$ui" 2>/dev/null | wc -l)
-  local hasweb; hasweb=$(grep -c 'android.webkit.WebView' "$ui" 2>/dev/null || true)
-  info "$label: UI dump has $nodes labelled nodes, WebView nodes: $hasweb"
-  if [ "${hasweb:-0}" -ge 1 ] && [ "${nodes:-0}" -ge 3 ]; then ok "$label: WebView rendered app content ($nodes labelled nodes)"; else bad "$label: WebView shows no app content ($nodes labelled nodes)"; fi
-  info "$label: sample text -> $(grep -oE '(text|content-desc)="[^"]+"' "$ui" 2>/dev/null | head -8 | tr '\n' ' ' | cut -c1-220)"
+  info "$label: UI dump labelled nodes: $(grep -oE '(text|content-desc)="[^"]+"' "$ui" 2>/dev/null | wc -l)"
 }
 
 echo "== first launch"
