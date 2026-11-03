@@ -27,9 +27,11 @@ finish() {
   local body; body=$(sed 's/%/%25/g' "$REPORT" | awk '{printf "%s%%0A", $0}')
   echo "::notice title=Smoke test report::${body}"
   if [ -s "$OUT/logcat-all.txt" ]; then
-    local ex; ex=$(grep -E "AndroidRuntime|FATAL|Capacitor|chromium|WebView|$PKG" "$OUT/logcat-all.txt" | tail -25 | cut -c1-220 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
-    echo "::notice title=Logcat excerpt::${ex}"
+    local ex; ex=$(grep -E "$PKG|Capacitor|chromium|ActivityTaskManager|ActivityManager.*(ANR|crash)|Displayed|Force finishing" "$OUT/logcat-all.txt" | grep -v "uiautomator" | tail -30 | cut -c1-230 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+    echo "::notice title=Logcat (app + activity manager)::${ex}"
   fi
+  local crash; crash=$(adb logcat -b crash -d 2>/dev/null | tail -30 | cut -c1-230 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+  [ -n "$crash" ] && echo "::notice title=Crash buffer::${crash}"
 }
 trap finish EXIT
 
@@ -41,7 +43,17 @@ echo "== install"
 adb install -r "$APK" 2>&1 | tee "$OUT/install.log"
 if grep -q "Success" "$OUT/install.log"; then ok "APK installs"; else bad "APK install failed: $(tr '\n' ' ' < "$OUT/install.log" | cut -c1-200)"; exit 1; fi
 
-launch() { adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1; }
+launch() {
+  local out
+  out=$(adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$PKG/.MainActivity" 2>&1 | tr -d '\r' | tr '\n' ' ')
+  info "am start -> ${out:0:300}"
+  if grep -qiE "error|exception|not exist" <<<"$out"; then bad "activity failed to start: ${out:0:200}"; fi
+}
+
+# True only for crashes of OUR app (not of uiautomator or other processes).
+app_crashed() {
+  adb logcat -b crash -d 2>/dev/null | grep -A4 "FATAL EXCEPTION" | grep -q "Process: $PKG"
+}
 
 check_running() {
   local label="$1" shot="$2" ui="$3"
@@ -51,6 +63,8 @@ check_running() {
 
   local focus; focus=$(adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | tr -d '\r' | head -2 | tr '\n' ' ')
   info "$label: focus -> ${focus:0:200}"
+  info "$label: resumed -> $(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -2 | tr -d '\r' | tr '\n' ' ' | cut -c1-240)"
+  info "$label: pid -> $(adb shell pidof "$PKG" | tr -d '\r')"
   if grep -q "$PKG" <<<"$focus"; then ok "$label: app window is in the foreground"; else bad "$label: app window is not focused"; fi
 
   adb exec-out screencap -p > "$shot"
@@ -72,7 +86,7 @@ echo "== first launch"
 launch
 check_running "first launch" "$OUT/01-first-launch.png" "$OUT/01-ui.xml"
 adb logcat -d > "$OUT/logcat-all.txt" || true
-if grep -q "FATAL EXCEPTION" "$OUT/logcat-all.txt"; then bad "crash found in logcat"; else ok "no fatal exception in logcat"; fi
+if app_crashed; then bad "app crashed (see logcat excerpt)"; else ok "app did not crash"; fi
 if grep -qi "Loading app at https://localhost" "$OUT/logcat-all.txt"; then info "Capacitor reports serving the bundled app from https://localhost"; fi
 
 echo "== airplane mode + cold start (offline)"
@@ -83,7 +97,7 @@ adb logcat -c
 launch
 check_running "offline cold start" "$OUT/02-offline.png" "$OUT/02-ui.xml"
 adb logcat -d >> "$OUT/logcat-all.txt" || true
-if adb logcat -d | grep -q "FATAL EXCEPTION"; then bad "crash found when launched offline"; else ok "no fatal exception when launched offline"; fi
+if app_crashed; then bad "app crashed when launched offline"; else ok "app did not crash when launched offline"; fi
 
 adb shell cmd connectivity airplane-mode disable >/dev/null 2>&1 || true
 
