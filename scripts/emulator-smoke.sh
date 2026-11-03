@@ -61,11 +61,12 @@ check_running() {
 
   if [ -n "$(adb shell pidof "$PKG" | tr -d '\r')" ]; then ok "$label: process is running"; else bad "$label: process is not running"; fi
 
-  local focus; focus=$(adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp" | tr -d '\r' | head -2 | tr '\n' ' ')
-  info "$label: focus -> ${focus:0:200}"
-  info "$label: resumed -> $(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -2 | tr -d '\r' | tr '\n' ' ' | cut -c1-240)"
+  # topResumedActivity is the authoritative "which app is in front" signal (mCurrentFocus can briefly
+  # point at the launcher during window transitions).
+  local resumed; resumed=$(adb shell dumpsys activity activities | grep -E 'topResumedActivity|mResumedActivity' | head -2 | tr -d '\r' | tr '\n' ' ')
+  info "$label: resumed -> ${resumed:0:240}"
   info "$label: pid -> $(adb shell pidof "$PKG" | tr -d '\r')"
-  if grep -q "$PKG" <<<"$focus"; then ok "$label: app window is in the foreground"; else bad "$label: app window is not focused"; fi
+  if grep -q "$PKG/" <<<"$resumed"; then ok "$label: app is the top resumed activity"; else bad "$label: app is not in the foreground"; fi
 
   adb exec-out screencap -p > "$shot"
   local size; size=$(stat -c%s "$shot")
