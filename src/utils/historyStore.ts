@@ -11,6 +11,7 @@
 
 import { QuizResult } from '../types/quiz';
 import { idbGet, idbSet } from './indexedDB';
+import { trashRemovedResults } from './historyTrash';
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
@@ -109,7 +110,10 @@ export async function getHistory(): Promise<QuizResult[]> {
  * mirror in the background.
  */
 export function setHistory(history: QuizResult[]): void {
+  const previous = _cache;
   _cache = history;
+  // Anything that disappeared is parked in the local trash (restorable for 30 days by default).
+  trashRemovedResults(previous, history);
   _persistAsync(history);
   _notify();
 }

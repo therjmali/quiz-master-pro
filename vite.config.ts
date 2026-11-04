@@ -95,7 +95,9 @@ export default defineConfig(({ command }) => ({
       "zitejs/db": path.resolve(__dirname, "./.zite/db.ts"),
       "zitejs/api": path.resolve(__dirname, "./.zite/api.ts"),
       "zitejs/backend": path.resolve(__dirname, "./.zite/backend.ts"),
-      "zitejs/caller": path.resolve(__dirname, "./node_modules/zitejs/dist/esm/caller/index.js"),
+      // The app talks to the backend through our wrapper, which can answer AI calls on the device.
+      "zitejs-real-caller": path.resolve(__dirname, "./node_modules/zitejs/dist/esm/caller/index.js"),
+      "zitejs/caller": path.resolve(__dirname, "./src/platform/ai/caller.ts"),
       "zitejs/integrations": path.resolve(__dirname, "./.zite/integrations/airtable.ts"),
       "zitejs/email": path.resolve(__dirname, "./.zite/integrations/email.ts"),
       "zitejs/meta": path.resolve(__dirname, "./.zite/meta.ts"),

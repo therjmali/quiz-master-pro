@@ -3,23 +3,13 @@ import { createEndpoint } from 'zitejs/backend';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Anthropic from '@anthropic-ai/sdk';
 import { cleanExplanationBlock } from '../lib/rationaleFormat';
+import { EXPLAIN_SYSTEM_PROMPT, buildExplainPrompt, buildSimpleExplainPrompt, isRateLimitErr } from '../lib/aiPrompts';
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-function isRateLimitErr(msg: string) {
-  return msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') ||
-    msg.includes('quota') || msg.includes('rate') || msg.includes('spending cap') ||
-    msg.includes('overloaded');
-}
 
-const SYSTEM_PROMPT = [
-  'You are an expert exam tutor giving concise, accurate, exam-focused explanations.',
-  '',
-  'Write 2 to 3 short plain-text points. No emojis, no symbols, no bullet characters, no markdown, no bold. Each point is one or two sentences.',
-  '',
-  'Put each point on its own line. Do not add headings, labels, numbering, introductions or closing remarks.',
-  'Be factual and direct. Never invent facts.',
-].join('\n');
+
+const SYSTEM_PROMPT = EXPLAIN_SYSTEM_PROMPT;
 
 async function callAnthropic(prompt: string): Promise<string> {
   const client = new Anthropic({ apiKey: process.env.ZITE_ANTHROPIC_ACCESS_TOKEN! });
@@ -74,27 +64,7 @@ async function callCohere(apiKey: string, prompt: string): Promise<string> {
   return data.message?.content?.[0]?.text || '';
 }
 
-function buildPrompt(
-  question: string,
-  correctAnswer: string,
-  userAnswer: string | undefined,
-  options: string[] | undefined,
-  status: 'correct' | 'wrong' | 'skipped'
-): string {
-  const optionsBlock = options?.length
-    ? `\nAll Options:\n${options.map((o, i) => `${String.fromCharCode(65 + i)}) ${o}`).join('\n')}`
-    : '';
 
-  const base = `Question: "${question}"${optionsBlock}\nCorrect Answer: "${correctAnswer}"`;
-
-  if (status === 'wrong' && userAnswer) {
-    return `${base}\nStudent answered: "${userAnswer}" (wrong)\n\nExplain concisely why "${correctAnswer}" is correct, and why "${userAnswer}" is wrong. Mention the student's choice in one point.`;
-  }
-  if (status === 'skipped') {
-    return `${base}\nStudent skipped.\n\nExplain concisely why "${correctAnswer}" is correct.`;
-  }
-  return `${base}\n\nExplain concisely why "${correctAnswer}" is correct.`;
-}
 
 export default createEndpoint({
   description: 'Generate a premium AI explanation — primary: Claude (Anthropic) → fallback: Gemini → OpenAI → Cohere',
@@ -114,9 +84,9 @@ export default createEndpoint({
     provider: z.string().optional(),
   }),
   execute: async ({ input }) => {
-    let prompt = buildPrompt(input.question, input.correctAnswer, input.userAnswer, input.options, input.status);
+    let prompt = buildExplainPrompt(input.question, input.correctAnswer, input.userAnswer, input.options, input.status);
     if (input.style === 'simple') {
-      prompt = `Question: "${input.question}"\nCorrect Answer: "${input.correctAnswer}"\n\nExplain this answer like I'm 5 years old. Use super simple words, a fun analogy or comparison, and keep it to 2 to 3 very short plain-text points, one per line. No emojis, no symbols, no bullet characters, no markdown, no bold.`;
+      prompt = buildSimpleExplainPrompt(input.question, input.correctAnswer);
     }
 
     const systemGeminiKey = process.env.ZITE_GEMINI_ACCESS_TOKEN!;
