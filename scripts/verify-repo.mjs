@@ -36,6 +36,13 @@ function walk(dir, base = '') {
   });
 }
 
+let files = [];
+const listFiles = () => {
+  try { return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean); }
+  catch { return walk(ROOT).filter(f => !/^(node_modules|dist|android|\.git)\//.test(f)); }
+};
+files = listFiles();
+
 // ---------------------------------------------------------------- required files
 const REQUIRED = [
   'README.md', 'CHANGELOG.md', 'package.json', 'package-lock.json', '.npmrc', '.gitignore', '.env.example',
@@ -46,6 +53,13 @@ const REQUIRED = [
   'scripts/android-prepare.sh', 'scripts/verify-apk.sh', 'scripts/emulator-smoke.sh',
   'scripts/offline-smoke.mjs', 'scripts/generate-icons.py',
   '.github/workflows/ci.yml', '.github/workflows/pages.yml', '.github/workflows/android.yml',
+  'supabase/quiz_schema.sql', 'supabase/tests/bootstrap.sql', 'supabase/tests/quiz_schema.test.sql', 'scripts/test-sql.sh',
+  'docs/CLOUD_SETUP.md',
+  'src/platform/runtime.ts', 'src/platform/autoBackup.ts', 'src/platform/appIcon.ts', 'src/platform/cloud/syncEngine.ts',
+  'src/platform/cloud/sections.ts', 'src/platform/cloud/authStore.ts', 'src/platform/notify/planner.ts', 'src/platform/notify/notifier.ts',
+  'src/platform/ai/providers.ts', 'src/platform/ai/caller.ts', 'src/utils/historyTrash.ts',
+  'android-res/java/MainActivity.java', 'android-res/java/QmNativePlugin.java',
+  'tests/syncEngine.test.ts', 'tests/backup.test.ts', 'tests/notify.test.ts', 'tests/ai.test.ts', 'tests/platform.test.ts', 'tests/merge3.test.ts',
 ];
 for (const f of REQUIRED) check(`file exists: ${f}`, exists(f), 'missing');
 
@@ -58,7 +72,7 @@ try {
   fail('package.json is valid JSON', String(e));
 }
 check('package version is semver', /^\d+\.\d+\.\d+$/.test(pkg.version ?? ''), `got "${pkg.version}"`);
-for (const s of ['dev', 'build', 'typecheck', 'verify:repo', 'verify:dist', 'test:offline', 'android:prepare']) {
+for (const s of ['dev', 'build', 'typecheck', 'verify:repo', 'verify:dist', 'test:offline', 'test:unit', 'test:sql', 'android:prepare']) {
   check(`npm script: ${s}`, Boolean(pkg.scripts?.[s]), 'missing');
 }
 check('CHANGELOG mentions current version', exists('CHANGELOG.md') && read('CHANGELOG.md').includes(`[${pkg.version}]`), `no [${pkg.version}] heading`);
@@ -138,6 +152,29 @@ if (exists('.github/workflows/android.yml')) {
   check('android.yml runs the emulator smoke test', text.includes('scripts/emulator-smoke.sh'));
 }
 
+// ---------------------------------------------------------------- cloud + security contracts
+if (exists('supabase/quiz_schema.sql')) {
+  const sql = read('supabase/quiz_schema.sql');
+  for (const fn of ['quiz_sync_pull', 'quiz_sync_push', 'quiz_sync_restore', 'quiz_sync_wipe', 'quiz_delete_my_data', 'quiz_delete_my_account']) {
+    check(`schema defines ${fn}`, sql.includes(`function public.${fn}`));
+  }
+  check('schema enables row-level security on every quiz table', ['quiz_sync_docs', 'quiz_sync_sections', 'quiz_sync_revisions', 'quiz_devices'].every(t => new RegExp(`alter table public\\.${t}\\s+enable row level security`).test(sql)));
+  check('schema never touches other apps tables (no un-prefixed sync_/profiles objects)', !/public\.(sync_|profiles\b|devices\b)/.test(sql));
+  check('anonymous role is locked out of the sync functions', sql.includes('from public, anon'));
+}
+{
+  const sectionsSrc = exists('src/platform/cloud/sections.ts') ? read('src/platform/cloud/sections.ts') : '';
+  check('API keys are not in the sync set', !/'qmp_(user_)?api_keys'\s*,\s*label/.test(sectionsSrc));
+  const appSources = files.filter(f => /^(src|\.env\.example|scripts|supabase|\.github)\//.test(f) || f === '.env.example');
+  const leakedServiceRole = appSources.filter(f => exists(f) && !/\.(png|woff2?)$/.test(f) && /service_role\s*[:=]\s*['"][A-Za-z0-9._-]{20,}/.test(read(f)));
+  check('no service_role key is ever committed', leakedServiceRole.length === 0, leakedServiceRole.join(', '));
+}
+if (exists('.github/workflows/ci.yml')) {
+  const ci = read('.github/workflows/ci.yml');
+  check('ci.yml runs the unit tests', ci.includes('npm run test:unit'));
+  check('ci.yml runs the database tests', ci.includes('scripts/test-sql.sh'));
+}
+
 // ---------------------------------------------------------------- .gitignore hygiene
 if (exists('.gitignore')) {
   const gi = read('.gitignore');
@@ -155,12 +192,6 @@ const SECRET_PATTERNS = [
   ['Slack token', /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/],
   ['Private key block', /-----BEGIN (RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/],
 ];
-let files = [];
-try {
-  files = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
-} catch {
-  files = walk(ROOT).filter(f => !/^(node_modules|dist|android|\.git)\//.test(f));
-}
 const SKIP_EXT = /\.(png|jpe?g|gif|webp|ico|woff2?|ttf|otf|zip|pdf|keystore|jks)$/i;
 const leaks = [];
 for (const f of files) {

@@ -11,21 +11,26 @@ export interface SettingEntry {
 }
 
 export type SectionId =
-  | 'appearance' | 'quiz' | 'ai' | 'library' | 'notifications'
-  | 'gestures' | 'account' | 'advanced';
+  | 'appearance' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
+  | 'gestures' | 'cloud' | 'account' | 'device' | 'advanced';
 
 export const SECTION_META: Record<SectionId, { title: string; desc: string }> = {
   appearance:    { title: 'Appearance',              desc: 'Theme, colour, text size and visual effects' },
   quiz:          { title: 'Quiz & Study',            desc: 'Study targets, cards, exam dates and quiz features' },
   ai:            { title: 'AI & Content',            desc: 'AI features, API keys and quiz templates' },
   library:       { title: 'Library & Data',          desc: 'Backups, downloads and trash' },
-  notifications: { title: 'Notifications & Reminders', desc: 'Study reminders and email reports' },
+  autobackup:    { title: 'Automatic Backups',       desc: 'Scheduled snapshots, restore and export' },
+  data:          { title: 'Data & Trash',            desc: 'Storage, deleted results and data checks' },
+  notifications: { title: 'Notifications & Email',   desc: 'Daily reminder and email reports' },
+  reminders:     { title: 'Smart Reminders',         desc: 'Due cards, streak saver, exam countdown' },
   gestures:      { title: 'Gestures & Shortcuts',    desc: 'Haptics, swipes and keyboard shortcuts' },
-  account:       { title: 'Account & Sync',          desc: 'Sign-in, profile and cloud sync' },
+  cloud:         { title: 'Account & Cloud Sync',    desc: 'Sign in and sync across devices' },
+  account:       { title: 'Profile',                 desc: 'Display name, avatar and preferences' },
+  device:        { title: 'App Icon & Device',       desc: 'Install, updates, custom icon' },
   advanced:      { title: 'Advanced & About',        desc: 'Platform badge and resetting preferences' },
 };
 
-export const SECTION_ORDER: SectionId[] = ['appearance', 'quiz', 'ai', 'library', 'notifications', 'gestures', 'account', 'advanced'];
+export const SECTION_ORDER: SectionId[] = ['appearance', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
 
 export const SETTINGS: SettingEntry[] = [
   // Appearance
@@ -55,6 +60,24 @@ export const SETTINGS: SettingEntry[] = [
   // Gestures
   { id: 'haptics', section: 'gestures', title: 'Vibration feedback', hint: 'Subtle vibrations on taps, swipes and actions', keywords: ['haptic', 'vibrate', 'buzz', 'feedback'] },
   { id: 'gestureGuide', section: 'gestures', title: 'Gesture & keyboard guide', hint: 'Swipe, shake, pinch and keyboard shortcuts', keywords: ['swipe', 'shake', 'pinch', 'keyboard', 'shortcut', 'undo', 'long press'] },
+  // AI on device
+  { id: 'aiOnDevice', section: 'ai', title: 'AI on this device', hint: 'Use your own key so AI works without any server', keywords: ['gemini', 'claude', 'openai', 'cohere', 'key', 'model', 'provider', 'offline ai'] },
+  // Automatic backups
+  { id: 'autoBackup', section: 'autobackup', title: 'Automatic backups', hint: 'Checked snapshots saved on this device on a schedule', keywords: ['backup', 'snapshot', 'restore', 'export', 'import', 'safety', 'rotate'] },
+  // Data & Trash
+  { id: 'trashRetention', section: 'data', title: 'Trash retention', hint: 'How long deleted quiz results can be restored', keywords: ['trash', 'bin', 'deleted', 'undo', 'recycle', 'restore', 'purge'] },
+  // Reminders
+  { id: 'remindersOn', section: 'reminders', title: 'Smart reminders', hint: 'Background notifications for study, review and exams', keywords: ['notification', 'alarm', 'push', 'alert', 'permission'] },
+  { id: 'dueReminder', section: 'reminders', title: 'Cards due for review', hint: 'Nudge when flashcards are waiting', keywords: ['spaced repetition', 'flashcards', 'review'] },
+  { id: 'streakReminder', section: 'reminders', title: 'Streak saver', hint: 'Evening reminder to protect your streak', keywords: ['streak', 'daily', 'evening'] },
+  { id: 'examReminder', section: 'reminders', title: 'Exam countdown', hint: 'Alerts before each exam date', keywords: ['exam', 'countdown', 'norcet', 'days left'] },
+  { id: 'quietHours', section: 'reminders', title: 'Quiet hours', hint: 'No reminders during these hours', keywords: ['sleep', 'night', 'do not disturb', 'silent'] },
+  // Cloud
+  { id: 'cloudAccount', section: 'cloud', title: 'Cloud account', hint: 'Sign in, create an account, reset your password', keywords: ['login', 'sign in', 'register', 'password', 'email', 'supabase', 'cloud'] },
+  { id: 'autoSync', section: 'cloud', title: 'Automatic sync', hint: 'Keep devices in step in the background', keywords: ['sync', 'cloud', 'devices', 'upload'] },
+  // Device
+  { id: 'appIcon', section: 'device', title: 'App icon', hint: 'Use your own picture as the app icon', keywords: ['logo', 'icon', 'image', 'shortcut', 'home screen'] },
+  { id: 'installApp', section: 'device', title: 'Install & updates', hint: 'Install the web app and check for updates', keywords: ['pwa', 'install', 'update', 'version', 'offline'] },
   // Account
   { id: 'signIn', section: 'account', title: 'Account', hint: 'Sign in to sync and back up your data', keywords: ['login', 'logout', 'sign out', 'google', 'user'] },
   { id: 'displayName', section: 'account', title: 'Display name', hint: 'The name shown on your dashboard and reports', keywords: ['name', 'username', 'nickname', 'profile'] },

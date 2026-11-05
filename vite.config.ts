@@ -50,7 +50,10 @@ const deps = new Set([
 const __ziteFlowId = (() => { try { return JSON.parse(readFileSync(path.resolve(__dirname, 'zite.config.json'), 'utf-8')).id ?? ''; } catch { return ''; } })();
 export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE || '/',
-  define: { 'import.meta.env.VITE_ZITE_FLOW_ID': JSON.stringify(__ziteFlowId), },
+  define: {
+    'import.meta.env.VITE_ZITE_FLOW_ID': JSON.stringify(__ziteFlowId),
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   build: { target: 'esnext', sourcemap: false, reportCompressedSize: false },
   server: {
     host: '::',

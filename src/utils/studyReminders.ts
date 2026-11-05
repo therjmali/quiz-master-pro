@@ -22,14 +22,24 @@ export function loadReminderConfig(): ReminderConfig {
   } catch { return DEFAULT_CONFIG; }
 }
 
+export const REMINDER_CHANGED_EVENT = 'qm:reminder-config-changed';
+
 export function saveReminderConfig(config: ReminderConfig): void {
   try { localStorage.setItem(REMINDER_KEY, JSON.stringify(config)); } catch {}
-  // Restart scheduler
+  // Restart the in-page scheduler (web, while the app is open)
   stopScheduler();
-  if (config.enabled) startScheduler(config);
+  if (config.enabled && 'Notification' in window) startScheduler(config);
+  // Let the platform layer rebuild the background (Android) schedule.
+  try { window.dispatchEvent(new Event(REMINDER_CHANGED_EVENT)); } catch {}
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  // Inside the Android app notifications go through the native layer, not the web Notification API.
+  const { isNative } = await import('../platform/native');
+  if (isNative()) {
+    const { requestPermission } = await import('../platform/notify/notifier');
+    return (await requestPermission()) === 'granted';
+  }
   if (!('Notification' in window)) return false;
   if (Notification.permission === 'granted') return true;
   if (Notification.permission === 'denied') return false;

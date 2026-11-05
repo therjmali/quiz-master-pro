@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,8 @@
     "verify": "npm run typecheck && npm run build:fast && npm run verify:repo && npm run verify:dist",
     "android:prepare": "bash scripts/android-prepare.sh",
     "test:unit": "node --import tsx --test tests/*.test.ts",
-    "test:sql": "bash scripts/test-sql.sh"
+    "test:sql": "bash scripts/test-sql.sh",
+    "test": "npm run test:unit && npm run test:sql"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.45.6",

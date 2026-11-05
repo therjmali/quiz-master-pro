@@ -467,6 +467,14 @@ export async function wipeCloudCopy(): Promise<void> {
   setState({ version: 0, lastSyncAt: null });
 }
 
+/** The cloud copy was deleted from outside the sync loop: forget what we agreed on so nothing is "deleted" locally. */
+export async function forgetCloudState(): Promise<void> {
+  await clearBase();
+  clearMeta();
+  dirty = true;
+  setState({ lastSyncAt: null, lastPushAt: null, version: 0, pendingCount: 0 });
+}
+
 /** Sign-out housekeeping: forget the account bookkeeping but keep every piece of device data. */
 export async function detachCloudAccount(): Promise<void> {
   stopSyncEngine();

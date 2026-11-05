@@ -17,6 +17,7 @@ import '@fontsource/jetbrains-mono/latin-400.css';
 import '@fontsource/jetbrains-mono/latin-500.css';
 import '@fontsource/jetbrains-mono/latin-700.css';
 import './index.css';
+import { initPlatform } from './platform/runtime';
 import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
 import { HammerIcon } from 'lucide-react';
@@ -73,6 +74,8 @@ function RuntimeErrorFallback(props: { error: Error }) {
     </div>
   );
 }
+
+initPlatform();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -22,6 +22,8 @@ import type { QuizResult } from '../../../types/quiz';
 import BackupSection from '../BackupSection';
 import GestureShortcutsPanel from '../../GestureShortcutsPanel';
 import { SettingsSection, SettingRow, SubHeading, Toggle, LinkRow } from './controls';
+import { AiProvidersPanel } from './sectionsPlatform';
+import { hasBackend } from '../../../platform/ai/caller';
 import type { SectionProps } from './sectionsA';
 
 export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'downloads';
@@ -31,6 +33,8 @@ type Dirty = () => void;
 export const AISection = memo(function AISection({ open, onToggle, onOpenTab }: SectionProps & { onOpenTab?: (t: ProfileTabLink) => void }) {
   return (
     <SettingsSection id="ai" icon={<Sparkles className="w-4 h-4" />} open={open} onToggle={onToggle}>
+      <SubHeading>AI on this device</SubHeading>
+      <AiProvidersPanel />
       <SubHeading>AI source</SubHeading>
       <LinkRow id="apiKeys" icon={<KeyRound className="w-4 h-4" />} title="API keys" hint="Use your own Gemini/Claude/OpenAI keys for AI features" onClick={() => onOpenTab?.('apikeys')} />
       <SubHeading>Content</SubHeading>
@@ -201,31 +205,35 @@ export const AccountSection = memo(function AccountSection({ open, onToggle, mar
   return (
     <SettingsSection id="account" icon={<UserRound className="w-4 h-4" />} open={open} onToggle={onToggle}
       onReset={() => { setPref({ ...DEFAULT_BACKUP }); toast.success('Sync preferences reset — your profile was kept'); }}>
-      <SubHeading>Account</SubHeading>
-      <SettingRow id="signIn" title="Account" hint={user ? `Signed in as ${user.email}` : 'Guest mode — sign in to sync and back up your data'} inline={false}
-        control={user ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <button type="button" className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 text-destructive text-sm font-bold hover:bg-destructive/10 transition-colors">
-                <LogOut className="w-4 h-4" /> Sign out
+      {hasBackend() && (
+        <>
+          <SubHeading>Account</SubHeading>
+          <SettingRow id="signIn" title="Account" hint={user ? `Signed in as ${user.email}` : 'Guest mode — sign in to sync and back up your data'} inline={false}
+            control={user ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button type="button" className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 text-destructive text-sm font-bold hover:bg-destructive/10 transition-colors">
+                    <LogOut className="w-4 h-4" /> Sign out
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Sign out?</AlertDialogTitle>
+                    <AlertDialogDescription>You can sign back in anytime to access your synced data.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => { clearHistoryCache(); logout(); }} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Sign out</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <button type="button" onClick={() => loginWithRedirect()} className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold">
+                <LogIn className="w-4 h-4" /> Sign in
               </button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Sign out?</AlertDialogTitle>
-                <AlertDialogDescription>You can sign back in anytime to access your synced data.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={() => { clearHistoryCache(); logout(); }} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Sign out</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
-          <button type="button" onClick={() => loginWithRedirect()} className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold">
-            <LogIn className="w-4 h-4" /> Sign in
-          </button>
-        )} />
+            )} />
+        </>
+      )}
       <SubHeading>Profile</SubHeading>
       <SettingRow id="displayName" title="Display name" hint="The name shown on your dashboard and reports (max 24 characters)" inline={false}
         control={
@@ -249,11 +257,15 @@ export const AccountSection = memo(function AccountSection({ open, onToggle, mar
             ))}
           </div>
         } />
-      <SubHeading>Cloud sync</SubHeading>
-      <SettingRow id="autoCloudBackup" title="Auto cloud backup" hint="Keep your quiz data synced to the cloud automatically"
-        control={<Toggle label="Auto cloud backup" checked={backup.autoCloudBackup} onChange={v => setPref({ ...backup, autoCloudBackup: v })} />} />
-      <SettingRow id="allowCloudRestore" title="Allow cloud restore" hint="Let this device restore from cloud backups"
-        control={<Toggle label="Allow cloud restore" checked={backup.allowCloudRestore} onChange={v => setPref({ ...backup, allowCloudRestore: v })} />} />
+      {hasBackend() && (
+        <>
+          <SubHeading>Cloud sync</SubHeading>
+          <SettingRow id="autoCloudBackup" title="Auto cloud backup" hint="Keep your quiz data synced to the cloud automatically"
+            control={<Toggle label="Auto cloud backup" checked={backup.autoCloudBackup} onChange={v => setPref({ ...backup, autoCloudBackup: v })} />} />
+          <SettingRow id="allowCloudRestore" title="Allow cloud restore" hint="Let this device restore from cloud backups"
+            control={<Toggle label="Allow cloud restore" checked={backup.allowCloudRestore} onChange={v => setPref({ ...backup, allowCloudRestore: v })} />} />
+        </>
+      )}
     </SettingsSection>
   );
 });

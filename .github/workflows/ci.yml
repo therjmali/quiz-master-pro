@@ -36,6 +36,9 @@ jobs:
       - name: Type-check
         run: npm run typecheck
 
+      - name: Unit tests (sync engine, merge, backups, trash, notifications, AI)
+        run: npm run test:unit
+
       - name: Verify repository files (source tree)
         run: npm run verify:repo
 
@@ -56,6 +59,28 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  database:
+    name: Cloud schema tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply schema twice and run behavioural tests
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+        run: bash scripts/test-sql.sh
 
   workflows:
     name: Lint workflows

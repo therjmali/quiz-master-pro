@@ -9,3 +9,5 @@ interface Window {
   _ziteOnFixError?: (error: Error) => void;
   _ziteOnReload?: () => void;
 }
+
+declare const __APP_VERSION__: string;

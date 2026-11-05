@@ -7,6 +7,8 @@ import type { AppTheme, QuizResult } from '../../types/quiz';
 import { SettingsQueryContext, Highlight } from './settings/controls';
 import { searchSettings, SECTION_META, SECTION_ORDER, type SectionId } from './settings/settingsSearch';
 import { AppearanceSection, QuizStudySection } from './settings/sectionsA';
+import { CloudSection } from './settings/sectionsCloud';
+import { AutoBackupSection, RemindersSection, DataSection, DeviceSection } from './settings/sectionsPlatform';
 import { AISection, LibrarySection, NotificationsSection, GesturesSection, AccountSection, AdvancedSection, type ProfileTabLink } from './settings/sectionsB';
 
 export interface BackupPrefs {
@@ -143,9 +145,14 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
         {visible('quiz') && <QuizStudySection {...sectionProps('quiz')} />}
         {visible('ai') && <AISection {...sectionProps('ai')} onOpenTab={openTab} />}
         {visible('library') && <LibrarySection {...sectionProps('library')} onOpenTab={openTab} isLoggedIn={isLoggedIn} history={history} />}
+        {visible('autobackup') && <AutoBackupSection {...sectionProps('autobackup')} />}
+        {visible('data') && <DataSection {...sectionProps('data')} onOpenTab={openTab} />}
         {visible('notifications') && <NotificationsSection {...sectionProps('notifications')} markDirty={markDirty} />}
+        {visible('reminders') && <RemindersSection {...sectionProps('reminders')} />}
         {visible('gestures') && <GesturesSection {...sectionProps('gestures')} />}
+        {visible('cloud') && <CloudSection {...sectionProps('cloud')} />}
         {visible('account') && <AccountSection {...sectionProps('account')} markDirty={markDirty} />}
+        {visible('device') && <DeviceSection {...sectionProps('device')} />}
         {visible('advanced') && <AdvancedSection {...sectionProps('advanced')} />}
       </div>
     </SettingsQueryContext.Provider>

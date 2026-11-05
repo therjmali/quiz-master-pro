@@ -38,22 +38,28 @@ emulator, including a cold start in airplane mode. Each release lists the file's
 - **Library** — folders and subjects, bulk import of question sets, quiz export/import and local backups.
 - **Planning** — exam countdowns, study calendar, daily challenge.
 - **Notes & reports** — rich-text notes, printable revision sheets and result reports.
-- **Online extras** (need a backend, see below) — AI quiz/notes generation, explanations, photo-to-quiz OCR, cloud history sync, e-mailed reports.
+- **Account & cloud sync** — optional sign-in (Supabase) that keeps history, library, bookmarks, mistakes, flashcards and settings identical across devices, with a safe first-sign-in choice, restore points and a readable sync log. [Setup guide](docs/CLOUD_SETUP.md).
+- **Automatic backups** — scheduled, checksummed snapshots with rotation, restore (with a safety copy), export to file and import.
+- **Smart reminders** — real Android notifications for daily study, due cards, streak saver, exam countdown and a weekly summary, with quiet hours.
+- **AI on your device** — bring your own Gemini, Claude, OpenAI or Cohere key; quiz generation and explanations run directly from the device.
+- **Data & Trash** — deleted quiz results are restorable for 30 days (and sync), storage meter, data check.
+- **App icon & device** — custom app icon, install and update controls.
+- **Still backend-only:** photo-to-quiz OCR, PDF reports and e-mailed reports.
 
 ### Works offline vs. needs a connection
 
 The app is local-first: history, bookmarks, notes, settings and imported question sets live in the browser's
 IndexedDB / localStorage on your device.
 
-| Works with no network | Needs the hosted backend |
-| --- | --- |
-| Opening and installing the app, all screens, fonts and icons | AI generation, explanations and chat |
-| Taking quizzes from imported or pasted question sets | Photo-to-quiz OCR |
-| History, bookmarks, flashcards, spaced repetition, analytics, calendar | E-mail reports, PDF generation, cloud sync |
-| Notes, local backup/export and import | Sign-in |
+| Works with no network | Needs internet | Needs the optional legacy backend |
+| --- | --- | --- |
+| Opening and installing the app, all screens, fonts and icons | Cloud sync and sign-in (Supabase) | Photo-to-quiz OCR |
+| Taking quizzes from imported or pasted question sets | AI generation and explanations (your own key, straight to your provider) | PDF and e-mailed reports |
+| History, bookmarks, flashcards, spaced repetition, analytics, calendar | | |
+| Notes, automatic backups, export and import, trash and restore | | |
+| Android reminders and notifications | | |
 
-Without a backend the online features simply report that they are unavailable; nothing else is affected.
-To connect a backend, set the repository variable `ZITE_RUNNER_URL` (see [Configuration](#configuration)).
+Without an AI key or a cloud project, those features simply say what is needed; nothing else is affected.
 
 ## How the offline mode works
 
@@ -85,6 +91,8 @@ npm run build          # type-check + production build into dist/
 npm run preview        # serve dist/ locally (use VITE_BASE=/ for the root)
 
 npm run verify         # typecheck + build + repository checks + build-output checks
+npm run test:unit      # 46+ unit tests: sync engine, merge, backups, trash, reminders, AI (TypeScript, no browser)
+npm run test:sql       # applies supabase/quiz_schema.sql twice to a throw-away PostgreSQL and runs 14 behavioural tests
 npm run test:offline   # real-Chrome test: install SW, go offline, reload, deep link (needs Chrome)
 ```
 
@@ -139,7 +147,8 @@ Keep `release.keystore` somewhere safe and **never commit it** — losing it mea
 | Name | Where | Purpose |
 | --- | --- | --- |
 | `VITE_BASE` | env | Base path. `/` locally and for the APK; `/<repo>/` on GitHub Pages (set by CI) |
-| `ZITE_RUNNER_URL` | repository **variable** | Optional hosted backend for the online-only features, baked into the web app and APK builds |
+| `SUPABASE_URL`, `SUPABASE_ANON_KEY` | repository **variables** | Cloud sync + sign-in. The anon key is public by design; never use a `service_role` key. See [docs/CLOUD_SETUP.md](docs/CLOUD_SETUP.md) |
+| `ZITE_RUNNER_URL` | repository **variable** | Optional legacy backend for OCR / PDF / e-mail endpoints |
 | `ANDROID_KEYSTORE_B64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` | repository **secrets** | Release signing (optional) |
 | `BACKUP_REPORT_CC` | backend env | Optional CC address for backup-report e-mails |
 
@@ -149,7 +158,11 @@ See [`.env.example`](.env.example).
 
 ```
 src/                 React + TypeScript app (components, hooks, utils, stores)
-src/api/             Server endpoint definitions for the optional backend (AI, e-mail, PDF, sync)
+src/platform/        Accounts, cloud sync engine, auto backups, reminders, on-device AI, app icon, PWA plumbing
+src/api/             Endpoint definitions for the optional legacy backend (OCR, PDF, e-mail)
+supabase/            quiz_schema.sql (cloud tables, RLS, functions) and its SQL tests
+tests/               Unit tests (npm run test:unit)
+docs/                CLOUD_SETUP.md
 packages/components/ Shared UI primitives
 public/              Manifest, favicon, icons (copied as-is into the build)
 build/               Vite plugins and the service-worker template
@@ -166,7 +179,9 @@ The `android/` project is generated fresh by `scripts/android-prepare.sh` and is
 | --- | --- |
 | Web app shows old version after a release | Close all tabs/the installed app and reopen once; the new service worker activates on the next launch |
 | "App not installed" on Android | Uninstall any earlier build signed with a different key, then install again |
-| Online features say they are unavailable | Expected without a backend — set `ZITE_RUNNER_URL` and re-run the workflows |
+| "Cloud database is not set up yet" | Run `supabase/quiz_schema.sql` once in your Supabase SQL editor ([guide](docs/CLOUD_SETUP.md)) |
+| AI says it needs a key | Settings -> AI & Content -> *AI on this device*, paste a key, press *Test key* |
+| Reminders do not arrive on Android | Allow notifications for the app; reminders refresh each time you open it |
 | Pages shows a 404 | Repository **Settings → Pages → Source: GitHub Actions**, then re-run *Deploy web app* |
 
 ## Licence

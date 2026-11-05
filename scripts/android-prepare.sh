@@ -27,6 +27,12 @@ for d in android-res/mipmap-*; do
 done
 cp android-res/values/ic_launcher_background.xml "$RES/values/ic_launcher_background.xml"
 
+# Native code: MainActivity registers the QmNative plugin (home-screen shortcut for the custom icon)
+APP_ID=$(sed -n "s/.*appId: *'\([^']*\)'.*/\1/p" capacitor.config.ts | head -1)
+JAVA_DIR="android/app/src/main/java/$(echo "$APP_ID" | tr . /)"
+mkdir -p "$JAVA_DIR"
+cp android-res/java/*.java "$JAVA_DIR/"
+
 MANIFEST=android/app/src/main/AndroidManifest.xml
 GRADLE=android/app/build.gradle
 
