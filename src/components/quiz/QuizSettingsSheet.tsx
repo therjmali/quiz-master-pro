@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { X, Settings2, ChevronDown, Target, Clock, Zap, Gauge } from 'lucide-react';
+import { X, Settings2, ChevronDown, Target, Clock, Zap, Gauge, ZoomIn } from 'lucide-react';
 import { QuizSettings } from '../../types/quiz';
 import SettingsPanel from '../setup/SettingsPanel';
+import { getZoom, setZoom, ZOOM_PRESETS, ZOOM_DEFAULT } from '../../platform/zoom';
+import { toast } from 'sonner';
 
 interface Props {
   settings: QuizSettings;
@@ -75,6 +77,55 @@ export default function QuizSettingsSheet({ settings, open, onClose, onApply }: 
         {/* Content — collapsible accordion sections */}
         <div className="flex-1 overflow-y-auto px-5 py-4 thin-scrollbar space-y-2.5">
           <SettingsPanel settings={draft} onChange={setDraft} collapsible />
+
+          {/* ── Zoom Section ── */}
+          <Section title="Interface Zoom" icon={<ZoomIn className="w-4 h-4 text-amber-400/70" />} badge="persisted">
+            <div className="space-y-3">
+              <p className="text-[11px] text-foreground/30 font-medium px-0.5">
+                Scale the whole quiz screen — text, options, cards. Remembered on this device.
+              </p>
+              <div className="grid grid-cols-5 gap-2">
+                {ZOOM_PRESETS.map(p => {
+                  const active = getZoom() === p.value;
+                  return (
+                    <button
+                      key={p.value}
+                      onClick={() => { setZoom(p.value); toast.success(`Zoom: ${p.label} (${p.value}%)`); }}
+                      aria-label={`Zoom: ${p.label}, ${p.value} percent`}
+                      aria-pressed={active}
+                      className={`relative flex flex-col items-center justify-center rounded-xl border px-2 py-3 transition-all active:scale-95 ${
+                        active
+                          ? 'bg-primary/15 border-primary/40 shadow-md shadow-primary/15'
+                          : 'bg-foreground/5 border-border text-foreground/40 hover:bg-foreground/10 hover:text-foreground/70'
+                      }`}
+                    >
+                      {active && (
+                        <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-primary rounded-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                        </div>
+                      )}
+                      <span className={`text-lg font-black ${active ? 'text-primary' : 'text-foreground/50'}`}>
+                        {p.value}
+                      </span>
+                      <span className={`text-[9px] font-bold mt-0.5 ${active ? 'text-primary/80' : 'text-foreground/25'}`}>
+                        %
+                      </span>
+                      <span className="text-[9px] font-bold mt-1.5 text-foreground/30">{p.hint}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-bold text-foreground/20 px-0.5">
+                <span>Min 70% · Max 150% · Step 5%</span>
+                <button
+                  onClick={() => { setZoom(ZOOM_DEFAULT); toast.success('Zoom reset to 100%'); }}
+                  className="text-amber-400/60 hover:text-amber-400 transition-colors"
+                >
+                  Reset to 100%
+                </button>
+              </div>
+            </div>
+          </Section>
         </div>
 
         {/* Footer */}

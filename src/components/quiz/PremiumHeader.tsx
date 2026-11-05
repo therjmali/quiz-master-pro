@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Clock, Flag, Settings2, LogOut, Pause, Play, Bookmark, Pencil } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, Flag, Settings2, LogOut, Pause, Play, Bookmark, Pencil, ZoomIn } from 'lucide-react';
 import { formatTimeColon } from '../../utils/scoring';
 import { QuizSettings } from '../../types/quiz';
 import CountdownCircle from './CountdownCircle';
+import { useZoom, ZOOM_DEFAULT } from '../../platform/zoom';
 
 interface Props {
   currentIndex: number;
@@ -52,6 +53,8 @@ export default function PremiumHeader({
   saveSignal = 0,
 }: Props) {
   const [showSaved, setShowSaved] = useState(false);
+  const zoom = useZoom();
+  const isDefault = zoom === ZOOM_DEFAULT;
 
   useEffect(() => {
     if (saveSignal <= 0) return;
@@ -84,6 +87,16 @@ export default function PremiumHeader({
               💾
             </span>
           )}
+
+          {/* Zoom level badge — shown when not at default */}
+          <span
+            className={`zoom-pct-badge hidden xs:inline-flex ${isDefault ? 'zoom-pct-default' : ''}`}
+            title={isDefault ? 'Zoom: 100% (default)' : `Zoom: ${zoom}% — tap header zoom icon to adjust`}
+            aria-label={`Interface zoom: ${zoom} percent`}
+          >
+            <ZoomIn className="w-3 h-3 mr-1" aria-hidden="true" />
+            {zoom}
+          </span>
         </div>
 
         {/* ── Right: timer + action icons ── */}
