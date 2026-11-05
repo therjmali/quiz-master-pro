@@ -16,7 +16,8 @@
     "android:prepare": "bash scripts/android-prepare.sh",
     "test:unit": "node --import tsx --test tests/*.test.ts",
     "test:sql": "bash scripts/test-sql.sh",
-    "test": "npm run test:unit && npm run test:sql"
+    "test": "npm run test:unit && npm run test:sql",
+    "check:cloud": "node scripts/check-cloud.mjs"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.45.6",

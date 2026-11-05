@@ -1,0 +1,28 @@
+name: Cloud check
+
+# Read-only health check of the Supabase project used for login and cloud sync. It uses only the public
+# (publishable) key, never creates users and never writes data. The scheduled run also keeps a free
+# project from being paused for inactivity.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 6 * * 1,4'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Is login and cloud sync ready?
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check Supabase project
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+        run: node scripts/check-cloud.mjs

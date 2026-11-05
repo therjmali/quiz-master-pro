@@ -54,7 +54,7 @@ const REQUIRED = [
   'scripts/offline-smoke.mjs', 'scripts/generate-icons.py',
   '.github/workflows/ci.yml', '.github/workflows/pages.yml', '.github/workflows/android.yml',
   'supabase/quiz_schema.sql', 'supabase/tests/bootstrap.sql', 'supabase/tests/quiz_schema.test.sql', 'scripts/test-sql.sh',
-  'docs/CLOUD_SETUP.md',
+  'docs/CLOUD_SETUP.md', 'scripts/check-cloud.mjs', '.github/workflows/cloud-check.yml', 'tests/checkCloud.test.ts',
   'src/platform/runtime.ts', 'src/platform/autoBackup.ts', 'src/platform/appIcon.ts', 'src/platform/cloud/syncEngine.ts',
   'src/platform/cloud/sections.ts', 'src/platform/cloud/authStore.ts', 'src/platform/notify/planner.ts', 'src/platform/notify/notifier.ts',
   'src/platform/ai/providers.ts', 'src/platform/ai/caller.ts', 'src/utils/historyTrash.ts',
