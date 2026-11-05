@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── App-wide Zoom: viewport-unit correction ──────────────────────────────────
+   CSS `zoom` on <html> multiplies every vh/vw/dvh/dvw in compiled CSS.
+   We rewrite those units to variables that divide the zoom back out, so
+   full-height screens are exactly the display size at any zoom level.   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --qmp-zoom: 1;
+  --qmp-zoom-pct: 100;
+  --qmp-vh:  calc(1vh   / var(--qmp-zoom));
+  --qmp-svh: calc(1svh  / var(--qmp-zoom));
+  --qmp-lvh: calc(1lvh  / var(--qmp-zoom));
+  --qmp-dvh: calc(1dvh  / var(--qmp-zoom));
+  --qmp-vw:  calc(1vw   / var(--qmp-zoom));
+  --qmp-svw: calc(1svw  / var(--qmp-zoom));
+  --qmp-lvw: calc(1lvw  / var(--qmp-zoom));
+  --qmp-dvw: calc(1dvw  / var(--qmp-zoom));
+}
+
 @layer base {
   :root {
     /* Backfilled during migration to 2.0 */
@@ -163,6 +180,154 @@
     textarea,
     select { font-size: inherit; }
   }
+}
+
+/* ═══════════════════════════════════════════════════════
+   LIQUID GLASS PREMIUM DESIGN SYSTEM
+   ═══════════════════════════════════════════════════════ */
+
+/* ── Liquid Glass Card — deep, fluid, premium ── */
+.glass-liquid {
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 60%),
+              linear-gradient(165deg, rgba(18,20,42,0.88) 0%, rgba(10,12,24,0.95) 100%);
+  backdrop-filter: blur(56px) saturate(240%) brightness(1.06);
+  -webkit-backdrop-filter: blur(56px) saturate(240%) brightness(1.06);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.4),
+    0 0 0 0.5px rgba(255,255,255,0.06) inset,
+    0 1px 0 rgba(255,255,255,0.05) inset,
+    0 -0.5px 0 rgba(255,255,255,0.02) inset;
+  position: relative;
+  overflow: hidden;
+}
+.glass-liquid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.12) 0%,
+    rgba(255,255,255,0.02) 30%,
+    rgba(255,255,255,0.02) 70%,
+    rgba(255,255,255,0.08) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+}
+.glass-liquid::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.02) 0%, transparent 50%),
+              radial-gradient(circle at 70% 80%, rgba(167,139,250,0.025) 0%, transparent 40%);
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.app-light .glass-liquid {
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.5) 0%, transparent 60%),
+              linear-gradient(165deg, rgba(255,255,255,0.75) 0%, rgba(245,245,250,0.92) 100%);
+  backdrop-filter: blur(56px) saturate(200%) brightness(1.04);
+  -webkit-backdrop-filter: blur(56px) saturate(200%) brightness(1.04);
+  border-color: rgba(0,0,0,0.07);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.07),
+    0 1px 0 rgba(255,255,255,0.95) inset;
+}
+.app-light .glass-liquid::before {
+  background: linear-gradient(135deg,
+    rgba(255,255,255,0.7) 0%,
+    rgba(255,255,255,0.2) 30%,
+    rgba(255,255,255,0.2) 70%,
+    rgba(255,255,255,0.5) 100%);
+  opacity: 0.5;
+}
+
+.app-amoled .glass-liquid {
+  background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 60%),
+              linear-gradient(165deg, rgba(4,4,10,0.92) 0%, rgba(2,2,6,0.96) 100%);
+  backdrop-filter: blur(56px) saturate(200%) brightness(1.02);
+  -webkit-backdrop-filter: blur(56px) saturate(200%) brightness(1.02);
+  border-color: rgba(255,255,255,0.05);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.6),
+    0 0 0 0.5px rgba(255,255,255,0.03) inset;
+}
+
+/* ── Premium hover-lift for interactive cards ── */
+.premium-lift {
+  transition: transform 0.25s cubic-bezier(0.34,1.56,0.64,1),
+              box-shadow 0.25s cubic-bezier(0.34,1.56,0.64,1),
+              border-color 0.25s ease;
+}
+.premium-lift:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 40px rgba(0,0,0,0.35),
+    0 0 0 0.5px rgba(255,255,255,0.08) inset;
+  border-color: rgba(255,255,255,0.14);
+}
+.app-light .premium-lift:hover {
+  box-shadow:
+    0 12px 32px rgba(0,0,0,0.08),
+    0 1px 0 rgba(255,255,255,0.95) inset;
+  border-color: rgba(0,0,0,0.12);
+}
+
+/* ── Animated gradient border ( premium accent ) ── */
+.glass-accent-border {
+  position: relative;
+  border-radius: 1.5rem;
+  overflow: hidden;
+}
+.glass-accent-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(135deg,
+    rgba(240,165,0,0.5) 0%,
+    rgba(167,139,250,0.35) 25%,
+    rgba(34,211,238,0.25) 50%,
+    rgba(52,211,153,0.35) 75%,
+    rgba(240,165,0,0.5) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: accentBorderFlow 6s ease infinite;
+}
+@keyframes accentBorderFlow {
+  0%, 100% { opacity: 0.5; }
+  50%      { opacity: 0.85; }
+}
+.app-light .glass-accent-border::before {
+  background: linear-gradient(135deg,
+    rgba(240,165,0,0.5) 0%,
+    rgba(167,139,250,0.35) 25%,
+    rgba(34,211,238,0.25) 50%,
+    rgba(52,211,153,0.35) 75%,
+    rgba(240,165,0,0.5) 100%);
+}
+
+/* ── Glass segment divider ── */
+.glass-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(255,255,255,0.08) 20%,
+    rgba(255,255,255,0.12) 50%,
+    rgba(255,255,255,0.08) 80%,
+    transparent);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -448,7 +613,7 @@
 }
 
 /* ═══════════════════════════════════════════════════════
-   QUIZ SCREEN
+   QUIZ SCREEN — Zoom-Aware + Liquid Glass + Orientation-Proof
    ═══════════════════════════════════════════════════════ */
 
 .quiz-screen-card {
@@ -458,17 +623,27 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 100dvh;
-  height: 100vh; /* fallback */
+  height: calc(var(--qmp-dvh) * 100);
+  height: 100dvh; /* fallback when var not yet set */
+  height: 100vh;  /* legacy fallback */
   display: flex;
   flex-direction: column;
   overflow: hidden;
   overflow-x: hidden;
   overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
   z-index: 50;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
+  background: radial-gradient(ellipse at 50% 30%, rgba(20,18,40,0.4) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 80%, rgba(167,139,250,0.04) 0%, transparent 50%),
+              #080a18;
+}
+
+/* Liquid glass theme for quiz card */
+.quiz-screen-card.glass-liquid {
+  border-radius: 0 !important;
 }
 
 /* Allow selection only in actual editable fields within quiz */
@@ -490,17 +665,44 @@
   .quiz-screen-card { height: 100dvh; }
 }
 
+/* ── Tablet & Desktop: centered card, bounded ── */
 @media (min-width: 768px) {
   .quiz-screen-card {
     position: relative;
     inset: auto;
-    border-radius: 1.5rem !important;
+    border-radius: 2rem !important;
     height: auto;
-    max-height: 92vh;
+    max-height: calc(94vh - var(--qmp-zoom-pct) * 0.04vh);
+    min-height: 600px;
+    max-width: 92vw;
+    width: 92vw;
     z-index: auto;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    margin: calc(var(--qmp-zoom-pct) * 0.12vh) auto;
+  }
+}
+
+/* ── Tablet Landscape: prevent excessive width, keep ergonomics ── */
+@media (min-width: 1024px) and (orientation: landscape) {
+  .quiz-screen-card {
+    max-width: 70vh;
+    width: 70vh;
+    min-height: unset;
+    height: auto;
+    max-height: 88vh;
+    margin: 4vh auto;
+    border-radius: 1.75rem !important;
+  }
+}
+
+/* ── Large Desktop: cap width for readability ── */
+@media (min-width: 1280px) {
+  .quiz-screen-card {
+    max-width: 800px;
+    width: 100%;
+    margin: calc(2vh * var(--qmp-zoom)) auto;
   }
 }
 
@@ -511,20 +713,201 @@
   min-height: 0;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
   touch-action: pan-y;
+  padding-bottom: max(5rem, env(safe-area-inset-bottom, 4rem));
+  /* Reserve space so zoomed content never collides with bottom nav */
+  padding-top: max(1rem, env(safe-area-inset-top, 0.5rem));
 }
 
 @media (min-width: 768px) {
-  .quiz-content-scroll { flex: 1; overflow-y: auto; }
+  .quiz-content-scroll {
+    padding-bottom: 6rem;
+    padding-top: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) and (orientation: landscape) {
+  .quiz-content-scroll {
+    padding-bottom: 7rem;
+  }
 }
 
 .quiz-footer {
   flex-shrink: 0;
-  padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+  z-index: 60;
 }
 
 @media (min-width: 768px) {
-  .quiz-footer { padding-bottom: 1.25rem; }
+  .quiz-footer {
+    padding-bottom: 1.25rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   ZOOM CONTROL — Floating zoom In / Out / Reset
+   ═══════════════════════════════════════════════════════ */
+
+.zoom-control-group {
+  position: fixed;
+  bottom: calc(6rem + env(safe-area-inset-bottom, 1rem));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(12,14,28,0.82);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-radius: 14px;
+  padding: 3px;
+  box-shadow:
+    0 8px 28px rgba(0,0,0,0.35),
+    0 0 0 0.5px rgba(255,255,255,0.05) inset;
+}
+.app-light .zoom-control-group {
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(20px) saturate(200%);
+  -webkit-backdrop-filter: blur(20px) saturate(200%);
+  border-color: rgba(0,0,0,0.08);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+.app-amoled .zoom-control-group {
+  background: rgba(4,4,12,0.85);
+  border-color: rgba(255,255,255,0.05);
+}
+
+.zoom-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34,1.2,0.64,1);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+}
+.zoom-btn:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.85);
+}
+.zoom-btn:active {
+  transform: scale(0.9);
+  background: rgba(255,255,255,0.1);
+}
+
+.zoom-btn.zoom-btn-primary {
+  background: rgba(240,165,0,0.15);
+  color: #f0a500;
+}
+.zoom-btn.zoom-btn-primary:hover {
+  background: rgba(240,165,0,0.25);
+  color: #fbbf24;
+}
+.zoom-btn.zoom-btn-primary:active {
+  background: rgba(240,165,0,0.35);
+}
+
+.app-light .zoom-btn {
+  color: rgba(0,0,0,0.45);
+}
+.app-light .zoom-btn:hover {
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.75);
+}
+.app-light .zoom-btn.zoom-btn-primary {
+  background: rgba(240,165,0,0.12);
+  color: #b45309;
+}
+.app-light .zoom-btn.zoom-btn-primary:hover {
+  background: rgba(240,165,0,0.2);
+  color: #92400e;
+}
+
+.zoom-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.app-light .zoom-divider {
+  background: rgba(0,0,0,0.1);
+}
+
+.zoom-label {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8,10,22,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.8);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.zoom-btn:hover .zoom-label {
+  opacity: 1;
+}
+.app-light .zoom-label {
+  background: rgba(255,255,255,0.95);
+  border-color: rgba(0,0,0,0.08);
+  color: rgba(0,0,0,0.75);
+}
+
+/* Zoom indicator badge — shows current zoom % in the header */
+.zoom-pct-badge {
+  font-size: 10px;
+  font-weight: 900;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(240,165,0,0.15);
+  color: #f0a500;
+  border: 1px solid rgba(240,165,0,0.2);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.zoom-pct-badge.zoom-pct-default {
+  background: rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.06);
+}
+.app-light .zoom-pct-badge {
+  background: rgba(240,165,0,0.08);
+  color: #b45309;
+  border-color: rgba(240,165,0,0.15);
+}
+.app-light .zoom-pct-badge.zoom-pct-default {
+  background: rgba(0,0,0,0.02);
+  color: rgba(0,0,0,0.3);
+  border-color: rgba(0,0,0,0.06);
+}
+
+/* Responsive: hide zoom label on small screens, show only on hover via title attr */
+@media (max-width: 430px) {
+  .zoom-label { display: none; }
+  .zoom-btn { width: 34px; height: 34px; }
+  .zoom-control-group {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0.75rem));
+    padding: 2px;
+    border-radius: 12px;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════

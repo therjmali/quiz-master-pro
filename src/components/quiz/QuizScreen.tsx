@@ -1,6 +1,7 @@
 import { useEffect, useRef, KeyboardEvent, useMemo, useState, useCallback } from 'react';
 import { totalTimerSeconds } from '../../utils/examModes';
 import { ChevronDown, ChevronUp, CheckCircle2, XCircle, BookOpen, Sparkles, Loader2, Pause, Play, Flag, Bookmark } from 'lucide-react';
+import ZoomControl from './ZoomControl';
 import { toast } from 'sonner';
 import { hapticTap, hapticSuccess, hapticError } from '../../utils/haptics';
 import {
@@ -483,7 +484,7 @@ export default function QuizScreen({
 
       {/* ── QUIZ CARD ── */}
       <div
-        className={`relative glass-card quiz-screen-card animate-fade-in ${activeSkin.bgClass}`}
+        className={`relative glass-card quiz-screen-card glass-liquid animate-fade-in ${activeSkin.bgClass}`}
         tabIndex={0}
         onKeyDown={handleKey}
         onTouchStart={handleTouchStart}
@@ -682,6 +683,9 @@ export default function QuizScreen({
           onClose={() => { setEditingQuestionIdx(null); doResume(); }}
         />
       )}
+
+      {/* Floating Zoom Control — fixed outside quiz card, above bottom nav */}
+      <ZoomControl />
     </>
   );
 }

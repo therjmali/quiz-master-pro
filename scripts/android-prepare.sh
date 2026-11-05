@@ -36,6 +36,25 @@ cp android-res/java/*.java "$JAVA_DIR/"
 MANIFEST=android/app/src/main/AndroidManifest.xml
 GRADLE=android/app/build.gradle
 
+# Full sensor orientation: phone + tablet, portrait + landscape.
+# The web layer handles dynamic re-layout via CSS (dvh/dvw, flexbox, orientation media
+# queries) — no app restart or state loss on rotation.  screenOrientation="any" allows
+# the device to rotate freely; CSS @media (orientation: landscape) handles the layout.
+if grep -q 'android:screenOrientation' "$MANIFEST"; then
+  sed -i 's#android:screenOrientation="[^"]*"#android:screenOrientation="any"#' "$MANIFEST"
+else
+  sed -i '/<activity /a\        android:screenOrientation="any"' "$MANIFEST"
+fi
+
+# Handle configuration changes at the native level so the WebView does NOT reload on
+# rotation / screen-size change.  This preserves quiz state (current question, answers,
+# timer, zoom level) across orientation switches on tablets and phones.
+if grep -q 'android:configChanges' "$MANIFEST"; then
+  sed -i 's#android:configChanges="[^"]*"#android:configChanges="orientation|screenSize|smallestScreenSize|keyboard|keyboardHidden|locale"#g' "$MANIFEST"
+else
+  sed -i '/<activity /a\        android:configChanges="orientation|screenSize|smallestScreenSize|keyboard|keyboardHidden|locale"' "$MANIFEST"
+fi
+
 # The app is offline-first, but optional online features (AI, sync, e-mail) need network access.
 if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
