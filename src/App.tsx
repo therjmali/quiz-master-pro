@@ -13,6 +13,7 @@ import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import { FloatingProgressProvider } from './components/FloatingProgressPopup';
+import CloudGate, { requestOpenSettingsSection } from './components/cloud/CloudGate';
 import { DashboardSkeleton, LibrarySkeleton } from './components/ScreenSkeleton';
 import type { ReportPreviewData } from './components/reports/ReportPreviewPage';
 
@@ -342,6 +343,9 @@ function AppScreens({
   }, []);
   const goTo = useCallback((target: Screen) => { startTransition(() => { navigate(SCREEN_PATHS[target]); }); }, [navigate]);
   const setScreen = goTo;
+  const openCloudSettingsRef = useRef<() => void>(() => {});
+  const openCloudSettings = useCallback(() => openCloudSettingsRef.current(), []);
+
   const navigateTo = useCallback((targetScreen: Screen) => {
     const currentScreen = screenRef.current;
     // Capture scroll NOW before any async work
@@ -356,6 +360,12 @@ function AppScreens({
     startTransition(() => { navigate(SCREEN_PATHS[targetScreen]); });
     requestAnimationFrame(() => restoreScrollPosition(targetScreen));
   }, [navigate, restoreScrollPosition, navStack]);
+
+  openCloudSettingsRef.current = () => {
+    try { sessionStorage.setItem('qm-open-section', 'cloud'); } catch { /* ignore */ }
+    navigateTo('profile');
+    setTimeout(() => requestOpenSettingsSection('cloud'), 300);
+  };
 
   /** Load full quiz detail and navigate to results */
   const viewResultWithDetail = useCallback(async (summary: QuizResult, origin?: Screen) => {
@@ -582,6 +592,7 @@ function AppScreens({
       {hideBadge && <style>{`[data-zite-badge], .zite-badge, [class*="zite-badge"] { display: none !important; }`}</style>}
       <Toaster position="top-center" />
       <OfflineIndicator />
+      <CloudGate onOpenCloudSettings={openCloudSettings} />
       {showOnboarding && screen === 'dashboard' && (
         <Suspense fallback={null}>
           <OnboardingModal onComplete={() => {

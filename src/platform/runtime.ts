@@ -28,7 +28,7 @@ function reloadForRemoteData(): void {
     if (recent.length >= 2) return;
     sessionStorage.setItem(RELOAD_KEY, JSON.stringify([...recent, now]));
   } catch { /* storage blocked: reload once anyway */ }
-  window.location.reload();
+  setTimeout(() => window.location.reload(), 900);   // lets the "synced from another device" toast show
 }
 
 export function initPlatform(): void {

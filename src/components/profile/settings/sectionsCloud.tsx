@@ -29,7 +29,9 @@ const PHASE_LABEL: Record<SyncPhase, { text: string; tone: 'neutral' | 'good' | 
 export const CloudSection = memo(function CloudSection({ open, onToggle }: SectionProps) {
   return (
     <SettingsSection id="cloud" icon={<Cloud className="w-4 h-4" />} open={open} onToggle={onToggle}>
-      {isCloudConfigured() ? <CloudBody /> : <NotConfigured />}
+      <div id="setting-cloudAccount" data-setting-id="cloudAccount" className="scroll-mt-28 rounded-lg">
+        {isCloudConfigured() ? <CloudBody /> : <NotConfigured />}
+      </div>
     </SettingsSection>
   );
 });
@@ -238,7 +240,7 @@ function SetupCard() {
   );
 }
 
-function ChoiceCard() {
+export function ChoiceCard() {
   const sync = useSyncState();
   const c = sync.needsChoice!;
   const [confirmCloud, setConfirmCloud] = useState(false);

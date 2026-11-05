@@ -181,6 +181,14 @@ export default function ProfileScreen({
   const displayName = profile.displayName || authName;
   const [nameVal, setNameVal] = useState(displayName);
 
+  // "Sign in" prompts elsewhere in the app ask for the Settings tab.
+  useEffect(() => {
+    const wantSettings = () => { try { if (sessionStorage.getItem('qm-open-section')) setTab('settings'); } catch { /* ignore */ } };
+    wantSettings();
+    window.addEventListener('qm:open-settings', wantSettings);
+    return () => window.removeEventListener('qm:open-settings', wantSettings);
+  }, [setTab]);
+
   // Apply initialTab from navigation stack restore
   useEffect(() => {
     if (initialTab && initialTab !== tab) {

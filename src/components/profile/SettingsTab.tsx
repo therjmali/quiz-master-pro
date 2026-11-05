@@ -85,6 +85,18 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
     }));
   }, []);
 
+  // Deep link: "Sign in" prompts elsewhere in the app land here and open the right section.
+  useEffect(() => {
+    const run = () => {
+      let wanted: string | null = null;
+      try { wanted = sessionStorage.getItem('qm-open-section'); sessionStorage.removeItem('qm-open-section'); } catch { /* ignore */ }
+      if (wanted === 'cloud') goTo('cloudAccount', 'cloud');
+    };
+    run();
+    window.addEventListener('qm:open-settings', run);
+    return () => window.removeEventListener('qm:open-settings', run);
+  }, [goTo]);
+
   const clear = () => { setInput(''); inputRef.current?.focus(); };
   const sectionProps = (id: SectionId) => ({ open: effectiveOpen(id), onToggle: toggle });
 

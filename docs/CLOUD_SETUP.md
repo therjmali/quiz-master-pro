@@ -62,6 +62,12 @@ Re-run **Deploy web app** and push a version tag (or run **Build Android APK**) 
 For local development copy `.env.example` to `.env.local` and fill in the same two values
 (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
 
+## 5. Check that everything is ready
+
+Run **Actions -> Cloud check -> Run workflow** (or `npm run check:cloud` with the two variables set). It prints one line per
+item: project reachable, e-mail login enabled, sign-ups open or closed, tables installed, anonymous access locked down.
+It is read-only - it never creates users or writes data.
+
 ## How sync behaves
 
 - **Offline first.** The app always reads and writes the device. Sync is a background copy.
