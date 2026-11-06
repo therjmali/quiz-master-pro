@@ -26,6 +26,8 @@ export function requestOpenSettingsSection(section: string): void {
   window.dispatchEvent(new Event(OPEN_SETTINGS_EVENT));
 }
 
+export const triggerOpenSettings = requestOpenSettingsSection;
+
 export default function CloudGate({ onSignIn }: { onSignIn: () => void }) {
   const sync = useSyncState();
   const [choiceOpen, setChoiceOpen] = useState(false);
