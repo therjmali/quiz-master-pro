@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, startTransition } from 'react';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth, loginWithRedirect, logout } from 'zitejs/auth';
+import { useAuth, logout } from 'zitejs/auth';
 import { Toaster } from '@project/components/ui/sonner';
 import { toast } from 'sonner';
 import { useShakeDetection } from './hooks/useShakeDetection';
@@ -13,7 +13,10 @@ import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
 import OfflineIndicator from './components/OfflineIndicator';
 import { FloatingProgressProvider } from './components/FloatingProgressPopup';
-import CloudGate, { requestOpenSettingsSection } from './components/cloud/CloudGate';
+import CloudGate from './components/cloud/CloudGate';
+import SignInWindow from './components/cloud/SignInWindow';
+import ZoomShortcuts from './components/accessibility/ZoomShortcuts';
+import { openSignIn } from './platform/cloud/signInWindow';
 import { DashboardSkeleton, LibrarySkeleton } from './components/ScreenSkeleton';
 import type { ReportPreviewData } from './components/reports/ReportPreviewPage';
 
@@ -343,8 +346,6 @@ function AppScreens({
   }, []);
   const goTo = useCallback((target: Screen) => { startTransition(() => { navigate(SCREEN_PATHS[target]); }); }, [navigate]);
   const setScreen = goTo;
-  const openCloudSettingsRef = useRef<() => void>(() => {});
-  const openCloudSettings = useCallback(() => openCloudSettingsRef.current(), []);
 
   const navigateTo = useCallback((targetScreen: Screen) => {
     const currentScreen = screenRef.current;
@@ -360,12 +361,6 @@ function AppScreens({
     startTransition(() => { navigate(SCREEN_PATHS[targetScreen]); });
     requestAnimationFrame(() => restoreScrollPosition(targetScreen));
   }, [navigate, restoreScrollPosition, navStack]);
-
-  openCloudSettingsRef.current = () => {
-    try { sessionStorage.setItem('qm-open-section', 'cloud'); } catch { /* ignore */ }
-    navigateTo('profile');
-    setTimeout(() => requestOpenSettingsSection('cloud'), 300);
-  };
 
   /** Load full quiz detail and navigate to results */
   const viewResultWithDetail = useCallback(async (summary: QuizResult, origin?: Screen) => {
@@ -592,7 +587,9 @@ function AppScreens({
       {hideBadge && <style>{`[data-zite-badge], .zite-badge, [class*="zite-badge"] { display: none !important; }`}</style>}
       <Toaster position="top-center" />
       <OfflineIndicator />
-      <CloudGate onOpenCloudSettings={openCloudSettings} />
+      <CloudGate onSignIn={openSignIn} />
+      <SignInWindow />
+      <ZoomShortcuts />
       {showOnboarding && screen === 'dashboard' && (
         <Suspense fallback={null}>
           <OnboardingModal onComplete={() => {
@@ -615,7 +612,7 @@ function AppScreens({
           <Navbar
             onHome={() => navigateTo('dashboard')}
             onProfile={() => navigateTo('profile')}
-            onLogin={() => loginWithRedirect()}
+            onLogin={() => openSignIn()}
             syncStatus={syncStatus}
             quizCount={history.length}
             theme={theme}

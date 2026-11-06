@@ -26,7 +26,7 @@ export function requestOpenSettingsSection(section: string): void {
   window.dispatchEvent(new Event(OPEN_SETTINGS_EVENT));
 }
 
-export default function CloudGate({ onOpenCloudSettings }: { onOpenCloudSettings: () => void }) {
+export default function CloudGate({ onSignIn }: { onSignIn: () => void }) {
   const sync = useSyncState();
   const [choiceOpen, setChoiceOpen] = useState(false);
 
@@ -55,11 +55,11 @@ export default function CloudGate({ onOpenCloudSettings }: { onOpenCloudSettings
       toast('Back up and sync your progress', {
         description: 'Sign in to keep your quizzes safe and the same on every device.',
         duration: 14_000,
-        action: { label: 'Sign in', onClick: onOpenCloudSettings },
+        action: { label: 'Sign in', onClick: () => onSignIn() },
       });
     }, PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [onOpenCloudSettings]);
+  }, [onSignIn]);
 
   if (!isCloudConfigured()) return null;
   return (

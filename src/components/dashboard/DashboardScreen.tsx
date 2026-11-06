@@ -20,6 +20,7 @@ import CompactPrediction from './CompactPrediction';
 import PerformanceRatingCard from './PerformanceRatingCard';
 import WidgetErrorBoundary from '../WidgetErrorBoundary';
 import GettingStartedChecklist from './GettingStartedChecklist';
+import SignInCard from './SignInCard';
 import LiveClockWidget from './LiveClockWidget';
 import QuestionMasteryHeatmap from '../stats/QuestionMasteryHeatmap';
 import AnalyticsTrends from '../stats/AnalyticsTrends';
@@ -345,6 +346,9 @@ export default function DashboardScreen({ history, hasSavedSession, onResumeSess
           <p className="text-[10px] font-bold text-primary/60">Loading older quizzes…</p>
         </div>
       )}
+
+      {/* Guest invitation to sign in and sync */}
+      <SignInCard />
 
       {/* Getting Started Checklist — shown for new users */}
       {filteredHistory.length < 5 && !checklistDismissed && (

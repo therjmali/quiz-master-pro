@@ -11,11 +11,12 @@ export interface SettingEntry {
 }
 
 export type SectionId =
-  | 'appearance' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
+  | 'appearance' | 'accessibility' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
   | 'gestures' | 'cloud' | 'account' | 'device' | 'advanced';
 
 export const SECTION_META: Record<SectionId, { title: string; desc: string }> = {
   appearance:    { title: 'Appearance',              desc: 'Theme, colour, text size and visual effects' },
+  accessibility: { title: 'Accessibility',         desc: 'Zoom the whole app in or out' },
   quiz:          { title: 'Quiz & Study',            desc: 'Study targets, cards, exam dates and quiz features' },
   ai:            { title: 'AI & Content',            desc: 'AI features, API keys and quiz templates' },
   library:       { title: 'Library & Data',          desc: 'Backups, downloads and trash' },
@@ -30,14 +31,16 @@ export const SECTION_META: Record<SectionId, { title: string; desc: string }> = 
   advanced:      { title: 'Advanced & About',        desc: 'Platform badge and resetting preferences' },
 };
 
-export const SECTION_ORDER: SectionId[] = ['appearance', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
+export const SECTION_ORDER: SectionId[] = ['appearance', 'accessibility', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
 
 export const SETTINGS: SettingEntry[] = [
   // Appearance
   { id: 'theme', section: 'appearance', title: 'Theme', hint: 'Light or AMOLED black — styles the whole app and quiz screen', keywords: ['dark mode', 'night', 'black', 'colour scheme', 'skin'] },
   { id: 'accent', section: 'appearance', title: 'Accent colour', hint: 'Highlight colour used for buttons and active states', keywords: ['color', 'primary', 'tint', 'brand'] },
-  { id: 'fontSize', section: 'appearance', title: 'Text size', hint: 'Make text smaller or larger across the app', keywords: ['font', 'zoom', 'readability', 'large text', 'accessibility'] },
+  { id: 'fontSize', section: 'appearance', title: 'Text size', hint: 'Make text smaller or larger across the app', keywords: ['font', 'readability', 'large text'] },
   { id: 'glass', section: 'appearance', title: 'Glass blur intensity', hint: 'How strongly frosted-glass cards blur what is behind them', keywords: ['blur', 'transparency', 'frosted', 'effects', 'performance'] },
+  // Accessibility
+  { id: 'zoom', section: 'accessibility', title: 'Zoom', hint: 'Make everything in the app smaller or larger', keywords: ['zoom in', 'zoom out', 'magnify', 'scale', 'bigger', 'smaller', 'large text', 'readability', 'accessibility', 'size', 'display', 'ctrl'] },
   // Quiz & Study
   { id: 'goals', section: 'quiz', title: 'Study targets', hint: 'Daily and weekly quiz and question goals', keywords: ['goal', 'target', 'streak', 'daily', 'weekly'] },
   { id: 'scoreOnCards', section: 'quiz', title: 'Show scores on cards', hint: 'Display the percentage on quiz cards', keywords: ['percentage', 'marks', 'result'] },

@@ -36,7 +36,7 @@ export const CloudSection = memo(function CloudSection({ open, onToggle }: Secti
   );
 });
 
-function NotConfigured() {
+export function NotConfigured() {
   return (
     <div className="pt-3 space-y-2">
       <Card tone="info">
@@ -58,9 +58,9 @@ function CloudBody() {
 
 /* ───────────────────────── sign in / create account ───────────────────────── */
 
-function AuthForm() {
+export function AuthForm({ initialMode = 'signin' }: { initialMode?: 'signin' | 'signup' }) {
   const auth = useCloudAuth();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

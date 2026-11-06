@@ -78,18 +78,7 @@ export default function ZoomControl() {
     labelTimer.current = setTimeout(() => setShowLabel(null), 200);
   };
 
-  // Keyboard shortcut: Ctrl/Cmd + =, -, 0
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod) return;
-      if (e.key === '=' || e.key === '+') { e.preventDefault(); handleZoomIn(); }
-      else if (e.key === '-')              { e.preventDefault(); handleZoomOut(); }
-      else if (e.key === '0')              { e.preventDefault(); handleReset(); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [handleZoomIn, handleZoomOut, handleReset]);
+  // Keyboard shortcuts (Ctrl/Cmd + =, -, 0) are handled app-wide by <ZoomShortcuts /> in App.
 
   return (
     <div

@@ -122,5 +122,14 @@ export const zoomPagePoint = (point: { x: number; y: number }) => {
   return z === 1 ? point : { x: point.x / z, y: point.y / z };
 };
 
+/** Ctrl/Cmd + "+", "-", "0" -> zoom action (null = not a zoom shortcut). */
+export function zoomActionForKey(e: { key: string; ctrlKey: boolean; metaKey: boolean; altKey: boolean; defaultPrevented: boolean }): 'in' | 'out' | 'reset' | null {
+  if (e.defaultPrevented || e.altKey || !(e.ctrlKey || e.metaKey)) return null;
+  if (e.key === '=' || e.key === '+') return 'in';
+  if (e.key === '-' || e.key === '_') return 'out';
+  if (e.key === '0') return 'reset';
+  return null;
+}
+
 // Apply before React renders so there's no flash at the wrong size.
 applyZoom();

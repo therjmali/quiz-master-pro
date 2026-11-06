@@ -93,3 +93,8 @@ It is read-only - it never creates users or writes data.
 `npm run test:sql` applies the schema twice to a throw-away PostgreSQL database and runs 14 behavioural tests
 (version conflicts, incremental pull, restore points and their cap, size limits, Row-Level Security isolation,
 delete-my-data, delete-my-account, anonymous lock-out). CI runs the same tests on every change.
+
+## Where to sign in
+
+Tap **Sign in** in the header, the card on the dashboard, or open *Settings -> Account & Cloud Sync*. All of them use the same
+account. If the build has no `SUPABASE_URL` / `SUPABASE_ANON_KEY`, the window says so instead of failing silently.

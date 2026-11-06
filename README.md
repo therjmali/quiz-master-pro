@@ -38,6 +38,7 @@ emulator, including a cold start in airplane mode. Each release lists the file's
 - **Library** — folders and subjects, bulk import of question sets, quiz export/import and local backups.
 - **Planning** — exam countdowns, study calendar, daily challenge.
 - **Notes & reports** — rich-text notes, printable revision sheets and result reports.
+- **Sign-in window & accessibility zoom** — sign in or create an account from one window opened from the header or dashboard; *Settings → Accessibility* zooms the whole app 70–150 % (also Ctrl/Cmd + `+` / `-` / `0`).
 - **Account & cloud sync** — optional sign-in (Supabase) that keeps history, library, bookmarks, mistakes, flashcards and settings identical across devices, with a safe first-sign-in choice, restore points and a readable sync log. [Setup guide](docs/CLOUD_SETUP.md).
 - **Automatic backups** — scheduled, checksummed snapshots with rotation, restore (with a safety copy), export to file and import.
 - **Smart reminders** — real Android notifications for daily study, due cards, streak saver, exam countdown and a weekly summary, with quiet hours.

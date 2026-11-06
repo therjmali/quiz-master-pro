@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useAuth, loginWithRedirect } from 'zitejs/auth';
+import { useAccount } from '../platform/cloud/useAccount';
+import { openSignIn } from '../platform/cloud/signInWindow';
 import { X, Send, Sparkles, Trash2, Loader2, Bot, User, ArrowLeft, LogIn } from 'lucide-react';
 import { chatGuest } from 'zitejs/api';
 import { getHistorySync } from '../utils/historyStore';
@@ -99,7 +100,8 @@ interface Props {
 }
 
 export default function AIChatbot({ onClose, questionContext }: Props) {
-  const { user } = useAuth();
+  const account = useAccount();
+  const user = account.signedIn ? account : null;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -107,7 +109,7 @@ export default function AIChatbot({ onClose, questionContext }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isGuest = !user;
-  const displayName = user?.firstName || user?.email?.split('@')[0] || 'there';
+  const displayName = user?.name || 'there';
 
   const SUGGESTIONS_QUESTION = questionContext ? [
     '❓ Why is the correct answer right?',
@@ -244,7 +246,7 @@ ${questionContext.questionType ? `Topic: ${questionContext.questionType}` : ''}
         <div className="flex items-center gap-1.5">
           {isGuest && (
             <button
-              onClick={() => loginWithRedirect()}
+              onClick={() => openSignIn()}
               className="flex items-center gap-1.5 text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-2.5 py-1.5 rounded-lg hover:bg-primary/15 transition-all"
             >
               <LogIn className="w-3 h-3" /> Sign In

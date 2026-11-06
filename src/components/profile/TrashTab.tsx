@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Trash2, RotateCcw, AlertTriangle, Loader2, LogIn, Folder, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth, loginWithRedirect } from 'zitejs/auth';
+import { hasBackend } from '../../platform/ai/caller';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -259,6 +260,9 @@ export default function TrashTab({ onHistoryChanged }: Props) {
             <Loader2 className="w-5 h-5 animate-spin" />
             <span className="text-sm">{authLoading ? 'Checking sign-in…' : 'Loading trash…'}</span>
           </div>
+        ) : !user && !hasBackend() ? (
+          // Standalone build: there is no hosted cloud trash, so no dead "Sign in" button here.
+          <p className="text-xs text-foreground/40 text-center py-6 px-4">Deleted quizzes are kept on this device. Nothing else to show here.</p>
         ) : !user ? (
           <div className="flex flex-col items-center text-center py-8 px-4 gap-3">
             <p className="text-xs text-foreground/40">Sign in to also see deleted quizzes — they are stored in your cloud account.</p>

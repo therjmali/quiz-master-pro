@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from 'zitejs/auth';
+import { useAccount } from '../platform/cloud/useAccount';
 import { GraduationCap, User, LogIn, Cloud, CloudOff, Loader2, Sun, Moon, Sparkles, Filter, X } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Dialog, DialogContent } from '@project/components/ui/dialog';
@@ -89,7 +89,9 @@ export default function Navbar({
   sessionMode, onSessionModeChange, sessionHistory,
   onOpenChatbot,
 }: NavbarProps) {
-  const { user, isLoading } = useAuth();
+  const account = useAccount();
+  const isLoading = account.loading;
+  const user = account.signedIn ? account : null;
   const themeConf = THEME_CONFIGS[theme];
   const ThemeIcon = themeConf.icon;
   const [now, setNow] = useState(() => new Date());
@@ -228,11 +230,11 @@ export default function Navbar({
                   </div>
                 ) : (
                   <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-black text-primary-foreground flex-shrink-0">
-                    {(user.firstName?.[0] || user.email?.[0] || '?').toUpperCase()}
+                    {(user.name?.[0] || user.email?.[0] || '?').toUpperCase()}
                   </div>
                 )}
                 <span className="hidden sm:inline max-w-[80px] truncate text-xs font-bold text-foreground/60">
-                  {user.firstName || user.email?.split('@')[0]}
+                  {user.name}
                 </span>
                 <User className="w-3.5 h-3.5 sm:hidden text-foreground/60" />
               </button>
@@ -242,10 +244,11 @@ export default function Navbar({
               onClick={onLogin}
               size="sm"
               variant="outline"
+              aria-label="Sign in"
               className="text-xs gap-1.5 rounded-xl h-9 bg-card/60 border-border text-foreground/60 hover:bg-card hover:text-foreground"
             >
               <LogIn className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Sign in</span>
+              <span>Sign in</span>
             </Button>
           )}
         </div>

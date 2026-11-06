@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { CalendarDays, Loader2, ChevronRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth, loginWithRedirect } from 'zitejs/auth';
+import { useAccount } from '../../platform/cloud/useAccount';
+import { openSignIn } from '../../platform/cloud/signInWindow';
 import { QuizResult } from '../../types/quiz';
 import { generateStudyPlan, GenerateStudyPlanOutputType } from 'zitejs/api';
 
@@ -16,7 +17,7 @@ const PRIORITY_STYLES: Record<string, string> = {
 };
 
 export default function StudyPlanCard({ history, onNavigateToSetup }: Props) {
-  const { user } = useAuth();
+  const user = useAccount().signedIn;
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<GenerateStudyPlanOutputType | null>(() => {
     try { const s = localStorage.getItem('qmp_study_plan'); return s ? JSON.parse(s) : null; } catch { return null; }
@@ -44,7 +45,7 @@ export default function StudyPlanCard({ history, onNavigateToSetup }: Props) {
   const handleGenerate = async () => {
     if (!user) {
       toast.error('Please sign in first');
-      loginWithRedirect();
+      openSignIn();
       return;
     }
     setLoading(true);

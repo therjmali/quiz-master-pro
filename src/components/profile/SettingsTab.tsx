@@ -8,6 +8,7 @@ import { SettingsQueryContext, Highlight } from './settings/controls';
 import { searchSettings, SECTION_META, SECTION_ORDER, type SectionId } from './settings/settingsSearch';
 import { AppearanceSection, QuizStudySection } from './settings/sectionsA';
 import { CloudSection } from './settings/sectionsCloud';
+import { AccessibilitySection } from './settings/sectionsAccessibility';
 import { AutoBackupSection, RemindersSection, DataSection, DeviceSection } from './settings/sectionsPlatform';
 import { AISection, LibrarySection, NotificationsSection, GesturesSection, AccountSection, AdvancedSection, type ProfileTabLink } from './settings/sectionsB';
 
@@ -154,6 +155,7 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
         </div>
 
         {visible('appearance') && <AppearanceSection {...sectionProps('appearance')} theme={theme} onThemeChange={onThemeChange} />}
+        {visible('accessibility') && <AccessibilitySection {...sectionProps('accessibility')} />}
         {visible('quiz') && <QuizStudySection {...sectionProps('quiz')} />}
         {visible('ai') && <AISection {...sectionProps('ai')} onOpenTab={openTab} />}
         {visible('library') && <LibrarySection {...sectionProps('library')} onOpenTab={openTab} isLoggedIn={isLoggedIn} history={history} />}
