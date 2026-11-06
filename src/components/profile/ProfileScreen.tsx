@@ -26,6 +26,8 @@ import DownloadsTab from './DownloadsTab';
 import TrashTab from './TrashTab';
 import TemplatesTab from './TemplatesTab';
 import CloudDataManager from '../CloudDataManager';
+import StatusStrip from './StatusStrip';
+import { triggerOpenSettings } from '../cloud/CloudGate';
 
 import SessionSelector, { SessionMode, filterBySession, getSessionLabel } from '../SessionSelector';
 
@@ -533,6 +535,9 @@ export default function ProfileScreen({
           </div>
         )}
       </div>
+
+      {/* ── Status Strip: Cloud, Backup, Storage, App Version ── */}
+      <StatusStrip onJump={(section) => { setTab('settings'); triggerOpenSettings(section); }} />
 
       {/* ── Lifetime Score Section (always visible) ── */}
       {masterFiltered.length > 0 && (

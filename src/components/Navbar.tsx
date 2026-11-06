@@ -50,7 +50,9 @@ interface NavbarProps {
   onOpenChatbot?: () => void;
 }
 
-function SyncBadge({ status }: { status: SyncStatus }) {
+import { triggerOpenSettings } from './cloud/CloudGate';
+
+function SyncBadge({ status, onClick }: { status: SyncStatus; onClick?: () => void }) {
   if (status === 'idle') return null;
 
   const cfg: Record<SyncStatus, { icon: ReactNode; label: string; cls: string }> = {
@@ -80,12 +82,15 @@ function SyncBadge({ status }: { status: SyncStatus }) {
   const { icon, label, cls } = cfg[status];
 
   return (
-    <div
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] ${cls}`}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-all hover:scale-105 active:scale-95 ${cls}`}
+      title="Cloud sync & devices"
     >
       {icon}
       <span>{label}</span>
-    </div>
+    </button>
   );
 }
 
@@ -223,7 +228,7 @@ export default function Navbar({
               </>
             )}
 
-            <SyncBadge status={syncStatus} />
+            <SyncBadge status={syncStatus} onClick={() => { onProfile(); triggerOpenSettings('cloud'); }} />
 
             {!isDashboard && quizCount > 0 && (
               <button

@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] - 2026-11-06
+
+Full UI/UX consistency and feature parity with RJ Study Tracker.
+
+### Added
+- **Interactive Cloud Sync badge.** Header sync status badge is now interactive: tapping it opens the Cloud & Sync settings section immediately.
+- **Live StatusStrip in Profile.** Embedded the 4-tile system status card (Cloud sync status, Backup age, Storage protection, App version) with 1-tap navigation to corresponding settings sections.
+- **Unified Design System tokens.** Shared Liquid Glass 2.0 material specifications with subtle aurora refraction, rounded card surfaces, and consistent typography and iconography across both applications.
+
 ## [2.0.0] - 2026-11-06
 
 Sign-in is now a proper window you can open from anywhere, and zoom has its own menu in Settings.
