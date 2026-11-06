@@ -25,9 +25,23 @@ for d in android-res/mipmap-*; do
   mkdir -p "$RES/$name"
   cp "$d"/*.png "$RES/$name/"
 done
-cp android-res/values/ic_launcher_background.xml "$RES/values/ic_launcher_background.xml"
+# Values: background and widget strings
+mkdir -p "$RES/values"
+cp android-res/values/*.xml "$RES/values/"
 
-# Native code: MainActivity registers the QmNative plugin (home-screen shortcut for the custom icon)
+# Drawables (shapes) + widget layouts + AppWidget XML
+mkdir -p "$RES/drawable" "$RES/layout" "$RES/xml"
+if [ -d android-res/drawable ]; then
+  cp android-res/drawable/*.xml "$RES/drawable/"
+fi
+if [ -d android-res/layout ]; then
+  cp android-res/layout/*.xml "$RES/layout/"
+fi
+if [ -d android-res/xml ]; then
+  cp android-res/xml/*.xml "$RES/xml/"
+fi
+
+# Native code: MainActivity registers QmNative + AppWidget providers
 APP_ID=$(sed -n "s/.*appId: *'\([^']*\)'.*/\1/p" capacitor.config.ts | head -1)
 JAVA_DIR="android/app/src/main/java/$(echo "$APP_ID" | tr . /)"
 mkdir -p "$JAVA_DIR"
@@ -58,6 +72,11 @@ fi
 # The app is offline-first, but optional online features (AI, sync, e-mail) need network access.
 if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
+fi
+
+# Android Home Screen AppWidgets
+if ! grep -q "StudyWidgetProvider" "$MANIFEST"; then
+  sed -i 's#</application>#    <receiver android:name=".StudyWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_study_widget_info" />\n    </receiver>\n    <receiver android:name=".FocusWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_focus_widget_info" />\n    </receiver>\n    <receiver android:name=".SubjectWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_subject_widget_info" />\n    </receiver>\n    <receiver android:name=".ExamWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_exam_widget_info" />\n    </receiver>\n    </application>#' "$MANIFEST"
 fi
 
 # Version

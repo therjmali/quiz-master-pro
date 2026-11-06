@@ -30,8 +30,11 @@ export const DEFAULT_RATIONALE_PREFS: RationalePrefs = {
   showAi: true,
 };
 
-/** Only two themes exist: Light and AMOLED (pure black). Legacy 'dark' is migrated to 'amoled'. */
-export type AppTheme = 'amoled' | 'light';
+export type ThemeMode = 'light' | 'amoled' | 'ancient' | 'glass';
+export type ThemeId = 'default' | 'ocean' | 'emerald' | 'sunset' | 'rose' | 'purple' | 'ancient';
+export type GlassTone = 'auto' | 'light' | 'dark';
+/** Theme mode (Parchment light, Ink amoled, Papyrus ancient, Liquid Glass). Keeps backward compatibility with AppTheme. */
+export type AppTheme = ThemeMode;
 
 /**
  * Report ordering modes — fully independent from live-quiz shuffle.

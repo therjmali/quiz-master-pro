@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] - 2026-11-06
+
+Complete UI/UX transformation based on RJ Study Tracker design system, 4 Display Themes, 7 Accent Palettes, Mechanical Split-Flap Clock, Luxury Roman Watch Face, Multi-Exam Countdown Carousel, Android Native Home-Screen Widgets, Command Center & Smart Alerts, and Cloud Sync Center.
+
+### Added
+- **Liquid Glass Design System & Theme Engine**:
+  - Full Liquid Glass design with translucent frosted glass, refined gradients, borders, and depth.
+  - 4 Display Modes (Parchment, Ink, Papyrus, and Liquid Glass) cycling seamlessly via the theme toggle and persisted across sessions.
+  - 7 Handcrafted Accent Palettes (Emerald, Amber, Rose, Amethyst, Azure, Copper, Slate) with dynamic CSS variables and edge-to-edge support.
+  - Offline Typography: bundled Fraunces, Inter, JetBrains Mono, and Space Mono for a 100% offline-ready, luxury editorial experience.
+- **Hero Clock & Mechanical Split-Flap Timer**:
+  - Luxury Dashboard clock featuring Digital mode, mechanical Split-Flap animation, and luxury Roman Watch Face with live hands.
+  - Integrated daily question counters, streak tracker, and average accuracy indicators.
+- **Multi-Exam Countdown Carousel & Exam Shelf**:
+  - Interactive Exam Countdown Shelf (`LiveExamCountdown` & `ExamPosterCard`) with real-time days/hours/minutes/seconds countdown cards.
+  - Preloaded NORCET 8, NORCET 9, and ESIC Nursing Officer milestones with customizable target exam configurations.
+- **Native Android Home-Screen Widgets**:
+  - 4 native Android AppWidgets:
+    - *Study Progress Widget* (streak, questions solved today, live accuracy progress bar).
+    - *Subject Mastery Widget* (nursing subject shortcuts, quick practice launcher).
+    - *Exam Countdown Widget* (days remaining, target milestone, direct exam review).
+    - *Focus Practice Widget* (SRS flashcard review count, quick test launcher).
+  - Native Capacitor plugin `QmNativePlugin` for updating RemoteViews and Android 12+ pinned shortcut requests (`requestPinAppWidget`).
+  - Interactive in-app `WidgetManagerModal` with live phone previews and "Pin to Home Screen" actions.
+- **Notification Center & Smart Command Center**:
+  - Unified command center slide-over with actionable Smart Alerts (SRS reviews due, streak preservation alerts, upcoming exam countdown alerts, and daily goal targets).
+  - Integrated Daily To-Do list with priority badges, completion toggles, and persistence.
+- **Cloud Sync Center (`SyncCenter.tsx`)**:
+  - Full 4-tab synchronization experience matching RJ Study Tracker: Overview, Devices (with remote device sign-out and device renaming), Recovery (restore points and revision rollbacks), and On-Device local data storage manager.
+
 ## [2.1.0] - 2026-11-06
 
 Full UI/UX consistency and feature parity with RJ Study Tracker.

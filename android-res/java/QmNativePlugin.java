@@ -1,7 +1,10 @@
 package com.rjmali.quizmaster;
 
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.Bitmap;
@@ -19,14 +22,13 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import java.util.Collections;
 
 /**
- * Native helpers that have no web equivalent.
- *
- * pinShortcut: Android never lets an app swap its own launcher icon for an arbitrary picture, so the
- * custom icon is offered as a pinned home-screen shortcut (updated in place when it already exists).
+ * Native helpers that bridge Android features (custom launcher shortcut & Android AppWidgets).
  */
 @CapacitorPlugin(name = "QmNative")
 public class QmNativePlugin extends Plugin {
     private static final String SHORTCUT_ID = "qm-custom-icon";
+    private static final String PREFS_WIDGET = "rj_widget_prefs";
+    private static final String KEY_WIDGET_DATA = "widget_data";
 
     @PluginMethod
     public void pinShortcut(PluginCall call) {
@@ -90,5 +92,81 @@ public class QmNativePlugin extends Plugin {
         } catch (Exception e) {
             call.reject("pinShortcut failed: " + e.getMessage());
         }
+    }
+
+    @PluginMethod
+    public void updateWidgetData(PluginCall call) {
+        String data = call.getString("data");
+        if (data == null) {
+            JSObject obj = call.getData();
+            if (obj != null) {
+                data = obj.toString();
+            }
+        }
+        if (data == null) {
+            data = "{}";
+        }
+
+        try {
+            Context context = getContext();
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_WIDGET, Context.MODE_PRIVATE);
+            prefs.edit().putString(KEY_WIDGET_DATA, data).apply();
+
+            StudyWidgetProvider.updateAll(context);
+            FocusWidgetProvider.updateAll(context);
+            SubjectWidgetProvider.updateAll(context);
+            ExamWidgetProvider.updateAll(context);
+
+            JSObject res = new JSObject();
+            res.put("success", true);
+            call.resolve(res);
+        } catch (Exception e) {
+            call.reject("updateWidgetData failed: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void isPinWidgetSupported(PluginCall call) {
+        JSObject res = new JSObject();
+        boolean supported = false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                AppWidgetManager mgr = getContext().getSystemService(AppWidgetManager.class);
+                supported = mgr != null && mgr.isRequestPinAppWidgetSupported();
+            } catch (Throwable ignored) {}
+        }
+        res.put("supported", supported);
+        call.resolve(res);
+    }
+
+    @PluginMethod
+    public void requestPinWidget(PluginCall call) {
+        String widgetType = call.getString("type", "study");
+        JSObject res = new JSObject();
+        boolean ok = false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                Context ctx = getContext();
+                AppWidgetManager mgr = ctx.getSystemService(AppWidgetManager.class);
+                if (mgr != null && mgr.isRequestPinAppWidgetSupported()) {
+                    Class<?> providerClass;
+                    if ("focus".equalsIgnoreCase(widgetType)) {
+                        providerClass = FocusWidgetProvider.class;
+                    } else if ("subject".equalsIgnoreCase(widgetType)) {
+                        providerClass = SubjectWidgetProvider.class;
+                    } else if ("exam".equalsIgnoreCase(widgetType)) {
+                        providerClass = ExamWidgetProvider.class;
+                    } else {
+                        providerClass = StudyWidgetProvider.class;
+                    }
+                    ComponentName provider = new ComponentName(ctx, providerClass);
+                    ok = mgr.requestPinAppWidget(provider, null, null);
+                }
+            } catch (Throwable ignored) {}
+        }
+
+        res.put("pinned", ok);
+        call.resolve(res);
     }
 }

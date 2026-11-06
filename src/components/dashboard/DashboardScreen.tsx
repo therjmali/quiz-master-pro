@@ -21,7 +21,8 @@ import PerformanceRatingCard from './PerformanceRatingCard';
 import WidgetErrorBoundary from '../WidgetErrorBoundary';
 import GettingStartedChecklist from './GettingStartedChecklist';
 import SignInCard from './SignInCard';
-import LiveClockWidget from './LiveClockWidget';
+import HeroClock from './HeroClock';
+import ExamShelf from './ExamShelf';
 import QuestionMasteryHeatmap from '../stats/QuestionMasteryHeatmap';
 import AnalyticsTrends from '../stats/AnalyticsTrends';
 
@@ -276,8 +277,8 @@ export default function DashboardScreen({ history, hasSavedSession, onResumeSess
   return (
     <div className="animate-fade-in space-y-3.5 pb-4">
 
-      {/* Live Clock & Motivation Widget */}
-      <LiveClockWidget streak={streak} todayCount={todayCount} avgScore={avgScore} />
+      {/* Luxury Hero Clock & Motivation */}
+      <HeroClock streak={streak} todayCount={todayCount} avgScore={avgScore} />
 
       {/* Main/Practice Sub-tabs — enhanced */}
       {history.some(r => r.attemptType === 'practice') && onPracticeDashboard && (() => {
@@ -528,9 +529,12 @@ export default function DashboardScreen({ history, hasSavedSession, onResumeSess
         </button>
       )}
 
-      {/* Exam Countdown */}
+      {/* Exam Countdown & Carousel Shelf */}
       {vis.dashboardWidgets && vis.examCountdown && (
-        <ExamCountdownSection history={filteredHistory} />
+        <div className="space-y-3">
+          <ExamShelf history={filteredHistory} onPracticeSubject={() => onPractice?.([])} />
+          <ExamCountdownSection history={filteredHistory} />
+        </div>
       )}
 
       {/* Compact Prediction */}

@@ -40,6 +40,7 @@ const tailwindConfig: Config = {
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',
+          ink: 'hsl(var(--accent-ink))',
         },
         popover: {
           DEFAULT: 'hsl(var(--popover))',
@@ -51,8 +52,6 @@ const tailwindConfig: Config = {
         },
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
-          // Alias so `bg-sidebar-background` resolves like `bg-sidebar` — see
-          // ZITE_TAILWIND_THEME in packages/zite/src/apps.ts for the rationale.
           background: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',
           primary: 'hsl(var(--sidebar-primary))',
@@ -61,6 +60,11 @@ const tailwindConfig: Config = {
           'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
           border: 'hsl(var(--sidebar-border))',
           ring: 'hsl(var(--sidebar-ring))',
+        },
+        diff: {
+          easy: 'hsl(var(--diff-easy))',
+          medium: 'hsl(var(--diff-medium))',
+          hard: 'hsl(var(--diff-hard))',
         },
         chart: {
           1: 'hsl(var(--chart-1))',
@@ -79,6 +83,7 @@ const tailwindConfig: Config = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      opacity: Object.fromEntries(Array.from({ length: 99 }, (_, i) => [String(i + 1), String((i + 1) / 100)])),
       boxShadow: {
         '2xs': 'var(--shadow-2xs)',
         xs: 'var(--shadow-xs)',

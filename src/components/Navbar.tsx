@@ -12,6 +12,8 @@ import {
   Sparkles,
   Filter,
   X,
+  Bell,
+  Smartphone,
 } from 'lucide-react';
 import { Button } from '@project/components/ui/button';
 import { Dialog, DialogContent } from '@project/components/ui/dialog';
@@ -48,6 +50,10 @@ interface NavbarProps {
   onSessionModeChange?: (v: SessionMode) => void;
   sessionHistory?: QuizResult[];
   onOpenChatbot?: () => void;
+  onOpenNotifications?: () => void;
+  unreadNotificationCount?: number;
+  onOpenWidgets?: () => void;
+  onOpenSyncCenter?: () => void;
 }
 
 import { triggerOpenSettings } from './cloud/CloudGate';
@@ -95,8 +101,10 @@ function SyncBadge({ status, onClick }: { status: SyncStatus; onClick?: () => vo
 }
 
 const THEME_CONFIGS: Record<AppTheme, { icon: typeof Moon; label: string; nextLabel: string }> = {
-  amoled: { icon: Moon, label: 'Ink', nextLabel: 'Switch to Light theme' },
-  light: { icon: Sun, label: 'Parchment', nextLabel: 'Switch to Ink theme' },
+  amoled: { icon: Moon, label: 'Ink', nextLabel: 'Switch to Parchment theme' },
+  light: { icon: Sun, label: 'Parchment', nextLabel: 'Switch to Papyrus theme' },
+  ancient: { icon: Sun, label: 'Papyrus', nextLabel: 'Switch to Liquid Glass theme' },
+  glass: { icon: Sparkles, label: 'Glass', nextLabel: 'Switch to Ink theme' },
 };
 
 export default function Navbar({
@@ -118,6 +126,10 @@ export default function Navbar({
   onSessionModeChange,
   sessionHistory,
   onOpenChatbot,
+  onOpenNotifications,
+  unreadNotificationCount,
+  onOpenWidgets,
+  onOpenSyncCenter,
 }: NavbarProps) {
   const account = useAccount();
   const isLoading = account.loading;
@@ -228,7 +240,34 @@ export default function Navbar({
               </>
             )}
 
-            <SyncBadge status={syncStatus} onClick={() => { onProfile(); triggerOpenSettings('cloud'); }} />
+            {onOpenNotifications && (
+              <button
+                type="button"
+                onClick={onOpenNotifications}
+                title="Command Center & Smart Alerts"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/70 shadow-sm transition-all hover:border-foreground/20 hover:text-foreground active:scale-95"
+              >
+                <Bell className="h-4 w-4" />
+                {unreadNotificationCount !== undefined && unreadNotificationCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[8px] font-black text-white shadow-sm">
+                    {unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {onOpenWidgets && (
+              <button
+                type="button"
+                onClick={onOpenWidgets}
+                title="Android Home Screen Widgets"
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/70 shadow-sm transition-all hover:border-foreground/20 hover:text-foreground active:scale-95"
+              >
+                <Smartphone className="h-4 w-4" />
+              </button>
+            )}
+
+            <SyncBadge status={syncStatus} onClick={onOpenSyncCenter || (() => { onProfile(); triggerOpenSettings('cloud'); })} />
 
             {!isDashboard && quizCount > 0 && (
               <button

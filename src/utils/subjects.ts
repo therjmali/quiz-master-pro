@@ -16,12 +16,26 @@ const COLOR_POOL = [
   { chip: 'bg-violet-500/20 text-violet-300 border-violet-500/30', badge: 'bg-violet-500/15 text-violet-400 border-violet-500/25', dot: 'bg-violet-400' },
 ];
 
+export const DEFAULT_NURSING_SUBJECTS = [
+  'Medical-Surgical Nursing',
+  'Community Health Nursing',
+  'Obstetrics & Gynaecological Nursing',
+  'Child Health Nursing',
+  'Mental Health Nursing',
+  'Pharmacology',
+  'Anatomy & Physiology'
+];
+
 export function getUserSubjects(): string[] {
   try {
     const stored = localStorage.getItem(SUBJECTS_KEY);
-    return stored ? JSON.parse(stored) : [];
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    return DEFAULT_NURSING_SUBJECTS;
   } catch {
-    return [];
+    return DEFAULT_NURSING_SUBJECTS;
   }
 }
 

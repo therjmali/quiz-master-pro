@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">R.J QUIZ</string>
+    <string name="title_activity_main">R.J QUIZ</string>
+    <string name="package_name">com.rjmali.quizmaster</string>
+    <string name="custom_url_scheme">com.rjmali.quizmaster</string>
+    <string name="rj_widget_study_name">Quiz Master - Daily Practice &amp; Streak</string>
+    <string name="rj_widget_study_desc">Track today\'s solved questions, daily target, and streak from your home screen.</string>
+    <string name="rj_widget_focus_name">Quiz Master - Quick Quiz Launcher</string>
+    <string name="rj_widget_focus_desc">Instant quick quiz practice and live performance status.</string>
+    <string name="rj_widget_subject_name">Quiz Master - Subject Mastery &amp; Quiz</string>
+    <string name="rj_widget_subject_desc">One-tap jump into Medical-Surgical, Community Health, OBG or your active subject quiz.</string>
+    <string name="rj_widget_exam_name">Quiz Master - Exam Countdown &amp; Pace</string>
+    <string name="rj_widget_exam_desc">Real-time NORCET &amp; Nursing exam countdown and daily question pace.</string>
+</resources>

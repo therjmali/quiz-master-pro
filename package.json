@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "2.1.0",
+  "version": "2.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -164,7 +164,6 @@
     "typescript": "~5.7.3",
     "vite": "^8.1.0"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
   "description": "R.J QUIZ - Quiz Master Pro: an offline-first quiz, notes and revision app. Installable PWA and Android APK.",
   "engines": {
     "node": ">=20"

@@ -11,11 +11,16 @@ import type { SectionId } from './settingsSearch';
 export interface SectionProps { open: boolean; onToggle: (id: SectionId) => void }
 
 /* ═════════ Appearance ═════════ */
-const ACCENT_COLORS = [
-  { name: 'Indigo', value: '#6366F1' }, { name: 'Violet', value: '#8B5CF6' }, { name: 'Cyan', value: '#06B6D4' },
-  { name: 'Rose', value: '#F43F5E' }, { name: 'Emerald', value: '#10B981' }, { name: 'Amber', value: '#F59E0B' },
+const ACCENT_PALETTES = [
+  { id: 'default', name: 'Scholar', emoji: '📚', value: '#2D1B33' },
+  { id: 'ocean', name: 'Ocean', emoji: '🌊', value: '#2D6A8F' },
+  { id: 'emerald', name: 'Sage', emoji: '🍃', value: '#3D7A5C' },
+  { id: 'sunset', name: 'Terracotta', emoji: '🏺', value: '#A0522D' },
+  { id: 'rose', name: 'Wine', emoji: '🍷', value: '#722F37' },
+  { id: 'purple', name: 'Plum', emoji: '🍇', value: '#5B3256' },
+  { id: 'ancient', name: 'Ancient', emoji: '⚱️', value: '#D4A843' },
 ];
-const DEFAULT_ACCENT = '#6366F1';
+const DEFAULT_ACCENT = '#2D1B33';
 const FONT_PX: Record<string, string> = { small: '14px', medium: '16px', large: '18px' };
 
 function hexToHsl(hex: string): string {
@@ -29,10 +34,14 @@ function hexToHsl(hex: string): string {
   }
   return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }
-function applyAccent(hex: string) {
+function applyAccent(hex: string, paletteId?: string) {
   const hsl = hexToHsl(hex);
   document.documentElement.style.setProperty('--primary', hsl);
-  try { localStorage.setItem('qmp_accent_hsl', hsl); localStorage.setItem('qmp_accent_hex', hex); } catch {}
+  try {
+    localStorage.setItem('qmp_accent_hsl', hsl);
+    localStorage.setItem('qmp_accent_hex', hex);
+    if (paletteId) localStorage.setItem('qmp_theme_accent', paletteId);
+  } catch {}
 }
 function applyFontSize(size: string) {
   document.documentElement.style.setProperty('--font-size-base', FONT_PX[size] || '16px');
@@ -51,9 +60,14 @@ export const AppearanceSection = memo(function AppearanceSection({ open, onToggl
   const [glass, setGlass] = useState(() => Number(readLS('qmp_glass_intensity', '40')));
   const accent = profile.accentColor || DEFAULT_ACCENT;
 
-  const setAccent = (hex: string, name?: string) => { update({ accentColor: hex }); applyAccent(hex); if (name) toast.success(`Accent: ${name}`); };
+  const setAccent = (hex: string, name?: string, id?: string) => {
+    update({ accentColor: hex });
+    applyAccent(hex, id);
+    if (name) toast.success(`Palette: ${name}`);
+  };
   const reset = () => {
-    onThemeChange('amoled'); setAccent(DEFAULT_ACCENT);
+    onThemeChange('amoled');
+    setAccent(DEFAULT_ACCENT, 'Scholar', 'default');
     setFontSize('medium'); applyFontSize('medium');
     setGlass(40); applyGlass(40);
     toast.success('Appearance reset to defaults');
@@ -61,38 +75,43 @@ export const AppearanceSection = memo(function AppearanceSection({ open, onToggl
 
   return (
     <SettingsSection id="appearance" icon={<Palette className="w-4 h-4" />} open={open} onToggle={onToggle} onReset={reset}>
-      <SubHeading>Theme</SubHeading>
-      <SettingRow id="theme" title="Theme" hint="Light or AMOLED black — styles the whole app and quiz screen" inline={false}
+      <SubHeading>Display Mode</SubHeading>
+      <SettingRow id="theme" title="Display Mode" hint="Parchment, Ink, Papyrus or Liquid Glass" inline={false}
         control={
           <div className="grid grid-cols-2 gap-2">
-            {([['light', '✨', 'Light', 'Bright & clean'], ['amoled', '🖤', 'AMOLED', 'Pure black, saves battery']] as const).map(([v, e, l, d]) => (
+            {([
+              ['light', '☀️', 'Parchment', 'Warm cream paper'],
+              ['amoled', '🌙', 'Ink', 'Pure OLED black'],
+              ['ancient', '🏺', 'Papyrus', 'Warm antique sepia'],
+              ['glass', '🫧', 'Liquid Glass', 'Aurora frosted glass'],
+            ] as const).map(([v, e, l, d]) => (
               <button key={v} type="button" aria-pressed={theme === v}
-                onClick={() => { onThemeChange(v); toast.success(`${e} ${l} theme applied`); }}
-                className={`relative flex items-center gap-2.5 p-3 rounded-xl border-2 text-left transition-all ${theme === v ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-foreground/25'}`}>
+                onClick={() => { onThemeChange(v); toast.success(`${e} ${l} mode applied`); }}
+                className={`relative flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all ${theme === v ? 'border-primary bg-primary/10 shadow-sm' : 'border-border bg-card/60 hover:border-foreground/25'}`}>
                 <span className="text-xl">{e}</span>
                 <span className="min-w-0">
                   <span className="block text-xs font-black text-foreground">{l}</span>
                   <span className="block text-[10px] text-foreground/45 truncate">{d}</span>
                 </span>
-                {theme === v && <Check className="absolute top-2 right-2 w-3.5 h-3.5 text-primary" />}
+                {theme === v && <Check className="absolute top-2.5 right-2.5 w-4 h-4 text-primary" />}
               </button>
             ))}
           </div>
         } />
-      <SettingRow id="accent" title="Accent colour" hint="Highlight colour used for buttons and active states" inline={false}
+      <SettingRow id="accent" title="Accent palette" hint="Highlight color used across cards, badges, and controls" inline={false}
         control={
           <div className="flex flex-wrap items-center gap-2.5">
-            {ACCENT_COLORS.map(c => (
-              <button key={c.value} type="button" title={c.name} aria-label={c.name} aria-pressed={accent === c.value}
-                onClick={() => setAccent(c.value, c.name)}
-                className={`relative w-9 h-9 rounded-full transition-transform active:scale-90 ${accent === c.value ? 'ring-2 ring-offset-2 ring-offset-background ring-foreground/70' : ''}`}
+            {ACCENT_PALETTES.map(c => (
+              <button key={c.id} type="button" title={`${c.emoji} ${c.name}`} aria-label={c.name}
+                onClick={() => setAccent(c.value, c.name, c.id)}
+                className={`relative w-9 h-9 rounded-full transition-all active:scale-90 flex items-center justify-center text-xs shadow-sm ${accent === c.value ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' : ''}`}
                 style={{ background: c.value }}>
-                {accent === c.value && <Check className="w-4 h-4 text-white absolute inset-0 m-auto" />}
+                {accent === c.value ? <Check className="w-4 h-4 text-white" /> : <span className="opacity-75">{c.emoji}</span>}
               </button>
             ))}
             <label title="Custom colour" className="relative w-9 h-9 rounded-full border-2 border-dashed border-foreground/25 flex items-center justify-center cursor-pointer hover:border-foreground/50">
               <Plus className="w-4 h-4 text-foreground/50" />
-              <input type="color" value={accent} onChange={e => setAccent(e.target.value)} aria-label="Custom accent colour" className="absolute inset-0 opacity-0 cursor-pointer" />
+              <input type="color" value={accent} onChange={e => setAccent(e.target.value, 'Custom')} aria-label="Custom accent colour" className="absolute inset-0 opacity-0 cursor-pointer" />
             </label>
           </div>
         } />

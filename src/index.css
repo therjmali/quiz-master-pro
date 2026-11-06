@@ -2808,3 +2808,52 @@ button, .q-ball, .option-btn, .prem-option-btn, .pqn-btn { -webkit-user-select: 
   .settings-collapse[data-open="false"] > * { transition: none; }
   .setting-flash { animation: none; outline: 2px solid hsl(var(--primary) / 0.5); outline-offset: 2px; }
 }
+
+/* ═════════════ Theme transition ═════════════ */
+:root.theme-transitioning {
+  transition: background-color 0.3s ease, color 0.3s ease !important;
+}
+:root.theme-transitioning .glass-card,
+:root.theme-transitioning .glass-liquid,
+:root.theme-transitioning .glass-nav,
+:root.theme-transitioning nav,
+:root.theme-transitioning header {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease !important;
+}
+
+/* ═════════════ Flip card (flip clock + flip countdown) ═════════════ */
+.flip-card {
+  --flip-bg: #ffffff; --flip-fg: #2a2c30; --flip-line: rgba(0,0,0,.16); --flip-shadow: rgba(20,24,40,.18);
+  position: relative; width: var(--fw); height: var(--fh); perspective: calc(var(--fh) * 3);
+  border-radius: calc(var(--fw) * .16); contain: layout paint style;
+  box-shadow: 0 6px 16px var(--flip-shadow), 0 1px 0 rgba(255,255,255,.7) inset;
+  font-variant-numeric: tabular-nums;
+}
+.flip-card[data-tone="dark"] { --flip-bg: #202124; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.65); --flip-shadow: rgba(0,0,0,.4); }
+.flip-card[data-tone="auto"] { --flip-bg: hsl(var(--card)); --flip-fg: hsl(var(--foreground)); --flip-line: hsl(var(--foreground) / .22); --flip-shadow: hsl(var(--foreground) / .16); }
+html.amoled-mode .flip-card[data-tone="auto"], html.glass-dark .flip-card[data-tone="auto"] { --flip-bg: #232428; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.7); --flip-shadow: rgba(0,0,0,.5); }
+.flip-half { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: var(--flip-bg); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.flip-half > span { position: absolute; left: 0; right: 0; height: 200%; display: flex; align-items: center; justify-content: center; color: var(--flip-fg); font-size: var(--ffs); line-height: 1; font-weight: 800; letter-spacing: -.02em; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
+.flip-top { top: 0; border-radius: calc(var(--fw) * .16) calc(var(--fw) * .16) 0 0; transform-origin: 50% 100%; background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0)); }
+.flip-top > span { top: 0; }
+.flip-bottom { bottom: 0; border-radius: 0 0 calc(var(--fw) * .16) calc(var(--fw) * .16); transform-origin: 50% 0; background-image: linear-gradient(0deg, rgba(0,0,0,.08), rgba(0,0,0,0)); }
+.flip-bottom > span { bottom: 0; }
+.flip-hinge { position: absolute; left: 0; right: 0; top: calc(50% - 1px); height: 2px; background: var(--flip-line); z-index: 6; pointer-events: none; }
+.flip-flap-top { z-index: 4; animation: flipTop .3s cubic-bezier(.4,0,.8,.6) forwards; }
+.flip-flap-bottom { z-index: 3; transform: rotateX(90deg); animation: flipBottom .3s cubic-bezier(.2,.7,.3,1) .3s forwards; }
+@keyframes flipTop { from { transform: rotateX(0deg); } to { transform: rotateX(-90deg); } }
+@keyframes flipBottom { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
+@media (prefers-reduced-motion: reduce) { .flip-flap-top, .flip-flap-bottom { animation-duration: .01s; animation-delay: 0s; } }
+
+/* ═════════ Readable text guard ═════════ */
+html:not(.amoled-mode):not(.glass-dark) .text-chart-1,
+html:not(.amoled-mode):not(.glass-dark) .text-chart-3,
+html:not(.amoled-mode):not(.glass-dark) .text-chart-5 { color: color-mix(in srgb, hsl(var(--chart-1)) 62%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-chart-2 { color: color-mix(in srgb, hsl(var(--chart-2)) 66%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-chart-4 { color: color-mix(in srgb, hsl(var(--chart-4)) 60%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-accent { color: color-mix(in srgb, hsl(var(--accent)) 52%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-secondary { color: color-mix(in srgb, hsl(var(--secondary)) 70%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-diff-easy { color: color-mix(in srgb, hsl(var(--diff-easy)) 58%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-diff-medium { color: color-mix(in srgb, hsl(var(--diff-medium)) 50%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-diff-hard { color: color-mix(in srgb, hsl(var(--diff-hard)) 66%, hsl(var(--foreground))); }
+html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--destructive)) 82%, hsl(var(--foreground))); }

@@ -80,6 +80,9 @@ const ReportPreviewPage = lazyRetry(() => import('./components/reports/ReportPre
 const FlashcardScreen = lazyRetry(() => import('./components/flashcards/FlashcardScreen'));
 const AIChatbot = lazyRetry(() => import('./components/AIChatbot'));
 const PracticeDashboardScreen = lazyRetry(() => import('./components/practice/PracticeDashboardScreen'));
+const SyncCenter = lazyRetry(() => import('./components/cloud/SyncCenter'));
+const NotificationCenter = lazyRetry(() => import('./components/NotificationCenter'));
+const WidgetManagerModal = lazyRetry(() => import('./components/widgets/WidgetManagerModal'));
 
 // Warm the chunks of frequently-opened screens once the browser is idle, so the
 // first visit renders instantly instead of flashing the Suspense skeleton.
@@ -145,6 +148,9 @@ import { initLocalStores } from './utils/localStores';
 import { loadTheme, persistTheme } from './utils/theme';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncStatus } from './components/Navbar';
+import { useTodos } from './hooks/useTodos';
+import { updateNativeWidgets } from './platform/widgetSync';
+import { calculateStreak } from './utils/scoring';
 
 // Navigation config
 import {
@@ -265,6 +271,54 @@ function AppScreens({
   const [showOnboarding, setShowOnboarding] = useState(() => {
     try { return !localStorage.getItem('qmp_onboarding_done'); } catch { return false; }
   });
+
+  // Modals for Cloud Sync, Notifications, and Android Home Screen Widgets
+  const [syncCenterOpen, setSyncCenterOpen] = useState(false);
+  const [notifCenterOpen, setNotifCenterOpen] = useState(false);
+  const [widgetModalOpen, setWidgetModalOpen] = useState(false);
+
+  // To-Do / Task Management
+  const { todos, addTodo, toggleTodo, deleteTodo, updateTodo } = useTodos();
+  const pendingTaskCount = useMemo(() => todos.filter(t => !t.completed).length, [todos]);
+
+  // Overall question stats & streak calculation
+  const totalQuestionsSolved = useMemo(() => history.reduce((sum, r) => sum + (r.totalQuestions || 0), 0), [history]);
+  const streak = useMemo(() => calculateStreak(history.map(r => r.timestamp)), [history]);
+  const todayQuestionCount = useMemo(() => {
+    const today = new Date().toDateString();
+    return history
+      .filter(r => new Date(r.timestamp).toDateString() === today)
+      .reduce((sum, r) => sum + (r.totalQuestions || 0), 0);
+  }, [history]);
+  const avgScore = useMemo(() => {
+    if (history.length === 0) return 0;
+    return Math.round(history.reduce((a, r) => a + (r.percentage || 0), 0) / history.length);
+  }, [history]);
+
+  // Keep Android Home Screen Widgets synced
+  useEffect(() => {
+    updateNativeWidgets({
+      todayQuestions: todayQuestionCount,
+      targetQuestions: profile.dailyQuestionGoal || 50,
+      streakDays: streak,
+      masteryPercent: avgScore,
+      activeSubject: {
+        id: 'msn',
+        name: 'Medical-Surgical Nursing',
+        shortName: 'MSN',
+        percent: avgScore,
+        solvedQuestions: todayQuestionCount,
+        totalQuestions: profile.dailyQuestionGoal || 50,
+        activeUnitName: 'Cardiovascular MCQs',
+      },
+      examTarget: {
+        title: 'NORCET Nursing Officer Exam',
+        date: '2026-09-15',
+        daysRemaining: 180,
+        targetPace: '⚡ Target: 50 Qs / day',
+      },
+    });
+  }, [history, streak, todayQuestionCount, avgScore, profile.dailyQuestionGoal]);
 
   useEffect(() => { screenRef.current = screen; }, [screen]);
   useEffect(() => prefetchScreensWhenIdle(), []);
@@ -616,7 +670,11 @@ function AppScreens({
             syncStatus={syncStatus}
             quizCount={history.length}
             theme={theme}
-            onToggleTheme={() => setTheme(t => t === 'light' ? 'amoled' : 'light')}
+            onToggleTheme={() => setTheme(t => t === 'amoled' ? 'light' : t === 'light' ? 'ancient' : t === 'ancient' ? 'glass' : 'amoled')}
+            onOpenNotifications={() => setNotifCenterOpen(true)}
+            unreadNotificationCount={pendingTaskCount}
+            onOpenWidgets={() => setWidgetModalOpen(true)}
+            onOpenSyncCenter={() => setSyncCenterOpen(true)}
             isDashboard={screen === 'dashboard'}
             profileAvatarEmoji={profile.avatarEmoji}
             profileAvatarUrl={profile.avatarUrl}
@@ -931,6 +989,59 @@ function AppScreens({
           quizCount={history.length}
         />
       )}
+
+      {/* Cloud Sync Center Modal */}
+      <Suspense fallback={null}>
+        <SyncCenter
+          open={syncCenterOpen}
+          onClose={() => setSyncCenterOpen(false)}
+          onTriggerAuth={() => openSignIn()}
+        />
+      </Suspense>
+
+      {/* Command Center & Smart Alerts */}
+      <Suspense fallback={null}>
+        <NotificationCenter
+          open={notifCenterOpen}
+          onClose={() => setNotifCenterOpen(false)}
+          todos={todos}
+          onAddTodo={addTodo}
+          onToggleTodo={toggleTodo}
+          onDeleteTodo={deleteTodo}
+          onUpdateTodo={updateTodo}
+          streakDays={streak}
+          todayQuestionsDone={todayQuestionCount}
+          targetQuestions={profile.dailyQuestionGoal || 50}
+          totalQuestionsSolved={totalQuestionsSolved}
+          onNavigate={(target) => {
+            setNotifCenterOpen(false);
+            if (target === 'practice-dashboard') navigateTo('practice-dashboard');
+            else if (target === 'flashcards') navigateTo('flashcards');
+            else if (target === 'library') navigateTo('library');
+            else if (target === 'stats') navigateTo('stats');
+          }}
+        />
+      </Suspense>
+
+      {/* Android Home Screen Widgets Manager */}
+      <Suspense fallback={null}>
+        <WidgetManagerModal
+          open={widgetModalOpen}
+          onClose={() => setWidgetModalOpen(false)}
+          todayQuestions={todayQuestionCount}
+          targetQuestions={profile.dailyQuestionGoal || 50}
+          streakDays={streak}
+          masteryPercent={avgScore}
+          onStartSubjectQuiz={() => {
+            setWidgetModalOpen(false);
+            navigateTo('setup');
+          }}
+          onStartQuickPractice={() => {
+            setWidgetModalOpen(false);
+            navigateTo('practice-dashboard');
+          }}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -975,8 +1086,14 @@ function AppContent() {
   const historySync = useHistorySync(user, isLoading);
   const cloudSync = useCloudSync(user, !!user && !isLoading);
 
-  // ── Persistence ──
-  useEffect(() => { persistTheme(theme); document.documentElement.classList.toggle('app-light', theme === 'light'); document.documentElement.classList.toggle('app-amoled', theme === 'amoled'); }, [theme]);
+  useEffect(() => {
+    persistTheme(theme);
+    document.documentElement.classList.toggle('app-light', theme === 'light');
+    document.documentElement.classList.toggle('app-amoled', theme === 'amoled');
+    document.documentElement.classList.toggle('app-ancient', theme === 'ancient');
+    document.documentElement.classList.toggle('app-glass', theme === 'glass');
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
   useEffect(() => { try { localStorage.setItem('qmp_settings', JSON.stringify(settings)); } catch {} }, [settings]);
   useEffect(() => { try { localStorage.setItem('qmp_ai_prefs', JSON.stringify(aiPrefs)); } catch {} }, [aiPrefs]);
   useEffect(() => { try { localStorage.setItem('qmp_rationale_prefs', JSON.stringify(rationalePrefs)); } catch {} }, [rationalePrefs]);
