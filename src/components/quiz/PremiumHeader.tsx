@@ -88,15 +88,17 @@ export default function PremiumHeader({
             </span>
           )}
 
-          {/* Zoom level badge — shown when not at default */}
-          <span
-            className={`zoom-pct-badge hidden xs:inline-flex ${isDefault ? 'zoom-pct-default' : ''}`}
-            title={isDefault ? 'Zoom: 100% (default)' : `Zoom: ${zoom}% — tap header zoom icon to adjust`}
-            aria-label={`Interface zoom: ${zoom} percent`}
+          {/* Zoom level badge — tap to open the zoom panel */}
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event('qmp:zoom-panel'))}
+            className={`zoom-pct-badge inline-flex ${isDefault ? 'zoom-pct-default' : ''}`}
+            title={`Zoom ${zoom}% — tap to adjust`}
+            aria-label={`Interface zoom ${zoom} percent. Tap to adjust`}
           >
             <ZoomIn className="w-3 h-3 mr-1" aria-hidden="true" />
             {zoom}
-          </span>
+          </button>
         </div>
 
         {/* ── Right: timer + action icons ── */}

@@ -68,6 +68,24 @@ export default function ZoomControl() {
 
   const isDefault = pct === ZOOM_DEFAULT;
 
+  // The panel is collapsed by default so it never covers answers. It opens when the header zoom
+  // badge is tapped (event) or when zoom changes (keyboard / settings), and auto-hides when idle.
+  const [open, setOpen] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const armIdle = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => setOpen(false), 3500);
+  }, []);
+  useEffect(() => {
+    const toggle = () => setOpen(o => { const n = !o; if (n) armIdle(); return n; });
+    window.addEventListener('qmp:zoom-panel', toggle);
+    return () => {
+      window.removeEventListener('qmp:zoom-panel', toggle);
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+    };
+  }, [armIdle]);
+  useEffect(() => { if (open) armIdle(); }, [pct, open, armIdle]);
+
   // Show tooltip label on hover
   const handleMouseEnter = (e: React.MouseEvent, text: string) => {
     if (labelTimer.current) clearTimeout(labelTimer.current);
@@ -79,6 +97,8 @@ export default function ZoomControl() {
   };
 
   // Keyboard shortcuts (Ctrl/Cmd + =, -, 0) are handled app-wide by <ZoomShortcuts /> in App.
+
+  if (!open) return null;
 
   return (
     <div

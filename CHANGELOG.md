@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.3.1] - 2026-11-08
+
+Edge-to-edge tablet layout: the whole app now fills the screen in landscape and portrait, with no dead gutters or overlaps.
+
+### Fixed
+- **Quiz screen did not fill landscape tablets** — it was a narrow rounded card (`70vh` wide) with empty left/right/top/bottom. It is now a full-bleed screen on every size; only the reading column inside is bounded on very wide displays.
+- **Dead space from app zoom** — full-screen layouts used viewport units that CSS `zoom` mis-scales. They now use a measured, zoom-corrected viewport (`--qmp-app-w` / `--qmp-app-h`) that updates on resize, rotation and zoom.
+- **Inconsistent widths across screens** — Home, Library, Stats, Profile and Settings had different hard caps (`max-w-4xl/5xl/6xl`) and padding. One shared, safe-area-aware app shell (`.qmp-shell`) now frames every screen; header and cards line up.
+- **Overlaps** — the full-width offline bar covering the header is now a small, tap-through status pill that auto-hides; the floating zoom control no longer sits over answer options (collapsed by default, opens from the header zoom badge, auto-hides); toasts during a quiz appear above the footer instead of over the header buttons; bottom-nav clearance no longer hides the last card.
+- Wasted 5–7 rem of empty space under quiz content removed.
+- Header zoom badge was unreachable (`xs:` breakpoint does not exist); it is now a visible button.
+
 ## [2.3.0] - 2026-11-06
 
 Header Overlap Resolution, Compact Horizontal Subject & Quiz Suggestion Carousels, 90% Mobile Zoom Default, Cloud Auth Profile Parity, and Editorial Split Sign-In Screen.

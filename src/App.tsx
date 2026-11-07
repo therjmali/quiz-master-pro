@@ -637,11 +637,11 @@ function AppScreens({
   return (
     <div
       ref={swipeRef}
-      className={`min-h-screen ${bgTheme} ${theme === 'light' ? 'app-light' : ''} ${theme === 'amoled' ? 'app-amoled' : ''} transition-colors duration-300 overflow-x-hidden`}
+      className={`qmp-app-root ${bgTheme} ${theme === 'light' ? 'app-light' : ''} ${theme === 'amoled' ? 'app-amoled' : ''} transition-colors duration-300 overflow-x-hidden`}
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {hideBadge && <style>{`[data-zite-badge], .zite-badge, [class*="zite-badge"] { display: none !important; }`}</style>}
-      <Toaster position="top-center" />
+      <Toaster position={screen === 'quiz' ? 'bottom-center' : 'top-center'} offset={screen === 'quiz' ? 96 : 56} mobileOffset={screen === 'quiz' ? 96 : 56} />
       <OfflineIndicator />
       <CloudGate onSignIn={openSignIn} />
       <SignInWindow />
@@ -661,7 +661,7 @@ function AppScreens({
       )}
 
       <div
-        className={`max-w-5xl mx-auto ${screen === 'quiz' ? 'p-0 md:p-4' : 'p-3 md:p-4'} ${showBottomNav ? 'pb-[calc(72px+env(safe-area-inset-bottom,0px))] md:pb-4' : ''}`}
+        className={`qmp-shell ${screen === 'quiz' ? 'qmp-shell-quiz' : ''} ${showBottomNav ? 'qmp-has-nav' : ''}`}
         style={{ touchAction: 'pan-y' }}
       >
         {screen !== 'quiz' && screen !== 'report-preview' && (

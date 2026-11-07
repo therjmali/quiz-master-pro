@@ -336,7 +336,7 @@ export default function ProfileScreen({
   ];
 
   return (
-    <div className="max-w-4xl mx-auto pb-4 animate-fade-in">
+    <div className="w-full pb-4 animate-fade-in">
       <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
 
       {/* Top bar */}

@@ -60,9 +60,38 @@ function paint(): void {
     root.style.setProperty('zoom', String(factor));
     root.classList.add('qmp-zoomed');
   }
+  syncViewport();
+  bindViewport();
 }
 
 const notify = () => listeners.forEach(l => l());
+
+/**
+ * Real, zoom-corrected viewport size in layout px. Viewport units behave differently under CSS
+ * `zoom` across WebView versions, so full-screen layouts use these measured values instead
+ * (`--qmp-app-h` / `--qmp-app-w`), which always equal the physical screen at every zoom level.
+ */
+function syncViewport(): void {
+  if (typeof document === 'undefined' || typeof window === 'undefined') return;
+  const vv = window.visualViewport;
+  const w = vv?.width || window.innerWidth;
+  const h = vv?.height || window.innerHeight;
+  if (!w || !h) return;
+  const f = current / 100;
+  const root = document.documentElement;
+  root.style.setProperty('--qmp-app-w', `${Math.round((w / f) * 100) / 100}px`);
+  root.style.setProperty('--qmp-app-h', `${Math.round((h / f) * 100) / 100}px`);
+}
+
+let viewportBound = false;
+function bindViewport(): void {
+  if (viewportBound || typeof window === 'undefined') return;
+  viewportBound = true;
+  const on = () => syncViewport();
+  window.addEventListener('resize', on, { passive: true });
+  window.addEventListener('orientationchange', () => { on(); setTimeout(on, 250); }, { passive: true });
+  window.visualViewport?.addEventListener('resize', on, { passive: true });
+}
 
 /** Read stored zoom and apply. Call once at startup and after storage restore. */
 export function applyZoom(): void {

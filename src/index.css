@@ -17,6 +17,9 @@
   --qmp-svw: calc(1svw  / var(--qmp-zoom));
   --qmp-lvw: calc(1lvw  / var(--qmp-zoom));
   --qmp-dvw: calc(1dvw  / var(--qmp-zoom));
+  /* Measured, zoom-corrected screen size (set by platform/zoom.ts). Fallbacks until JS runs. */
+  --qmp-app-h: 100vh;
+  --qmp-app-w: 100vw;
 }
 
 @layer base {
@@ -661,48 +664,37 @@
   caret-color: transparent;
 }
 
-@supports (height: 100dvh) {
-  .quiz-screen-card { height: 100dvh; }
+/* Full-bleed on EVERY screen size: the quiz fills the whole display, edge to edge, in portrait
+   and landscape, at any zoom. Only the reading column inside is bounded (see --qmp-quiz-gutter). */
+.quiz-screen-card {
+  height: var(--qmp-app-h);
+  width: auto;
+  max-width: none;
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  --qmp-quiz-gutter: max(0.75rem, calc((100% - 1180px) / 2));
 }
-
-/* ── Tablet & Desktop: centered card, bounded ── */
+@supports (height: 100dvh) {
+  .quiz-screen-card { height: var(--qmp-app-h, 100dvh); }
+}
 @media (min-width: 768px) {
+  /* Tablets / desktop: same fixed full-bleed card (was an in-flow, narrow, rounded card). */
   .quiz-screen-card {
-    position: relative;
-    inset: auto;
-    border-radius: 2rem !important;
-    height: auto;
-    max-height: calc(94vh - var(--qmp-zoom-pct) * 0.04vh);
-    min-height: 600px;
-    max-width: 92vw;
-    width: 92vw;
-    z-index: auto;
+    position: fixed;
+    inset: 0;
+    border-radius: 0 !important;
+    z-index: 50;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    margin: calc(var(--qmp-zoom-pct) * 0.12vh) auto;
   }
-}
-
-/* ── Tablet Landscape: prevent excessive width, keep ergonomics ── */
-@media (min-width: 1024px) and (orientation: landscape) {
-  .quiz-screen-card {
-    max-width: 70vh;
-    width: 70vh;
-    min-height: unset;
-    height: auto;
-    max-height: 88vh;
-    margin: 4vh auto;
-    border-radius: 1.75rem !important;
-  }
-}
-
-/* ── Large Desktop: cap width for readability ── */
-@media (min-width: 1280px) {
-  .quiz-screen-card {
-    max-width: 800px;
-    width: 100%;
-    margin: calc(2vh * var(--qmp-zoom)) auto;
+  .quiz-screen-card .premium-quiz-header > div,
+  .quiz-screen-card .premium-quiz-footer > div {
+    padding-left: var(--qmp-quiz-gutter);
+    padding-right: var(--qmp-quiz-gutter);
   }
 }
 
@@ -715,34 +707,24 @@
   overscroll-behavior: contain;
   overscroll-behavior-x: none;
   touch-action: pan-y;
-  padding-bottom: max(5rem, env(safe-area-inset-bottom, 4rem));
-  /* Reserve space so zoomed content never collides with bottom nav */
-  padding-top: max(1rem, env(safe-area-inset-top, 0.5rem));
+  /* The footer is a normal flex row below this scroller, so only a small breathing gap is needed. */
+  padding-bottom: 1.25rem;
+  padding-top: 0.5rem;
 }
 
 @media (min-width: 768px) {
-  .quiz-content-scroll {
-    padding-bottom: 6rem;
-    padding-top: 1.25rem;
-  }
-}
-
-@media (min-width: 1024px) and (orientation: landscape) {
-  .quiz-content-scroll {
-    padding-bottom: 7rem;
+  .quiz-screen-card .quiz-content-scroll {
+    padding-left: var(--qmp-quiz-gutter);
+    padding-right: var(--qmp-quiz-gutter);
+    padding-bottom: 1.5rem;
+    padding-top: 0.75rem;
   }
 }
 
 .quiz-footer {
   flex-shrink: 0;
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem));
   z-index: 60;
-}
-
-@media (min-width: 768px) {
-  .quiz-footer {
-    padding-bottom: 1.25rem;
-  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -751,10 +733,13 @@
 
 .zoom-control-group {
   position: fixed;
-  bottom: calc(6rem + env(safe-area-inset-bottom, 1rem));
-  left: 50%;
-  transform: translateX(-50%);
+  /* Sits in the top-right corner under the header, never over the answer options. */
+  top: calc(4.75rem + env(safe-area-inset-top, 0px));
+  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  left: auto;
+  bottom: auto;
   z-index: 200;
+  animation: qmp-pop-in 0.18s ease-out;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -904,7 +889,8 @@
   .zoom-label { display: none; }
   .zoom-btn { width: 34px; height: 34px; }
   .zoom-control-group {
-    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0.75rem));
+    top: calc(4.25rem + env(safe-area-inset-top, 0px));
+    bottom: auto;
     padding: 2px;
     border-radius: 12px;
   }
@@ -2857,3 +2843,39 @@ html:not(.amoled-mode):not(.glass-dark) .text-diff-easy { color: color-mix(in sr
 html:not(.amoled-mode):not(.glass-dark) .text-diff-medium { color: color-mix(in srgb, hsl(var(--diff-medium)) 50%, hsl(var(--foreground))); }
 html:not(.amoled-mode):not(.glass-dark) .text-diff-hard { color: color-mix(in srgb, hsl(var(--diff-hard)) 66%, hsl(var(--foreground))); }
 html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--destructive)) 82%, hsl(var(--foreground))); }
+
+
+@keyframes qmp-pop-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   APP SHELL — one consistent, full-width, safe-area-aware frame for every screen
+   ═══════════════════════════════════════════════════════ */
+.qmp-app-root {
+  min-height: var(--qmp-app-h);
+  width: 100%;
+}
+.qmp-shell {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
+  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
+  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+}
+@media (min-width: 768px) {
+  .qmp-shell {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+}
+.qmp-shell.qmp-shell-quiz {
+  max-width: none;
+  padding: 0;
+}
+/* Bottom-nav clearance: nav height + safe area, so the last card is never hidden underneath it */
+.qmp-shell.qmp-has-nav {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}

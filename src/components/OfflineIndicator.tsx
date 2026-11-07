@@ -2,51 +2,62 @@ import { useState, useEffect } from 'react';
 import { WifiOff, Wifi } from 'lucide-react';
 
 /**
- * Shows a banner when the device goes offline,
- * and a brief "back online" confirmation when reconnecting.
+ * Floating status pill (never a full-width bar, never blocks taps): tells the user the app is
+ * running offline - everything still works - and confirms when the connection returns.
+ * The header NET / LOCAL chip stays as the always-visible indicator.
  */
 export default function OfflineIndicator() {
-  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [isOffline, setIsOffline] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  const [visible, setVisible] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
   const [showReconnected, setShowReconnected] = useState(false);
 
   useEffect(() => {
-    const goOffline = () => setIsOffline(true);
-    const goOnline = () => {
-      setIsOffline(false);
-      setShowReconnected(true);
-      setTimeout(() => setShowReconnected(false), 3000);
+    let hide: ReturnType<typeof setTimeout> | undefined;
+    const flash = (ms: number, after?: () => void) => {
+      if (hide) clearTimeout(hide);
+      hide = setTimeout(() => { setVisible(false); after?.(); }, ms);
     };
+    const goOffline = () => { setIsOffline(true); setShowReconnected(false); setVisible(true); flash(5000); };
+    const goOnline = () => { setIsOffline(false); setShowReconnected(true); setVisible(true); flash(3000, () => setShowReconnected(false)); };
     window.addEventListener('offline', goOffline);
     window.addEventListener('online', goOnline);
+    if (isOffline) flash(5000);
     return () => {
+      if (hide) clearTimeout(hide);
       window.removeEventListener('offline', goOffline);
       window.removeEventListener('online', goOnline);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!isOffline && !showReconnected) return null;
+  if (!visible || (!isOffline && !showReconnected)) return null;
 
   return (
     <div
-      className={`fixed top-0 left-0 right-0 z-[200] flex items-center justify-center gap-2 py-2 px-4 text-xs font-bold transition-all duration-300 ${
-        isOffline
-          ? 'bg-amber-600 text-white'
-          : 'bg-emerald-600 text-white'
-      }`}
-      role="alert"
+      className="pointer-events-none fixed left-1/2 z-[300] -translate-x-1/2 animate-fade-in"
+      style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)' }}
+      role="status"
       aria-live="polite"
     >
-      {isOffline ? (
-        <>
-          <WifiOff className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>You're offline — quizzes will be saved locally</span>
-        </>
-      ) : (
-        <>
-          <Wifi className="w-3.5 h-3.5" aria-hidden="true" />
-          <span>Back online ✓</span>
-        </>
-      )}
+      <div
+        className={`flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-bold shadow-lg backdrop-blur-xl ${
+          isOffline
+            ? 'border-amber-400/30 bg-amber-500/90 text-white'
+            : 'border-emerald-400/30 bg-emerald-600/90 text-white'
+        }`}
+      >
+        {isOffline ? (
+          <>
+            <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Offline mode — everything works, saved on this device</span>
+          </>
+        ) : (
+          <>
+            <Wifi className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Back online ✓</span>
+          </>
+        )}
+      </div>
     </div>
   );
 }
