@@ -17,6 +17,7 @@ import CloudGate from './components/cloud/CloudGate';
 import SignInWindow from './components/cloud/SignInWindow';
 import ZoomShortcuts from './components/accessibility/ZoomShortcuts';
 import { openSignIn } from './platform/cloud/signInWindow';
+import { useAccount } from './platform/cloud/useAccount';
 import { DashboardSkeleton, LibrarySkeleton } from './components/ScreenSkeleton';
 import type { ReportPreviewData } from './components/reports/ReportPreviewPage';
 
@@ -231,7 +232,8 @@ function AppScreens({
   const [dashSessionMode, setDashSessionMode] = usePersistedState<SessionMode>('dash_session', 'main');
   const [dashSubjectPopupOpen, setDashSubjectPopupOpen] = useState(false);
 
-  const authName = user?.firstName || user?.email?.split('@')[0] || 'Guest';
+  const account = useAccount();
+  const authName = account.name || user?.firstName || user?.email?.split('@')[0] || 'Guest';
   const dashDisplayName = profile.displayName || authName;
 
   const dashSessionHistory = useMemo(() => filterBySession(history, dashSessionMode), [history, dashSessionMode]);

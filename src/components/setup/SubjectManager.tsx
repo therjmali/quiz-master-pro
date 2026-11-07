@@ -146,13 +146,13 @@ export default function SubjectManager({ selectedSubject, onSelect }: Props) {
             <button type="button" onClick={() => setSearch('')} className="font-bold text-primary hover:underline">Clear</button>
           </p>
         )}
-        {/* Subject chips */}
-        <div className="flex flex-wrap gap-2 mb-2">
+        {/* Subject chips — Compact horizontal swipe row */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 scroll-smooth">
           {/* None / General */}
           {(!search.trim()) && (
             <button
               onClick={() => onSelect('')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${!selectedSubject
+              className={`flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all active:scale-95 ${!selectedSubject
                 ? 'bg-foreground/15 border-foreground/30 text-foreground shadow-sm'
                 : 'bg-foreground/5 border-border text-foreground/40 hover:border-foreground/20 hover:text-foreground/60'}`}
             >
@@ -169,7 +169,7 @@ export default function SubjectManager({ selectedSubject, onSelect }: Props) {
 
             if (isEditing) {
               return (
-                <div key={subj} className="flex items-center gap-1 bg-foreground/10 border border-foreground/20 rounded-lg px-2 py-1">
+                <div key={subj} className="flex-shrink-0 flex items-center gap-1 bg-foreground/10 border border-foreground/20 rounded-xl px-2 py-1">
                   <input
                     autoFocus
                     value={editName}
@@ -192,7 +192,7 @@ export default function SubjectManager({ selectedSubject, onSelect }: Props) {
             }
 
             return (
-              <div key={subj} className={`flex items-center gap-1 rounded-lg border transition-all ${isActive ? `${c.chip} scale-105` : 'bg-foreground/5 border-border'}`}>
+              <div key={subj} className={`flex-shrink-0 flex items-center gap-1 rounded-xl border transition-all ${isActive ? `${c.chip} shadow-sm scale-[1.02]` : 'bg-foreground/5 border-border'}`}>
                 <button
                   onClick={() => onSelect(subj)}
                   className={`px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 ${isActive ? '' : 'text-foreground/50 hover:text-foreground'}`}
@@ -214,7 +214,7 @@ export default function SubjectManager({ selectedSubject, onSelect }: Props) {
                 <button
                   onClick={() => setDeleteTarget(subj)}
                   title="Delete"
-                  className="text-foreground/20 hover:text-red-400 pr-1.5 transition-colors"
+                  className="text-foreground/20 hover:text-red-400 pr-2 transition-colors"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -222,17 +222,9 @@ export default function SubjectManager({ selectedSubject, onSelect }: Props) {
             );
           })}
 
-          {/* From History chip */}
-          <button
-            onClick={handleFromHistory}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-dashed border-emerald-500/25 text-emerald-400/60 hover:border-emerald-400/50 hover:text-emerald-400 transition-all"
-          >
-            <Download className="w-3 h-3" /> From History
-          </button>
-
           {/* Add button */}
           {adding ? (
-            <div className="flex items-center gap-1 bg-card border border-blue-500/40 rounded-lg px-2 py-1">
+            <div className="flex-shrink-0 flex items-center gap-1 bg-card border border-primary/40 rounded-xl px-2 py-1">
               <input
                 autoFocus
                 value={newName}
@@ -255,15 +247,23 @@ export default function SubjectManager({ selectedSubject, onSelect }: Props) {
           ) : (
             <button
               onClick={() => { setAdding(true); setEditingIdx(null); }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border border-dashed border-foreground/20 text-foreground/40 hover:border-blue-400/50 hover:text-blue-400 transition-all"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-dashed border-primary/30 text-primary hover:border-primary hover:bg-primary/5 transition-all active:scale-95"
             >
               <Plus className="w-3 h-3" /> Add Subject
             </button>
           )}
+
+          {/* From History chip */}
+          <button
+            onClick={handleFromHistory}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-dashed border-emerald-500/30 text-emerald-500/80 hover:border-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/5 transition-all active:scale-95"
+          >
+            <Download className="w-3 h-3" /> From History
+          </button>
         </div>
 
         {subjects.length === 0 && !adding && (
-          <p className="text-[10px] text-foreground/25 mt-1">No subjects yet — click <strong className="text-foreground/40">+ Add Subject</strong> or <strong className="text-emerald-400/50">📥 From History</strong></p>
+          <p className="text-[10px] text-foreground/30 mt-1 pl-1">No custom subjects yet — swipe right or tap <strong className="text-primary/70 font-semibold">+ Add Subject</strong></p>
         )}
       </div>
     </>

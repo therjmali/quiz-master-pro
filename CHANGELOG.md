@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-11-06
+
+Header Overlap Resolution, Compact Horizontal Subject & Quiz Suggestion Carousels, 90% Mobile Zoom Default, Cloud Auth Profile Parity, and Editorial Split Sign-In Screen.
+
+### Added
+- **Single-Row Non-Overlapping Floating Header**:
+  - Re-architected top navigation bar into a single-row floating capsule matching RJ Study Tracker.
+  - Eliminated collision and badge stacking on compact mobile screens (<400px).
+  - Compact brand pill (`Quiz Master PRO`), network status indicator (`📶 NET`), live cloud sync status, Android home-screen widget launcher, and notifications badge.
+- **Space-Saving Horizontal Swipe Carousels**:
+  - Replaced bulky multi-line subject chips with a single-row horizontal swipe carousel (`overflow-x-auto`) for subjects and topics.
+  - Empty by default: no cluttering pre-loaded subjects. Users can add custom subjects or tap *From History*.
+  - Horizontal swipe carousel for quiz name suggestions with `Daily Practice` as the default first recommendation.
+- **Ultra-Premium Collapsible Settings & Rules Card**:
+  - Refined bottom Settings & Rules panel into a collapsible accordion with live configuration summary badge (`Mixed • Classic • 60s/Q • +1/-0.25`).
+- **Cloud Account & Profile Screen Parity**:
+  - Resolved session state inconsistency between Supabase cloud sync and profile screen: active cloud accounts (`RDJ / ranarammali866@gmail.com`) now properly reflect in user display name, avatar, and live cloud sync indicator.
+- **Editorial Split Sign-In Screen**:
+  - Redesigned sign-in window into the split editorial layout matching RJ Study Tracker (`One syllabus. Every device.`, privacy assurances, trust cards, and seamless guest mode continuation).
+- **Mobile Display & Zoom Optimization**:
+  - Default out-of-the-box UI zoom set to 90% (10% zoomed out) for optimal mobile readability and layout balance.
+  - Default theme set to Light mode (Parchment).
+
 ## [2.2.0] - 2026-11-06
 
 Complete UI/UX transformation based on RJ Study Tracker design system, 4 Display Themes, 7 Accent Palettes, Mechanical Split-Flap Clock, Luxury Roman Watch Face, Multi-Exam Countdown Carousel, Android Native Home-Screen Widgets, Command Center & Smart Alerts, and Cloud Sync Center.

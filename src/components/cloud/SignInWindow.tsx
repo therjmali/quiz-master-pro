@@ -1,28 +1,65 @@
-/**
- * The sign-in window: a dialog that opens from anywhere (header button, dashboard card, reminders)
- * via openSignIn(). Uses the same form as Settings -> Account & Cloud Sync, closes itself the moment
- * the account is signed in, and never blocks the app - "Not now" is always there.
- */
 import { useCallback, useEffect, useState } from 'react';
-import { Cloud } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@project/components/ui/dialog';
+import {
+  GraduationCap,
+  Cloud,
+  ShieldCheck,
+  Wifi,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  X,
+  User,
+} from 'lucide-react';
+import { Dialog, DialogContent } from '@project/components/ui/dialog';
 import { isCloudConfigured } from '../../platform/cloud/config';
-import { clearAuthMessages, useCloudAuth } from '../../platform/cloud/authStore';
+import {
+  clearAuthMessages,
+  useCloudAuth,
+  signIn,
+  signUp,
+  requestPasswordReset,
+  MIN_PASSWORD_LENGTH,
+} from '../../platform/cloud/authStore';
 import { OPEN_SIGNIN_EVENT, type SignInMode, type SignInRequest } from '../../platform/cloud/signInWindow';
-import { AuthForm, NotConfigured } from '../profile/settings/sectionsCloud';
+import { toast } from 'sonner';
+
+const TRUST_POINTS = [
+  {
+    icon: Cloud,
+    title: 'Every device, same data',
+    copy: 'Phone, tablet, laptop — one account, one syllabus.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Your own server',
+    copy: 'Nothing is sold, mined or shared. Protected by HTTPS.',
+  },
+  {
+    icon: Wifi,
+    title: 'Offline is still first',
+    copy: 'Practice on a train; changes sync when you reconnect.',
+  },
+];
 
 export default function SignInWindow() {
   const auth = useCloudAuth();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<SignInMode>('signin');
-  // Re-mount the form on every open so a previous attempt's fields never linger.
-  const [session, setSession] = useState(0);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [keepSignedIn, setKeepSignedIn] = useState(auth.keepSignedIn);
+  const [isReset, setIsReset] = useState(false);
 
   useEffect(() => {
     const onOpen = (event: Event) => {
       const detail = (event as CustomEvent<SignInRequest | undefined>).detail;
       setMode(detail?.mode === 'signup' ? 'signup' : 'signin');
-      setSession(n => n + 1);
+      setIsReset(false);
       clearAuthMessages();
       setOpen(true);
     };
@@ -30,34 +67,331 @@ export default function SignInWindow() {
     return () => window.removeEventListener(OPEN_SIGNIN_EVENT, onOpen);
   }, []);
 
-  // Signed in (here or in another tab): the job is done.
-  useEffect(() => { if (open && auth.status === 'signed-in') setOpen(false); }, [open, auth.status]);
+  // Close immediately when sign-in completes
+  useEffect(() => {
+    if (open && auth.status === 'signed-in') {
+      setOpen(false);
+    }
+  }, [open, auth.status]);
 
-  const onOpenChange = useCallback((next: boolean) => { if (!next) clearAuthMessages(); setOpen(next); }, []);
+  const onOpenChange = useCallback((next: boolean) => {
+    if (!next) clearAuthMessages();
+    setOpen(next);
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isReset) {
+      if (!email.trim()) {
+        toast.error('Enter your email');
+        return;
+      }
+      if (await requestPasswordReset(email)) {
+        toast.success('Check your email for password reset instructions');
+        setIsReset(false);
+      }
+      return;
+    }
+
+    if (mode === 'signin') {
+      if (!email.trim() || !password) {
+        toast.error('Enter email and password');
+        return;
+      }
+      if (await signIn(email, password, keepSignedIn)) {
+        toast.success('Welcome back!');
+        setOpen(false);
+      }
+    } else {
+      if (!email.trim() || !password) {
+        toast.error('Enter email and password');
+        return;
+      }
+      if (password.length < MIN_PASSWORD_LENGTH) {
+        toast.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+        return;
+      }
+      if (await signUp(name, email, password, keepSignedIn)) {
+        toast.success('Account created! Welcome to Quiz Master Pro');
+        setOpen(false);
+      }
+    }
+  };
 
   const configured = isCloudConfigured();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md w-[calc(100%-1.5rem)] rounded-2xl border-border bg-background p-5 sm:p-6">
-        <DialogHeader className="space-y-1 text-left">
-          <DialogTitle className="flex items-center gap-2 text-lg font-extrabold text-foreground">
-            <span className="w-8 h-8 rounded-xl bg-primary/15 text-primary flex items-center justify-center"><Cloud className="w-4 h-4" /></span>
-            {mode === 'signup' ? 'Create your account' : 'Sign in'}
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Sync your quizzes and progress across devices. The app works fully offline without an account.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl w-[calc(100%-1.5rem)] sm:w-[94vw] max-h-[92vh] overflow-y-auto rounded-3xl border border-white/10 bg-background/95 p-0 backdrop-blur-2xl shadow-2xl">
+        <div className="relative p-5 sm:p-8 md:p-10 lg:p-12">
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.06] text-foreground/50 hover:bg-foreground/[0.12] hover:text-foreground transition-all"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
 
-        {!configured ? <NotConfigured />
-          : auth.status === 'loading' ? <p className="py-8 text-center text-sm text-foreground/50" role="status">Checking sign-in…</p>
-          : <AuthForm key={session} initialMode={mode} />}
+          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_0.9fr] gap-8 md:gap-12 items-center">
+            {/* ── Left Column: Brand & Editorial Story ── */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25 border border-primary/20 shrink-0">
+                  <GraduationCap className="w-5 h-5 text-primary-foreground" />
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-heading text-lg font-black tracking-tight text-foreground">
+                    Quiz Master
+                  </span>
+                  <span className="text-[8px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-black tracking-widest border border-primary/15 uppercase">
+                    PRO
+                  </span>
+                </div>
+              </div>
 
-        <button type="button" onClick={() => onOpenChange(false)}
-          className="w-full h-10 rounded-xl text-xs font-bold text-foreground/55 hover:text-foreground hover:bg-foreground/[0.05] transition">
-          Not now - continue as guest
-        </button>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/80 mb-2">
+                  SYNC THAT RESPECTS YOUR PRIVACY
+                </p>
+                <h2 className="text-3xl sm:text-4xl font-black text-foreground tracking-tight leading-[1.1]">
+                  One syllabus.<br />
+                  <span className="italic font-serif font-normal text-primary">Every device.</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mt-3 max-w-md">
+                  Sign in once and your subjects, quizzes, sessions, flashcards and streaks follow you —
+                  phone, tablet or laptop. Everything is still saved on each device first, so practicing
+                  never waits for a network.
+                </p>
+              </div>
+
+              {/* Trust Points */}
+              <div className="hidden sm:grid gap-3 max-w-md">
+                {TRUST_POINTS.map(point => {
+                  const Icon = point.icon;
+                  return (
+                    <div
+                      key={point.title}
+                      className="flex items-start gap-3 rounded-2xl border border-white/5 bg-foreground/[0.02] dark:bg-white/[0.02] p-3"
+                    >
+                      <span className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary">
+                        <Icon className="w-4 h-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground">{point.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{point.copy}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Right Column: Auth Card ── */}
+            <div className="glass-card p-5 sm:p-7 rounded-3xl border border-white/10 shadow-xl bg-card/60">
+              {/* Tab Selector */}
+              {!isReset && (
+                <div className="flex p-1 gap-1 rounded-2xl bg-foreground/[0.05] border border-border/40 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signin'); clearAuthMessages(); }}
+                    className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
+                      mode === 'signin'
+                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setMode('signup'); clearAuthMessages(); }}
+                    className={`flex-1 py-2 text-xs font-black rounded-xl transition-all ${
+                      mode === 'signup'
+                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/30'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Create account
+                  </button>
+                </div>
+              )}
+
+              <div className="mb-4">
+                <h3 className="text-xl font-black text-foreground">
+                  {isReset ? 'Reset password' : mode === 'signin' ? 'Welcome back' : 'Create account'}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {isReset
+                    ? 'Enter your email to receive password reset instructions.'
+                    : mode === 'signin'
+                      ? 'Your quizzes, progress and streaks are waiting.'
+                      : 'Sync your study progress across all your devices.'}
+                </p>
+              </div>
+
+              {!configured ? (
+                <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-500 space-y-1">
+                  <p className="font-bold">Cloud sign-in is not configured</p>
+                  <p className="text-[11px] opacity-80">
+                    The app works 100% offline. Configure Supabase in Settings → Cloud Sync to enable cross-device sync.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-3.5">
+                  {mode === 'signup' && !isReset && (
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Name
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={e => setName(e.target.value)}
+                          placeholder="Your full name"
+                          autoComplete="name"
+                          className="w-full pl-10 pr-4 py-3 rounded-xl bg-foreground/[0.04] border border-border/70 text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Email
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        required
+                        className="w-full pl-10 pr-4 py-3 rounded-xl bg-foreground/[0.04] border border-border/70 text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {!isReset && (
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-1.5">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          placeholder="Your password"
+                          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                          required
+                          className="w-full pl-10 pr-10 py-3 rounded-xl bg-foreground/[0.04] border border-border/70 text-foreground text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/50 transition-colors"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(p => !p)}
+                          className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isReset && (
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <label className="flex items-center gap-2 select-none cursor-pointer text-muted-foreground hover:text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={keepSignedIn}
+                          onChange={e => setKeepSignedIn(e.target.checked)}
+                          className="rounded border-border accent-primary w-3.5 h-3.5"
+                        />
+                        <span>Keep me signed in</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => { setIsReset(true); clearAuthMessages(); }}
+                        className="text-primary hover:underline font-bold"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
+
+                  {auth.error && (
+                    <p role="alert" className="text-xs font-bold text-destructive bg-destructive/10 border border-destructive/20 p-2.5 rounded-xl">
+                      {auth.error}
+                    </p>
+                  )}
+                  {auth.notice && (
+                    <p role="status" className="text-xs font-bold text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl">
+                      {auth.notice}
+                    </p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={auth.busy}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:brightness-110 active:scale-[0.99] transition-all shadow-md shadow-primary/25 disabled:opacity-50"
+                  >
+                    {auth.busy ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>{isReset ? 'Send reset link' : mode === 'signin' ? 'Sign in' : 'Create account'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+
+                  {isReset && (
+                    <button
+                      type="button"
+                      onClick={() => { setIsReset(false); clearAuthMessages(); }}
+                      className="w-full text-center text-xs font-bold text-muted-foreground hover:text-foreground pt-1"
+                    >
+                      ← Back to sign in
+                    </button>
+                  )}
+                </form>
+              )}
+
+              {/* Offline continuation */}
+              <div className="relative my-4 text-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border/50" />
+                </div>
+                <span className="relative bg-card px-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground/60">
+                  OR
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="w-full py-2.5 px-4 rounded-xl border border-border/70 bg-foreground/[0.02] text-xs font-bold text-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground transition-all flex items-center justify-center gap-2"
+              >
+                <Wifi className="w-3.5 h-3.5" />
+                <span>Continue offline on this device</span>
+              </button>
+              <p className="text-[10px] text-muted-foreground/70 text-center mt-2 leading-relaxed">
+                Guest mode keeps everything on this device. You can create an account later and upload without losing a single quiz.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-4 border-t border-border/30 text-center text-[10px] text-muted-foreground/50">
+            Encrypted in transit (HTTPS) • No analytics • No third-party trackers
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

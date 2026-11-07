@@ -77,6 +77,15 @@ function RuntimeErrorFallback(props: { error: Error }) {
   );
 }
 
+import { setZoom, getZoom, ZOOM_KEY } from './platform/zoom';
+
+// Default out-of-the-box zoom to 90% (10% zoom out) for optimal mobile layout visibility
+if (typeof localStorage !== 'undefined' && localStorage.getItem(ZOOM_KEY) === null) {
+  try {
+    setZoom(90);
+  } catch {}
+}
+
 initPlatform();
 
 createRoot(document.getElementById('root')!).render(

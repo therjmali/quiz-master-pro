@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
 import { usePersistedState } from '../../hooks/usePersistedState';
-import { useAuth } from 'zitejs/auth';
+import { useAccount } from '../../platform/cloud/useAccount';
+import { useCloudAuth } from '../../platform/cloud/authStore';
+import { useSyncState } from '../../platform/cloud/syncEngine';
 import { useUpload } from 'zitejs/upload';
 import { ArrowLeft, Trophy, Target, Clock, Zap, Flame, BarChart2, Loader2, Edit2, Check, Camera, Filter, ChevronDown, Calculator, Cloud } from 'lucide-react';
 import SubjectFilterPopup from '../SubjectFilterPopup';
@@ -152,7 +154,9 @@ export default function ProfileScreen({
   onRationalePrefsChange, reportHelper, onReportHelperChange, theme, onThemeChange,
   onHistoryChanged, onOpenReportPreview, onTabChange, initialTab,
 }: Props) {
-  const { user } = useAuth();
+  const account = useAccount();
+  const cloudAuth = useCloudAuth();
+  const syncState = useSyncState();
   const [tab, setTabInner] = usePersistedState<Tab>('profile_tab', (initialTab as Tab) || 'overview');
   const setTab = useCallback((t: Tab | ((prev: Tab) => Tab)) => {
     setTabInner(prev => {
@@ -179,7 +183,8 @@ export default function ProfileScreen({
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [showCloudManager, setShowCloudManager] = useState(false);
 
-  const authName = user?.firstName || user?.email?.split('@')[0] || 'Student';
+  const authName = cloudAuth.user?.name || account.name || 'Student';
+  const authEmail = cloudAuth.user?.email || account.email || '';
   const displayName = profile.displayName || authName;
   const [nameVal, setNameVal] = useState(displayName);
 
@@ -469,7 +474,19 @@ export default function ProfileScreen({
                 </button>
               )}
             </div>
-            <p className="text-xs text-foreground/40 mb-2 truncate">{user?.email || 'Offline Mode'}</p>
+            {account.signedIn ? (
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400 truncate">
+                  {authEmail || 'Cloud Synced'}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-foreground/40 mb-2 truncate flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
+                Offline Mode (Local Storage)
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               <span className="bg-gradient-to-r from-primary to-accent text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full text-white">{rank}</span>
               <span className={`text-[10px] font-bold px-3 py-1 rounded-full border ${streak > 0 ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-foreground/5 text-foreground/30 border-border'}`}>
@@ -786,7 +803,7 @@ export default function ProfileScreen({
         {tab === 'settings' && (
           <SettingsTab
             theme={theme} onThemeChange={onThemeChange}
-            isLoggedIn={!!user} history={history}
+            isLoggedIn={account.signedIn} history={history}
             onOpenTab={t => { setTab(t); window.scrollTo({ top: 0 }); }}
           />
         )}
@@ -816,7 +833,7 @@ export default function ProfileScreen({
       </div>
 
       {/* Cloud Data Manager Modal */}
-      <CloudDataManager open={showCloudManager} onClose={() => setShowCloudManager(false)} isLoggedIn={!!user} />
+      <CloudDataManager open={showCloudManager} onClose={() => setShowCloudManager(false)} isLoggedIn={account.signedIn} />
     </div>
   );
 }

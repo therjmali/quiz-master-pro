@@ -31,11 +31,11 @@ export function getUserSubjects(): string[] {
     const stored = localStorage.getItem(SUBJECTS_KEY);
     if (stored) {
       const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
-    return DEFAULT_NURSING_SUBJECTS;
+    return [];
   } catch {
-    return DEFAULT_NURSING_SUBJECTS;
+    return [];
   }
 }
 

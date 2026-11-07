@@ -4,6 +4,7 @@ import { useCloudAuth } from '../../platform/cloud/authStore';
 import { useSyncState } from '../../platform/cloud/syncEngine';
 import { listBackups, type BackupMeta } from '../../platform/autoBackup';
 import { triggerOpenSettings } from '../cloud/CloudGate';
+import { appVersion } from '../../platform/native';
 
 type Tone = 'good' | 'warn' | 'bad' | 'info' | 'busy';
 
@@ -74,7 +75,7 @@ export default function StatusStrip({ onJump }: { onJump?: (section: string) => 
   tiles.push({ id: 'storage', tone: 'good', icon: <ShieldCheck className={ic} />, label: 'Storage', title: 'Protected', detail: 'Safe on device', section: 'data' });
 
   // ── App ──
-  tiles.push({ id: 'version', tone: 'info', icon: <Sparkles className={ic} />, label: 'App', title: 'v2.0.0', detail: 'Latest version', section: 'about' });
+  tiles.push({ id: 'version', tone: 'info', icon: <Sparkles className={ic} />, label: 'App', title: `v${appVersion()}`, detail: 'Latest version', section: 'about' });
 
   const rank = (t: Tone) => (t === 'bad' ? 3 : t === 'warn' ? 2 : t === 'busy' ? 1 : 0);
   const worst = tiles.reduce<Tone>((w, t) => (rank(t.tone) > rank(w) ? t.tone : w), 'good');

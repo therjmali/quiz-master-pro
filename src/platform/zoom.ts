@@ -21,7 +21,8 @@ export const ZOOM_DEFAULT = 100;
 
 export const ZOOM_PRESETS: { value: number; label: string; hint: string }[] = [
   { value: 85,  label: 'Compact',      hint: 'Fit more on screen' },
-  { value: 100, label: 'Default',      hint: 'Standard size' },
+  { value: 90,  label: 'Default 90%',  hint: '10% zoomed out — optimal for mobile' },
+  { value: 100, label: '100%',         hint: 'Standard 1:1 scale' },
   { value: 115, label: 'Comfortable',  hint: 'Easier to read' },
   { value: 130, label: 'Large',        hint: 'Bigger text' },
   { value: 150, label: 'Extra large',  hint: 'Maximum size' },

@@ -27,14 +27,14 @@ export function normalizeTheme(value: unknown): AppTheme {
     return value;
   }
   if (value === 'dark') return 'amoled';
-  return 'amoled';
+  return 'light';
 }
 
 export function loadTheme(): AppTheme {
   try {
     return normalizeTheme(localStorage.getItem(THEME_KEY));
   } catch {
-    return 'amoled';
+    return 'light';
   }
 }
 

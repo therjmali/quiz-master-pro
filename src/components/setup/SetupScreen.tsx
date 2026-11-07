@@ -44,9 +44,9 @@ interface Props {
 }
 
 const QUIZ_TYPES = [
+  { emoji: '🎯', label: 'Daily Practice' },
   { emoji: '📚', label: 'Chapter Review' },
   { emoji: '📝', label: 'Mock Exam' },
-  { emoji: '🎯', label: 'Daily Practice' },
   { emoji: '✏️', label: 'Class Test' },
   { emoji: '🔁', label: 'Revision Quiz' },
 ];
@@ -263,6 +263,15 @@ export default function SetupScreen({
   const [autoMatchedFolderName, setAutoMatchedFolderName] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [advancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
+
+  // Suggest "Daily Practice" as default quiz name if not set
+  useEffect(() => {
+    if (!settings.quizTitle && !isEditingActiveQuiz) {
+      onSettingsChange({ ...settings, quizTitle: 'Daily Practice' });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-focus textarea on mount (only if no active quiz editing)
   useEffect(() => {
@@ -742,19 +751,19 @@ export default function SetupScreen({
                 {settings.quizTitle.length}/60
               </span>
             </div>
-            {/* Quiz type chips */}
-            <div className="flex flex-wrap gap-1.5 mt-3">
+            {/* Quiz type chips — Horizontal Swipe Row */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 scroll-smooth mt-3">
               {QUIZ_TYPES.map(s => {
-                const full = `${s.emoji} ${s.label}`;
-                const isActive = settings.quizTitle === full;
+                const full = s.label;
+                const isActive = settings.quizTitle === full || settings.quizTitle === `${s.emoji} ${s.label}`;
                 return (
                   <button
-                    key={full}
+                    key={s.label}
                     onClick={() => set({ quizTitle: isActive ? '' : full })}
-                    className={`inline-flex items-center gap-1.5 text-xs font-semibold border px-3 py-2 rounded-xl transition-all active:scale-95 ${
+                    className={`flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold border px-3 py-2 rounded-xl transition-all active:scale-95 ${
                       isActive
                         ? 'bg-primary/20 border-primary/40 text-foreground shadow-sm'
-                        : 'bg-foreground/[0.04] border-border text-foreground/45 hover:text-foreground/65'
+                        : 'bg-foreground/[0.04] border-border text-foreground/50 hover:text-foreground/75'
                     }`}
                   >
                     <span className="text-sm leading-none">{s.emoji}</span>
@@ -1005,9 +1014,44 @@ export default function SetupScreen({
 
         <div className="border-t border-border/50" />
 
-        {/* Section 4: Settings */}
-        <div className="px-4 sm:px-6 md:px-8 py-5">
-          <SettingsPanel settings={settings} onChange={onSettingsChange} />
+        {/* Section 4: Settings & Rules — Ultra-premium Refined Toggle */}
+        <div className="px-4 sm:px-6 md:px-8 py-4 bg-foreground/[0.015]">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setAdvancedSettingsOpen(p => !p)}
+              className="flex items-center gap-2.5 text-left group flex-1 min-w-0"
+            >
+              <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover:scale-105 transition-all shrink-0">
+                <span className="text-sm">⚡</span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-black text-foreground">Settings &amp; Rules</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/20 shrink-0">
+                    {advancedSettingsOpen ? 'Hide' : 'Customize'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-foreground/45 mt-0.5 font-medium truncate">
+                  {settings.mode === 'live' ? '⚡ Instant' : '📋 Exam'} • {settings.difficulty === 'all' ? 'Mixed' : settings.difficulty} • {settings.timerMode === 'off' ? 'No timer' : settings.timerMode === 'per-question' ? `${settings.timerValue}${settings.timerUnit}/Q` : 'Total timer'} • {settings.marksPerQuestion}/Q{settings.negativeMarking ? ` (-${settings.negativeMarks})` : ''}
+                </p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setAdvancedSettingsOpen(p => !p)}
+              className="h-8 w-8 rounded-full border border-border/70 bg-card/60 flex items-center justify-center text-foreground/50 hover:text-foreground transition-all active:scale-95 shrink-0 ml-2"
+              aria-label="Toggle settings"
+            >
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${advancedSettingsOpen ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
+
+          {advancedSettingsOpen && (
+            <div className="pt-3 animate-fade-in border-t border-border/40 mt-3">
+              <SettingsPanel settings={settings} onChange={onSettingsChange} collapsible={true} />
+            </div>
+          )}
         </div>
       </div>
 
