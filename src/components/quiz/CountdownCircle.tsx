@@ -19,7 +19,7 @@ export default function CountdownCircle({ timeLeft, totalTime }: CountdownCircle
     ? `${Math.floor(timeLeft / 60)}:${(timeLeft % 60).toString().padStart(2, '0')}`
     : String(timeLeft);
 
-  const fontSize = timeLeft >= 60 ? '10' : '16';
+  const fontSize = timeLeft >= 60 ? '9' : '14';
 
   const spokenLabel = timeLeft >= 60
     ? `${Math.floor(timeLeft / 60)} minutes ${timeLeft % 60} seconds remaining`
@@ -27,7 +27,7 @@ export default function CountdownCircle({ timeLeft, totalTime }: CountdownCircle
 
   return (
     <div
-      className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center rounded-full bg-background"
+      className="relative w-11 h-11 sm:w-14 sm:h-14 flex-shrink-0 flex items-center justify-center rounded-full bg-background"
       style={{ boxShadow: `0 0 20px ${glowColor}, inset 0 0 10px rgba(0,0,0,0.5)` }}
       role="timer"
       aria-live={isLow ? 'assertive' : 'polite'}

@@ -143,6 +143,18 @@ gh secret set ANDROID_KEY_ALIAS              # optional, defaults to "quizmaster
 
 Keep `release.keystore` somewhere safe and **never commit it** — losing it means users can't update in place.
 
+**Status:** the repository secrets are set (from v2.5.0 every release is signed with the same permanent key), so new
+versions install over the old one and keep your data. APKs from **before v2.5.0** were signed with a different
+throw-away key each time; Android reports *"App not installed as package conflicts with an existing package"* when you
+try to update one of those. Fix once: back up in the app (Profile → Backup), uninstall the old copy, install the new APK,
+restore. After that, updates install in place.
+
+### In-app updates
+
+*Profile → App updates* (and a dismissible strip on the home screen) checks the latest GitHub Release, shows what's new
+and downloads the APK; Android then asks to install it. The check runs quietly at most every 12 hours, only in the
+installed app, never blocks start-up, and fails clearly when offline.
+
 ## Configuration
 
 | Name | Where | Purpose |

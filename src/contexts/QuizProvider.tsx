@@ -13,6 +13,7 @@ import { QuizQuestion, QuizSettings, QuizResult, AIPrefs, Screen } from '../type
 import { useQuizSession } from '../hooks/useQuizSession';
 import { useRationaleCache } from '../hooks/useRationaleCache';
 import { getUserApiKeys } from '../utils/apiKeys';
+import { tickSeconds } from '../utils/quizNav';
 import { getPracticeLabel } from '../utils/practiceNaming';
 import { explainQuestion, generateQuiz } from 'zitejs/api';
 import { SCREEN_PATHS } from '../utils/navigationConfig';
@@ -129,20 +130,34 @@ export function QuizProvider({
     if (screen !== 'quiz' || !quiz.quizData.length) return;
     // Clear any existing timer first to prevent double-intervals
     if (quiz.timerRef.current) clearInterval(quiz.timerRef.current);
+    // Measure against the clock, not tick counts: Android freezes/throttles timers when the screen is
+    // off or the app is in the background, which used to leave question timers stuck or too slow.
+    let last = Date.now();
     quiz.timerRef.current = setInterval(() => {
-      if (quiz.isPausedRef.current) return;
-      quiz.setAccumulatedTime((p) => p + 1);
+      const now = Date.now();
       const tMode = settingsRef.current.timerMode;
+      const raw = tickSeconds(now, last, Number.MAX_SAFE_INTEGER);
+      if (raw <= 0) return;
+      // No timer: idle/background time must not inflate "time taken" (cap one catch-up at 2 s).
+      const cap = tMode === 'off' ? 2 : 3600;
+      const secs = Math.min(raw, cap);
+      last = raw > cap ? now : last + raw * 1000;
+      if (quiz.isPausedRef.current) return;
+      quiz.setAccumulatedTime((p) => p + secs);
       if (tMode === 'per-question') {
+        const st = settingsRef.current;
+        const full = st.timerValue * (st.timerUnit === 'min' ? 60 : 1);
         quiz.setTimeLeftPerQ((prev) => {
           const idx = quiz.currentIdxRef.current;
-          if (quiz.forcedNextRef.current[idx] || prev[idx] <= 0) return prev;
+          if (quiz.forcedNextRef.current[idx]) return prev;
+          const cur = prev[idx] ?? full;
+          if (cur <= 0) return prev;
           const next = [...prev];
-          next[idx] = Math.max(0, next[idx] - 1);
+          next[idx] = Math.max(0, cur - secs);
           return next;
         });
       } else if (tMode === 'total') {
-        quiz.totalTimeLeftRef.current = Math.max(0, quiz.totalTimeLeftRef.current - 1);
+        quiz.totalTimeLeftRef.current = Math.max(0, quiz.totalTimeLeftRef.current - secs);
         quiz.setTotalTimeLeft(quiz.totalTimeLeftRef.current);
         if (quiz.totalTimeLeftRef.current <= 0) quiz.doFinishQuizRef.current(true);
       }

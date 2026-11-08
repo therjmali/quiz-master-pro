@@ -179,9 +179,12 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
         forcedNext: fn, totalTimeLeft: ttl, targetFolderId: savedFolderId } = JSON.parse(raw);
       if (savedFolderId) { setTargetFolderId(savedFolderId); targetFolderIdRef.current = savedFolderId; }
       const currentSettings = settingsRef.current;
+      // The quiz's OWN saved settings win (timer, marks, mode…); app-wide settings only fill in what the
+      // saved quiz did not record. (It used to be the other way round, so a resumed timed quiz could
+      // silently lose or change its timer.)
       const mergedSettings = {
-        ...qs, ...currentSettings,
-        timerMode: currentSettings.timerMode || qs.timerMode || (qs.timerEnabled ? 'per-question' : 'off'),
+        ...currentSettings, ...qs,
+        timerMode: qs.timerMode || (qs.timerEnabled ? 'per-question' : currentSettings.timerMode || 'off'),
       };
       // Update settings through ref (caller should sync)
       Object.assign(settingsRef.current, mergedSettings);
@@ -291,13 +294,9 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     return result;
   }, [settingsRef]);
 
+  /** Marks a question as expired (locked). Moving on is handled by QuizScreen so it also works after a resume. */
   const handleTimeExpired = useCallback((idx: number) => {
     setForcedNext(prev => { if (prev[idx]) return prev; const n = [...prev]; n[idx] = true; return n; });
-    setTimeout(() => {
-      const qLen = quizDataRef.current.length;
-      if (idx + 1 < qLen) setCurrentIndex(idx + 1);
-      else doFinishQuizRef.current(true);
-    }, 1300);
   }, []);
 
   return {

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Clock, Flag, Settings2, LogOut, Pause, Play, Bookmark, Pencil, ZoomIn } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Clock, Flag, Settings2, LogOut, Pause, Play, Bookmark, Pencil, ZoomIn, MoreHorizontal, ChevronDown } from 'lucide-react';
 import { formatTimeColon } from '../../utils/scoring';
 import { QuizSettings } from '../../types/quiz';
 import CountdownCircle from './CountdownCircle';
@@ -34,6 +34,9 @@ interface Props {
   onEditSettings?: () => void;
   onEditQuestion?: () => void;
   currentDifficulty?: string;
+  /** Question navigator (palette) open state — the title block toggles it. */
+  navOpen?: boolean;
+  onToggleNav?: () => void;
   /** Incremented each time auto-save fires */
   saveSignal?: number;
 }
@@ -41,18 +44,36 @@ interface Props {
 const diffDot = (d?: string) =>
   d === 'easy' ? '🟢' : d === 'hard' ? '🔴' : '🟡';
 
+/** Progress ring used when there is no per-question countdown. */
+function ProgressRing({ pct }: { pct: number }) {
+  const r = 19; const c = 2 * Math.PI * r;
+  return (
+    <div className="qh-ring" role="img" aria-label={`${Math.round(pct)} percent answered`}>
+      <svg viewBox="0 0 48 48" className="w-full h-full -rotate-90" aria-hidden="true">
+        <circle cx="24" cy="24" r={r} fill="none" strokeWidth="4.5" stroke="currentColor" className="text-foreground/10" />
+        <circle cx="24" cy="24" r={r} fill="none" strokeWidth="4.5" strokeLinecap="round" stroke="hsl(var(--primary))"
+          strokeDasharray={c} strokeDashoffset={c - (c * Math.min(100, Math.max(0, pct))) / 100}
+          style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
+      </svg>
+      <span className="qh-ring-label" aria-hidden="true">{Math.round(pct)}<small>%</small></span>
+    </div>
+  );
+}
+
 export default function PremiumHeader({
-  currentIndex, totalQuestions, answeredCount, settings, isLiveMode,
+  currentIndex, totalQuestions, answeredCount, settings, isLiveMode: _isLiveMode,
   timeLeft, perQTotal, accumulatedTime,
   totalTimeLeft, totalTimerColor, totalTimerBg, totalTimerPct,
   isFlagged, onToggleFlag,
   isBookmarked, onToggleBookmark,
   isPaused, onTogglePause,
-  onPause, onFinish, onExit, onEditSettings, onEditQuestion,
-  currentDifficulty,
+  onPause, onFinish: _onFinish, onExit, onEditSettings, onEditQuestion,
+  currentDifficulty, navOpen = false, onToggleNav,
   saveSignal = 0,
 }: Props) {
   const [showSaved, setShowSaved] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const zoom = useZoom();
   const isDefault = zoom === ZOOM_DEFAULT;
 
@@ -63,133 +84,98 @@ export default function PremiumHeader({
     return () => clearTimeout(id);
   }, [saveSignal]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: PointerEvent) => { if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false); };
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [menuOpen]);
+
+  const perQ = settings.timerMode === 'per-question';
+  const answeredPct = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
+  const posPct = totalQuestions > 1 ? (currentIndex / (totalQuestions - 1)) * 100 : 0;
+  const left = totalQuestions - answeredCount;
+  const closeAnd = (fn?: () => void) => () => { setMenuOpen(false); fn?.(); };
+
   return (
-    <div className="premium-quiz-header flex-shrink-0 sticky top-0 z-30">
-      <div className="flex items-center justify-between px-2 sm:px-4 py-2 gap-1.5">
-        {/* ── Left: Q number + difficulty dot ── */}
-        <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
-          {settings.timerMode === 'per-question' && (
-            <CountdownCircle timeLeft={timeLeft} totalTime={perQTotal} />
-          )}
-          <span className="text-sm font-black text-foreground leading-none tracking-tight whitespace-nowrap">
-            Q{currentIndex + 1}
-            <span className="text-foreground/25 font-semibold text-xs">/{totalQuestions}</span>
-          </span>
-          <span
-            className="text-xs leading-none flex-shrink-0"
-            title={currentDifficulty || 'medium'}
-            aria-label={`Difficulty: ${currentDifficulty || 'medium'}`}
-          >
-            {diffDot(currentDifficulty)}
-          </span>
-          {showSaved && (
-            <span className="text-[9px] font-bold text-emerald-400/80 animate-pulse whitespace-nowrap hidden xs:inline">
-              💾
+    <div className="qh premium-quiz-header flex-shrink-0 sticky top-0 z-30">
+      <div className="qh-row">
+        {/* ── Lead: ring + question + stats (tap = question navigator) ── */}
+        <button
+          type="button"
+          onClick={onToggleNav}
+          aria-expanded={navOpen}
+          aria-controls="qnav-grid"
+          aria-label={`Question ${currentIndex + 1} of ${totalQuestions}. ${answeredCount} answered. ${navOpen ? 'Hide' : 'Show'} question navigator`}
+          className="qh-lead"
+        >
+          {perQ ? <CountdownCircle timeLeft={timeLeft} totalTime={perQTotal} /> : <ProgressRing pct={answeredPct} />}
+          <span className="qh-text">
+            <span className="qh-title">
+              Q{currentIndex + 1}<span className="qh-of">/{totalQuestions}</span>
+              <span className="qh-dot" title={currentDifficulty || 'medium'} aria-hidden="true">{diffDot(currentDifficulty)}</span>
+              {showSaved && <span className="qh-saved" aria-hidden="true">💾</span>}
             </span>
-          )}
+            <span className="qh-sub"><span className="qh-s-wide">{answeredCount} answered · {left} left</span><span className="qh-s-narrow">{answeredCount}✓ · {left} left</span></span>
+          </span>
+          <ChevronDown className={`qh-chev ${navOpen ? 'is-open' : ''}`} aria-hidden="true" />
+        </button>
 
-          {/* Zoom level badge — tap to open the zoom panel */}
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new Event('qmp:zoom-panel'))}
-            className={`zoom-pct-badge inline-flex ${isDefault ? 'zoom-pct-default' : ''}`}
-            title={`Zoom ${zoom}% — tap to adjust`}
-            aria-label={`Interface zoom ${zoom} percent. Tap to adjust`}
-          >
-            <ZoomIn className="w-3 h-3 mr-1" aria-hidden="true" />
-            {zoom}
-          </button>
-        </div>
+        {/* ── Timer pill ── */}
+        {settings.timerMode === 'total' ? (
+          <div className={`qh-pill ${totalTimerBg} ${totalTimerPct < 0.25 ? 'animate-pulse' : ''}`} role="timer" aria-label="Total time left">
+            <Clock className={`w-3.5 h-3.5 flex-shrink-0 ${totalTimerColor}`} aria-hidden="true" />
+            <span className={`font-mono font-black ${totalTimerColor} tabular-nums`}>{formatTimeColon(totalTimeLeft)}</span>
+          </div>
+        ) : (
+          <div className="qh-pill qh-pill-elapsed" aria-label="Time elapsed">
+            <Clock className="w-3.5 h-3.5 text-emerald-400/70 flex-shrink-0" aria-hidden="true" />
+            <span className="font-mono font-bold text-emerald-400 tabular-nums">{formatTimeColon(accumulatedTime)}</span>
+          </div>
+        )}
 
-        {/* ── Right: timer + action icons ── */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {/* Timer */}
-          {settings.timerMode === 'total' ? (
-            <div className={`flex items-center gap-1 px-2 py-1.5 rounded-lg border text-xs ${totalTimerBg} ${totalTimerPct < 0.25 ? 'animate-pulse' : ''}`}>
-              <Clock className={`w-3 h-3 flex-shrink-0 ${totalTimerColor}`} aria-hidden="true" />
-              <span className={`font-mono font-black ${totalTimerColor} tabular-nums`}>
-                {formatTimeColon(totalTimeLeft)}
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-1 px-2 py-1.5 rounded-lg border border-foreground/[0.08] bg-foreground/[0.04] text-xs">
-              <Clock className="w-3 h-3 text-emerald-400/60 flex-shrink-0" aria-hidden="true" />
-              <span className="font-mono font-bold text-emerald-400 tabular-nums">
-                {formatTimeColon(accumulatedTime)}
-              </span>
-            </div>
-          )}
-
-          {/* Flag */}
-          <button
-            onClick={onToggleFlag}
-            aria-label={isFlagged ? 'Unflag' : 'Flag for review'}
-            className={`prem-icon-btn !w-8 !h-8 !rounded-lg ${
-              isFlagged
-                ? '!bg-amber-500/20 !border-amber-500/40 !text-amber-400'
-                : ''
-            }`}
-          >
-            <Flag className="w-3.5 h-3.5" />
-          </button>
-
-          {/* Bookmark */}
-          <button
-            onClick={onToggleBookmark}
-            aria-label={isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
-            className={`prem-icon-btn !w-8 !h-8 !rounded-lg ${
-              isBookmarked
-                ? '!bg-violet-500/20 !border-violet-500/40 !text-violet-400'
-                : ''
-            }`}
-          >
-            <Bookmark className="w-3.5 h-3.5" fill={isBookmarked ? 'currentColor' : 'none'} />
-          </button>
-
-          {/* Edit Question */}
+        {/* ── Actions ── */}
+        <div className="qh-actions">
+          <button onClick={onToggleFlag} aria-label={isFlagged ? 'Unflag' : 'Flag for review'} aria-pressed={isFlagged}
+            className={`qh-btn ${isFlagged ? 'is-flag' : ''}`}><Flag className="w-4 h-4" /></button>
+          <button onClick={onToggleBookmark} aria-label={isBookmarked ? 'Remove Bookmark' : 'Bookmark'} aria-pressed={isBookmarked}
+            className={`qh-btn ${isBookmarked ? 'is-mark' : ''}`}><Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} /></button>
           {onEditQuestion && (
-            <button
-              onClick={onEditQuestion}
-              aria-label="Edit question"
-              className="prem-icon-btn !w-8 !h-8 !rounded-lg hidden xs:flex"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
+            <button onClick={onEditQuestion} aria-label="Edit question" className="qh-btn qh-wide"><Pencil className="w-4 h-4" /></button>
           )}
-
-          {/* Settings */}
           {onEditSettings && (
-            <button
-              onClick={() => { onPause(); onEditSettings(); }}
-              aria-label="Edit quiz settings"
-              className="prem-icon-btn !w-8 !h-8 !rounded-lg hidden xs:flex"
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-            </button>
+            <button onClick={() => { onPause(); onEditSettings(); }} aria-label="Edit quiz settings" className="qh-btn qh-wide"><Settings2 className="w-4 h-4" /></button>
           )}
+          <button onClick={onTogglePause} aria-label={isPaused ? 'Resume quiz' : 'Pause quiz'} aria-pressed={isPaused}
+            className={`qh-btn ${isPaused ? 'is-resume' : 'is-pause'}`}>{isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button>
 
-          {/* Pause / Resume — icon only */}
-          <button
-            onClick={onTogglePause}
-            aria-label={isPaused ? 'Resume quiz' : 'Pause quiz'}
-            className={`prem-icon-btn !w-8 !h-8 !rounded-lg ${
-              isPaused
-                ? '!bg-emerald-500/20 !border-emerald-500/40 !text-emerald-400'
-                : '!bg-amber-500/8 !border-amber-500/20 !text-amber-400/60'
-            }`}
-          >
-            {isPaused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
-          </button>
-
-          {/* Exit — icon only */}
-          <button
-            onClick={() => { onPause(); onExit(); }}
-            aria-label="Exit quiz"
-            className="prem-icon-btn !w-8 !h-8 !rounded-lg !border-red-500/20 !bg-red-500/8 !text-red-400"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setMenuOpen(o => !o)} aria-label="More options" aria-haspopup="menu" aria-expanded={menuOpen}
+              className={`qh-btn ${menuOpen ? 'is-open' : ''}`}><MoreHorizontal className="w-4 h-4" /></button>
+            {menuOpen && (
+              <div role="menu" className="qh-menu">
+                {onEditQuestion && (
+                  <button role="menuitem" className="qh-menu-item qh-narrow" onClick={closeAnd(onEditQuestion)}><Pencil className="w-4 h-4" />Edit question</button>
+                )}
+                {onEditSettings && (
+                  <button role="menuitem" className="qh-menu-item qh-narrow" onClick={closeAnd(() => { onPause(); onEditSettings(); })}><Settings2 className="w-4 h-4" />Quiz settings</button>
+                )}
+                <button role="menuitem" className="qh-menu-item" onClick={closeAnd(() => window.dispatchEvent(new Event('qmp:zoom-panel')))}>
+                  <ZoomIn className="w-4 h-4" />Interface zoom <span className={`ml-auto text-xs font-black ${isDefault ? 'text-foreground/40' : 'text-amber-500'}`}>{zoom}%</span>
+                </button>
+                <button role="menuitem" className="qh-menu-item is-danger" onClick={closeAnd(() => { onPause(); onExit(); })}><LogOut className="w-4 h-4" />Exit quiz</button>
+              </div>
+            )}
+          </div>
         </div>
+      </div>
+
+      {/* ── Progress track: answered fill + position marker ── */}
+      <div className="qh-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalQuestions} aria-valuenow={answeredCount} aria-label="Questions answered">
+        <div className="qh-fill" style={{ width: `${answeredPct}%` }} />
+        <div className="qh-marker" style={{ left: `calc(5px + (100% - 10px) * ${posPct / 100})` }} />
       </div>
     </div>
   );

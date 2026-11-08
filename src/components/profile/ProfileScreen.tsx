@@ -1,3 +1,4 @@
+import UpdateCard from '../update/UpdateCard';
 import { useState, useRef, useEffect, useMemo, memo, useCallback } from 'react';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { useAccount } from '../../platform/cloud/useAccount';
@@ -555,6 +556,7 @@ export default function ProfileScreen({
 
       {/* ── Status Strip: Cloud, Backup, Storage, App Version ── */}
       <StatusStrip onJump={(section) => { setTab('settings'); triggerOpenSettings(section); }} />
+      <UpdateCard />
 
       {/* ── Lifetime Score Section (always visible) ── */}
       {masterFiltered.length > 0 && (

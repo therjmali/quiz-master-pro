@@ -1,5 +1,6 @@
 import { useEffect, useRef, KeyboardEvent, useMemo, useState, useCallback } from 'react';
 import { totalTimerSeconds } from '../../utils/examModes';
+import { canEnterQuestion, prevOpenIndex } from '../../utils/quizNav';
 import { ChevronDown, ChevronUp, CheckCircle2, XCircle, BookOpen, Sparkles, Loader2, Pause, Play, Flag, Bookmark } from 'lucide-react';
 import ZoomControl from './ZoomControl';
 import { toast } from 'sonner';
@@ -37,12 +38,15 @@ interface Props {
     question: string, correctAnswer: string,
     userAnswer: string | null, status: 'correct' | 'wrong' | 'skipped'
   ) => Promise<string>;
-  onAnswer: (idx: number, ans: string) => void;
+  /** `null` clears the answer (tap the selected option again). */
+  onAnswer: (idx: number, ans: string | null) => void;
   onNext: () => void;
   onPrev: () => void;
   onJump: (idx: number) => void;
   onFinish: () => void;
   onTimeExpired: (idx: number) => void;
+  /** Called ~1 s after a question expires: move on (or finish) without any tap. */
+  onAdvanceAfterExpiry?: (idx: number) => void;
   onToggleFlag: (idx: number) => void;
   onExitQuiz: () => void;
   onSettingsChange?: (s: QuizSettings) => void;
@@ -52,7 +56,7 @@ interface Props {
   saveSignal?: number;
   onPauseChange?: (paused: boolean) => void;
   confidenceLevels?: ('sure' | 'guessing' | null)[];
-  onConfidenceChange?: (idx: number, level: 'sure' | 'guessing') => void;
+  onConfidenceChange?: (idx: number, level: 'sure' | 'guessing' | null) => void;
   adaptiveDifficulty?: string;
 }
 
@@ -202,7 +206,7 @@ export default function QuizScreen({
   timeLeftPerQ, totalTimeLeft, forcedNext, settings,
   rationaleCache = {}, getAiRationale,
   onAnswer, onNext, onPrev, onJump,
-  onFinish, onTimeExpired, onToggleFlag, onExitQuiz, onSettingsChange, onEditSettings,
+  onFinish, onTimeExpired, onAdvanceAfterExpiry, onToggleFlag, onExitQuiz, onSettingsChange, onEditSettings,
   onEditQuestion,
   isPaused: externalPaused, onPauseChange,
   saveSignal,
@@ -211,6 +215,7 @@ export default function QuizScreen({
 }: Props) {
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [feedbackAnswer, setFeedbackAnswer] = useState<string | null>(null);
   const [imgLoading, setImgLoading] = useState(false);
@@ -272,13 +277,13 @@ export default function QuizScreen({
   const opts = q?.shuffledOpts || q?.options || [];
   const answered = userAnswers[currentIndex] !== null;
   const isForced = forcedNext[currentIndex];
-  const timeLeft = timeLeftPerQ[currentIndex] ?? 0;
   const isLast = currentIndex === quizData.length - 1;
   const isFlagged = flaggedQuestions[currentIndex];
   const isLiveMode = settings.mode === 'live';
 
   const perQTotal = settings.timerMode === 'per-question'
     ? settings.timerValue * (settings.timerUnit === 'min' ? 60 : 1) : 0;
+  const timeLeft = timeLeftPerQ[currentIndex] ?? perQTotal;
   const totalTimerInitial = totalTimerSeconds(settings, quizData.length);
   const totalTimerPct = totalTimerInitial > 0 ? totalTimeLeft / totalTimerInitial : 1;
   const totalTimerColor = totalTimerPct < 0.25 ? 'text-red-400' : totalTimerPct < 0.5 ? 'text-amber-400' : 'text-emerald-400';
@@ -297,11 +302,12 @@ export default function QuizScreen({
     return quizData.map(qq => set.has(qq.question));
   }, [fileTree, quizData]);
 
-  // Same rule as the Previous button: no going back in Mock Exam mode.
+  // Same rules as Previous/Next: no going back in Mock Exam mode, and an expired question is locked for good.
   const canJump = useCallback(
-    (idx: number) => !(settings.mockExamMode && idx < currentIndex),
-    [settings.mockExamMode, currentIndex],
+    (idx: number) => canEnterQuestion(idx, currentIndex, forcedNext, !!settings.mockExamMode),
+    [settings.mockExamMode, currentIndex, forcedNext],
   );
+  const canGoPrev = prevOpenIndex(currentIndex, forcedNext, !settings.mockExamMode) >= 0;
 
   const correctnessMap = useMemo(() => {
     if (!isLiveMode) return null;
@@ -314,9 +320,19 @@ export default function QuizScreen({
 
   // Timer effects
   useEffect(() => {
-    if (settings.timerMode !== 'per-question' || timeLeft > 0 || isForced) return;
+    if (settings.timerMode !== 'per-question' || timeLeft > 0 || isForced || paused) return;
     onTimeExpired(currentIndex);
-  }, [timeLeft, currentIndex, isForced, settings.timerMode]); // eslint-disable-line
+  }, [timeLeft, currentIndex, isForced, paused, settings.timerMode]); // eslint-disable-line
+
+  // Move on by itself once a question has expired. Declarative (not a fire-and-forget timeout) so it also
+  // works when an expired question is on screen after a resume, and never moves a question the student left.
+  const advanceRef = useRef(onAdvanceAfterExpiry);
+  advanceRef.current = onAdvanceAfterExpiry;
+  useEffect(() => {
+    if (settings.timerMode !== 'per-question' || !isForced || paused) return;
+    const id = setTimeout(() => advanceRef.current?.(currentIndex), 1200);
+    return () => clearTimeout(id);
+  }, [settings.timerMode, isForced, paused, currentIndex]);
 
   useEffect(() => {
     if (settings.timerMode === 'per-question' && timeLeft === 5 && !isForced && !paused) hapticTap();
@@ -341,6 +357,13 @@ export default function QuizScreen({
   const handleOptionClick = useCallback((opt: string, idx: number) => {
     if (isForced) return;
     if (isLiveMode && (feedbackAnswer !== null || answered)) return;
+    // Tap the selected option again to clear it (exam mode; instant-feedback answers are final).
+    if (!isLiveMode && userAnswers[currentIndex] === opt) {
+      hapticTap();
+      onAnswer(currentIndex, null);
+      onConfidenceChange?.(currentIndex, null);
+      return;
+    }
     hapticTap();
     setRippleIdx(idx);
     setTimeout(() => setRippleIdx(null), 400);
@@ -349,7 +372,7 @@ export default function QuizScreen({
       setFeedbackAnswer(opt);
       if (opt === q.correctAnswer || q.correctAnswers?.includes(opt)) hapticSuccess(); else hapticError();
     }
-  }, [isForced, isLiveMode, feedbackAnswer, answered, currentIndex, onAnswer, q?.correctAnswer]);
+  }, [isForced, isLiveMode, feedbackAnswer, answered, currentIndex, onAnswer, onConfidenceChange, userAnswers, q?.correctAnswer]);
 
   const handleFeedbackNext = () => { setFeedbackAnswer(null); onNext(); };
 
@@ -517,6 +540,8 @@ export default function QuizScreen({
           onEditSettings={onEditSettings}
           onEditQuestion={onEditQuestion ? () => { doPause(); setEditingQuestionIdx(currentIndex); } : undefined}
           currentDifficulty={q?.difficulty}
+          navOpen={navOpen}
+          onToggleNav={() => setNavOpen(o => !o)}
           saveSignal={saveSignal}
         />
 
@@ -551,6 +576,9 @@ export default function QuizScreen({
                 visited={visited}
                 bookmarked={bookmarkedMap}
                 canJump={canJump}
+                open={navOpen}
+                onOpenChange={setNavOpen}
+                expired={forcedNext}
                 onJump={idx => {
                   if (isLiveMode && feedbackAnswer !== null) setFeedbackAnswer(null);
                   onJump(idx);
@@ -663,6 +691,7 @@ export default function QuizScreen({
           feedbackActive={feedbackAnswer !== null}
           showMockExamMode={!!settings.mockExamMode}
           answeredCount={answeredCount}
+          canGoPrev={canGoPrev}
           onPrev={onPrev}
           onNext={onNext}
           onFinish={handleSubmitAll}

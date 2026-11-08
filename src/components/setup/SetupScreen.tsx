@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Clipboard, Upload, X, Rocket, Play, BookOpen, Loader2, FileText, FileSpreadsheet, ChevronDown, ChevronRight, Camera, Check, Sparkles, ArrowRight, SlidersHorizontal, PenLine } from 'lucide-react';
+import QuizPreview from './QuizPreview';
+import { Clipboard, Upload, X, Rocket, Play, BookOpen, Loader2, FileText, FileSpreadsheet, ChevronDown, ChevronRight, Camera, Check, Sparkles, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuizQuestion, QuizSettings, UploadedFile, QuizResult, AIPrefs, RationalePrefs, AIMode } from '../../types/quiz';
 import { localOfflineParser, looksLikeMCQ, parseMcqText, MCQ_SAMPLE, COPY_PROMPT_TEXT } from '../../utils/quizParser';
@@ -371,7 +372,7 @@ export default function SetupScreen({
     if (raw.trim().length <= 20) return null;
     const { questions, issues, duplicates } = parseMcqText(raw);
     const words = (raw.trim().match(/\S+/g) || []).length;
-    return { total: questions.length, issues, duplicates, words, pending: raw !== text };
+    return { total: questions.length, questions, issues, duplicates, words, pending: raw !== text };
   }, [debouncedText, text]);
 
   // ── Auto-detect Topic & Subject from pasted text ──
@@ -674,26 +675,6 @@ export default function SetupScreen({
         }}
       />
 
-      {/* ── Hero ── */}
-      <header className="cq-hero">
-        <div className="cq-hero-top">
-          <span className="cq-hero-icon" aria-hidden="true"><PenLine className="w-5 h-5" /></span>
-          <div className="min-w-0 flex-1">
-            <h1 className="cq-hero-title">Create Quiz</h1>
-            <p className="cq-hero-sub">
-              Paste questions or notes, set your rules, and start in seconds
-              {history.length > 0 && <> · {history.length} quiz{history.length !== 1 ? 'zes' : ''} in history</>}
-            </p>
-          </div>
-        </div>
-        <div className="cq-chips" role="list" aria-label="Current quiz settings">
-          <span role="listitem" className="cq-chip">{settings.mode === 'live' ? '⚡ Instant feedback' : '📋 Exam mode'}</span>
-          <span role="listitem" className="cq-chip">🎚️ {settings.difficulty === 'all' ? 'Mixed' : settings.difficulty}</span>
-          <span role="listitem" className="cq-chip">⏱️ {settings.timerMode === 'off' ? 'No timer' : settings.timerMode === 'per-question' ? `${settings.timerValue}${settings.timerUnit}/Q` : 'Total timer'}</span>
-          <span role="listitem" className="cq-chip">🎯 {settings.marksPerQuestion}/Q{settings.negativeMarking ? ` · −${settings.negativeMarks}` : ''}</span>
-        </div>
-      </header>
-
       {/* ── Top Action Row ── */}
       <div className="space-y-2 px-1">
         <div className="cq-rail flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
@@ -765,8 +746,48 @@ export default function SetupScreen({
 
         {/* Section 2: Content */}
         <section className="cq-card">
-        <CardHead icon={<FileText className="w-4 h-4" />} title="Your content" sub="Paste MCQs or notes, or upload a file" />
+        <CardHead icon={<FileText className="w-4 h-4" />} title="Quiz name & content" sub="Name it, then paste MCQs or notes, or upload a file" />
         <div className="cq-card-body space-y-3">
+          {/* Quiz Name */}
+          <div>
+            <SectionLabel><BookOpen className="w-3 h-3" /> Quiz Name <span className="text-foreground/20 normal-case font-normal tracking-normal">— optional</span></SectionLabel>
+            <div className="relative">
+              <input
+                type="text"
+                value={settings.quizTitle}
+                onChange={e => set({ quizTitle: e.target.value.slice(0, 60) })}
+                placeholder="e.g. Chapter 5 · Mock Exam 1 · Daily Practice"
+                maxLength={60}
+                className="w-full bg-foreground/[0.04] border border-foreground/[0.08] hover:border-foreground/15 focus:border-primary/50 rounded-xl px-4 py-3.5 text-sm text-foreground placeholder-foreground/25 focus:outline-none transition-colors pr-14"
+              />
+              <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold tabular-nums pointer-events-none ${settings.quizTitle.length > 50 ? 'text-amber-400' : 'text-foreground/20'}`}>
+                {settings.quizTitle.length}/60
+              </span>
+            </div>
+            {/* Quiz type chips — Horizontal Swipe Row */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 scroll-smooth mt-3">
+              {QUIZ_TYPES.map(s => {
+                const full = s.label;
+                const isActive = settings.quizTitle === full || settings.quizTitle === `${s.emoji} ${s.label}`;
+                return (
+                  <button
+                    key={s.label}
+                    onClick={() => set({ quizTitle: isActive ? '' : full })}
+                    className={`flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold border px-3 py-2 rounded-xl transition-all active:scale-95 ${
+                      isActive
+                        ? 'bg-primary/20 border-primary/40 text-foreground shadow-sm'
+                        : 'bg-foreground/[0.04] border-border text-foreground/50 hover:text-foreground/75'
+                    }`}
+                  >
+                    <span className="text-sm leading-none">{s.emoji}</span>
+                    <span>{s.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="h-px bg-foreground/[0.07]" />
           {/* Supported types */}
           <div className="flex flex-wrap items-center gap-1 mb-1">
             <span className="text-[9px] text-foreground/25 font-medium">Supported:</span>
@@ -940,49 +961,21 @@ export default function SetupScreen({
 
         </section>
 
+        {/* Preview — what will be created */}
+        <QuizPreview
+          questions={detection?.questions ?? []}
+          issues={detection?.issues.length ?? 0}
+          duplicates={detection?.duplicates.length ?? 0}
+          words={detection?.words ?? 0}
+          text={debouncedText}
+          fileNames={files.map(f => f.name)}
+          pending={detection?.pending}
+        />
+
         {/* Section 1: Identity */}
         <section className="cq-card">
-        <CardHead icon={<BookOpen className="w-4 h-4" />} title="Quiz details" sub="Name, subject and where to save" />
+        <CardHead icon={<SlidersHorizontal className="w-4 h-4" />} title="More options" sub="Quick mode, subject and where to save" />
         <div className="cq-card-body space-y-4">
-          {/* Quiz Name */}
-          <div>
-            <SectionLabel><BookOpen className="w-3 h-3" /> Quiz Name <span className="text-foreground/20 normal-case font-normal tracking-normal">— optional</span></SectionLabel>
-            <div className="relative">
-              <input
-                type="text"
-                value={settings.quizTitle}
-                onChange={e => set({ quizTitle: e.target.value.slice(0, 60) })}
-                placeholder="e.g. Chapter 5 · Mock Exam 1 · Daily Practice"
-                maxLength={60}
-                className="w-full bg-foreground/[0.04] border border-foreground/[0.08] hover:border-foreground/15 focus:border-primary/50 rounded-xl px-4 py-3.5 text-sm text-foreground placeholder-foreground/25 focus:outline-none transition-colors pr-14"
-              />
-              <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold tabular-nums pointer-events-none ${settings.quizTitle.length > 50 ? 'text-amber-400' : 'text-foreground/20'}`}>
-                {settings.quizTitle.length}/60
-              </span>
-            </div>
-            {/* Quiz type chips — Horizontal Swipe Row */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-1 px-1 scroll-smooth mt-3">
-              {QUIZ_TYPES.map(s => {
-                const full = s.label;
-                const isActive = settings.quizTitle === full || settings.quizTitle === `${s.emoji} ${s.label}`;
-                return (
-                  <button
-                    key={s.label}
-                    onClick={() => set({ quizTitle: isActive ? '' : full })}
-                    className={`flex-shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold border px-3 py-2 rounded-xl transition-all active:scale-95 ${
-                      isActive
-                        ? 'bg-primary/20 border-primary/40 text-foreground shadow-sm'
-                        : 'bg-foreground/[0.04] border-border text-foreground/50 hover:text-foreground/75'
-                    }`}
-                  >
-                    <span className="text-sm leading-none">{s.emoji}</span>
-                    <span>{s.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Quick Templates — Collapsible + Horizontal Slider */}
           {featureVisibility?.templates !== false && (
             <TemplateSlider

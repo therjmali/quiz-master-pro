@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.5.0] - 2026-11-08
+
+Reliable timed quizzes, a merged quiz header, in-app updates, and a signed-update fix.
+
+### Fixed
+- **"App not installed as package conflicts with an existing package"** when updating. Every release was signed with a new throw-away key. A permanent release key is now stored as repository secrets, so builds from v2.5.0 on update in place. (APKs from before v2.5.0 need a one-time uninstall — back up first; see README → Signing.)
+- **Per-question timer**: when time runs out the quiz now moves on by itself (and finishes after the last question), the expired question is locked — no Previous, no jumping back, skipped by Next — and shows 🔒 in the navigator. Fixes quizzes stuck on an expired question after a resume or when going back.
+- Timers measure real clock time, so they no longer freeze or run slow when the screen is off or the app is in the background.
+- Resuming a saved quiz now keeps the quiz's own timer/marks/mode instead of letting the app-wide settings overwrite them.
+- **Header overlapping the status bar** on phones (clock and signal icons drawn over the quiz header) — the header now respects the status-bar inset.
+- Quiz screen on phones is now truly edge-to-edge (a generic card padding rule left gaps left, right and top).
+- **Dialogs cut off on the right** (e.g. "Exit without saving?") — every centred dialog is now fitted to the screen.
+
+### Changed
+- **Quiz header redesign**: the running header and the separate progress card are one premium bar — countdown/progress ring, "Q4/30 · 1 answered · 29 left", timer, flag, bookmark, pause, and a ⋯ menu (edit, settings, zoom, exit) so nothing overflows on small phones. Tap it to open the question navigator.
+- **Create Quiz**: removed the header banner. Order is now Quiz name + content → Preview → More options (quick mode, subject, folder) → Settings. New **Preview** card shows parsed questions with correct answers marked, warnings, or a notes summary.
+
+### Added
+- **Tap the selected option again to clear it** (exam mode; instant-feedback answers stay final).
+- **In-app updates**: Profile → App updates ("Check for updates", what's new, one-tap APK download) and a home-screen notice. Quiet 12-hourly check, offline-safe.
+
 ## [2.4.0] - 2026-11-08
 
 Create Quiz redesign and a new floating dock. Design language adapted from the Vyxel Apps "expressive" theme (soft tonal glass, pill shapes, springy motion, a primary action that carries its own status) — ideas only, no code copied; colours follow each of this app's own themes.

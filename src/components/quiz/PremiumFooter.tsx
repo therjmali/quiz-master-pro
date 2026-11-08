@@ -9,6 +9,8 @@ interface Props {
   feedbackActive: boolean;
   showMockExamMode: boolean;
   answeredCount: number;
+  /** False when every earlier question is expired/locked. */
+  canGoPrev?: boolean;
   onPrev: () => void;
   onNext: () => void;
   onFinish: () => void;
@@ -16,7 +18,7 @@ interface Props {
 
 export default function PremiumFooter({
   currentIndex, totalQuestions, isLast, isLiveMode, isPaused,
-  feedbackActive, showMockExamMode, answeredCount, onPrev, onNext, onFinish,
+  feedbackActive, showMockExamMode, answeredCount, canGoPrev = true, onPrev, onNext, onFinish,
 }: Props) {
   const showFooterNav = !isLiveMode || !feedbackActive;
   const disabled = isPaused || (isLiveMode && feedbackActive);
@@ -28,7 +30,7 @@ export default function PremiumFooter({
         {!showMockExamMode && showFooterNav && (
           <button
             onClick={onPrev}
-            disabled={disabled || currentIndex === 0}
+            disabled={disabled || currentIndex === 0 || !canGoPrev}
             aria-label="Previous"
             className="prem-footer-prev"
           >

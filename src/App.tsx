@@ -1,3 +1,5 @@
+import UpdateBanner from './components/update/UpdateBanner';
+import { nextOpenIndex, prevOpenIndex, canEnterQuestion } from './utils/quizNav';
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, startTransition } from 'react';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth, logout } from 'zitejs/auth';
@@ -698,6 +700,7 @@ function AppScreens({
         {/* Dashboard */}
         {screen === 'dashboard' && (
           <ErrorBoundary screenName="Dashboard" onReset={() => navigateTo('dashboard')}>
+            <UpdateBanner />
             {!dataLoaded && !history.length ? <DashboardSkeleton /> : (
               <PullToRefresh onRefresh={handlePullRefresh} enabled={!!user}>
                 <DashboardScreen
@@ -840,7 +843,7 @@ function AppScreens({
               settings={settings} rationaleCache={rationaleCache} getAiRationale={getAiRationale}
               onAnswer={(idx, ans) => {
                 quiz.setUserAnswers(prev => { const n = [...prev]; n[idx] = ans; return n; });
-                if (settings.adaptiveMode) {
+                if (settings.adaptiveMode && ans !== null) {
                   const isCorrect = ans === quiz.quizData[idx]?.correctAnswer;
                   quiz.setAdaptiveDifficulty(prev => {
                     const recent = [...quiz.userAnswers.slice(Math.max(0, idx - 1), idx), isCorrect ? 'c' : 'w'];
@@ -851,11 +854,33 @@ function AppScreens({
                   });
                 }
               }}
-              onNext={() => { quiz.recordCurrentQuestionTime(); if (quiz.currentIndex < quiz.quizData.length - 1) quiz.setCurrentIndex(i => i + 1); else setScreen('summary'); }}
-              onPrev={() => { quiz.recordCurrentQuestionTime(); quiz.setCurrentIndex(i => Math.max(0, i - 1)); }}
-              onJump={idx => { quiz.recordCurrentQuestionTime(); quiz.setCurrentIndex(idx); }}
+              onNext={() => {
+                quiz.recordCurrentQuestionTime();
+                const n = nextOpenIndex(quiz.currentIndex, quiz.forcedNext, quiz.quizData.length);
+                if (n >= 0) quiz.setCurrentIndex(n); else setScreen('summary');
+              }}
+              onPrev={() => {
+                const n = prevOpenIndex(quiz.currentIndex, quiz.forcedNext, !settings.mockExamMode);
+                if (n < 0) return;
+                quiz.recordCurrentQuestionTime();
+                quiz.setCurrentIndex(n);
+              }}
+              onJump={idx => {
+                if (!canEnterQuestion(idx, quiz.currentIndex, quiz.forcedNext, !!settings.mockExamMode)) {
+                  toast.error(quiz.forcedNext[idx] ? `⏱️ Time was up for Q${idx + 1} — it's locked` : 'Going back is off in Mock Exam mode');
+                  return;
+                }
+                quiz.recordCurrentQuestionTime();
+                quiz.setCurrentIndex(idx);
+              }}
               onFinish={() => setScreen('summary')}
               onTimeExpired={quiz.handleTimeExpired}
+              onAdvanceAfterExpiry={(idx) => {
+                if (quiz.currentIdxRef.current !== idx) return;
+                quiz.recordCurrentQuestionTime();
+                const n = nextOpenIndex(idx, quiz.forcedNextRef.current, quiz.quizDataRef.current.length);
+                if (n >= 0) quiz.setCurrentIndex(n); else quiz.doFinishQuizRef.current(true);
+              }}
               onToggleFlag={quiz.handleToggleFlag}
               onExitQuiz={() => { quiz.handleExitQuiz(); navigateTo('dashboard'); }}
               isPaused={quiz.isPaused} onPauseChange={quiz.setIsPaused}

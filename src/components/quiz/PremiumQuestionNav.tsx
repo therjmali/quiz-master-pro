@@ -13,6 +13,11 @@ interface Props {
   /** Returns false when a jump is not allowed (follows the Previous-button rules). */
   canJump?: (idx: number) => boolean;
   onJump: (idx: number) => void;
+  /** Controlled mode: the merged quiz header owns the toggle, this component only renders the grid. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Expired (time-up) questions — shown locked. */
+  expired?: boolean[];
   mode: 'submit' | 'live';
   /** Practice mode only — never passed in Exam mode. */
   correctnessMap?: (boolean | null)[] | null;
@@ -40,13 +45,19 @@ const STATUS_LABEL: Record<Status, string> = {
 
 export default function PremiumQuestionNav({
   total, currentIndex, userAnswers, flaggedQuestions, visited, bookmarked, canJump,
-  onJump, mode, correctnessMap,
+  onJump, mode, correctnessMap, open: openProp, onOpenChange, expired,
 }: Props) {
-  const [open, setOpen] = useState(readOpen);
+  const controlled = openProp !== undefined;
+  const [openState, setOpenState] = useState(readOpen);
+  const open = controlled ? !!openProp : openState;
+  const setOpen = useCallback((v: boolean | ((o: boolean) => boolean)) => {
+    const next = typeof v === 'function' ? v(open) : v;
+    if (controlled) onOpenChange?.(next); else setOpenState(next);
+  }, [controlled, open, onOpenChange]);
   const ballRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const showCorrectness = mode === 'live' && !!correctnessMap;
 
-  useEffect(() => { try { sessionStorage.setItem(OPEN_KEY, open ? '1' : '0'); } catch { /* ignore */ } }, [open]);
+  useEffect(() => { if (!controlled) { try { sessionStorage.setItem(OPEN_KEY, open ? '1' : '0'); } catch { /* ignore */ } } }, [open, controlled]);
 
   // Keep the current number in view whenever the grid is open or the question changes.
   useEffect(() => {
@@ -85,9 +96,9 @@ export default function PremiumQuestionNav({
   }, [onJump, canJump]);
 
   return (
-    <div className="mb-4 rounded-2xl border border-border/60 bg-card/60 px-3 py-2.5">
-      {/* Header — always visible (collapsed view) */}
-      <button
+    <div className={controlled ? (open ? 'mb-4 rounded-2xl border border-border/60 bg-card/60 px-3 py-2.5' : '') : 'mb-4 rounded-2xl border border-border/60 bg-card/60 px-3 py-2.5'}>
+      {/* Header — always visible (collapsed view); the merged quiz header replaces it in controlled mode */}
+      {!controlled && <button
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
@@ -107,7 +118,7 @@ export default function PremiumQuestionNav({
           </p>
         </div>
         <ChevronDown className={`w-5 h-5 text-foreground/50 flex-shrink-0 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
-      </button>
+      </button>}
 
       {/* Expandable grid — animated with grid-rows 0fr → 1fr */}
       <div
@@ -124,7 +135,7 @@ export default function PremiumQuestionNav({
                 const isMarked = !!bookmarked?.[i];
                 const allowed = !canJump || canJump(i);
                 const isAnswered = status === 'answered' || status === 'correct' || status === 'wrong';
-                const label = `Question ${i + 1}, ${STATUS_LABEL[status]}${status === 'current' && isAnsweredAt(userAnswers, i) ? ', answered' : ''}${isFlagged ? ', flagged' : ''}${isMarked ? ', bookmarked' : ''}${allowed ? '' : ', locked'}`;
+                const label = `Question ${i + 1}, ${expired?.[i] && i !== currentIndex ? 'time up, locked, ' : ''}${STATUS_LABEL[status]}${status === 'current' && isAnsweredAt(userAnswers, i) ? ', answered' : ''}${isFlagged ? ', flagged' : ''}${isMarked ? ', bookmarked' : ''}${allowed ? '' : ', locked'}`;
                 return (
                   <button
                     key={i}
@@ -137,6 +148,7 @@ export default function PremiumQuestionNav({
                     className={`relative h-11 min-w-[44px] rounded-xl text-sm font-black tabular-nums flex items-center justify-center transition-transform duration-150 active:scale-95 motion-reduce:transition-none ${STATUS_CLASS[status]} ${allowed ? '' : 'opacity-35 cursor-not-allowed'}`}
                   >
                     {i + 1}
+                    {expired?.[i] && i !== currentIndex && <span className="absolute inset-0 rounded-xl bg-background/55 flex items-end justify-end pr-1 pb-0.5 text-[10px]" aria-hidden="true">🔒</span>}
                     {isAnswered && (
                       <span className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-background border border-current flex items-center justify-center" aria-hidden="true">
                         {status === 'wrong'
