@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.4.0] - 2026-11-08
+
+Create Quiz redesign and a new floating dock. Design language adapted from the Vyxel Apps "expressive" theme (soft tonal glass, pill shapes, springy motion, a primary action that carries its own status) — ideas only, no code copied; colours follow each of this app's own themes.
+
+### Added
+- **Create Quiz screen redesign**: hero header with live setting chips; separate "Your content", "Quiz details" and "Settings & Rules" cards; content now comes first so you can paste immediately.
+- **Two-column layout on tablets/desktop** (≥1024 px): content and details on the left, settings always visible on the right in a sticky column. Phones keep a single column with settings tucked away.
+- **Generate & Start action bar**: fixed above the dock, shows live readiness ("22 words · AI will generate", "30 questions ready · loads instantly, no AI needed", "2 files attached"), a sweep animation while generating, and a "Return to Quiz" companion when editing a live quiz. It glides down when the dock tucks away.
+- **Floating glass dock** replaces the full-width bottom bar: selected tab lifts into a gradient tile, a glow glides between tabs on a spring, raised Create button, badges kept, reduced-motion respected.
+
+### Fixed
+- Duplicate "Scoring & Marks" header (accordion inside an accordion) and duplicate "Settings & Rules" label in the settings panel.
+- Screen-enter animation left a permanent transform on the screen wrapper, which anchored every `position: fixed` element inside a screen to the wrapper instead of the viewport; it now leaves no transform.
+- Create screen no longer capped at a narrow width on tablets.
+
 ## [2.3.1] - 2026-11-08
 
 Edge-to-edge tablet layout: the whole app now fills the screen in landscape and portrait, with no dead gutters or overlaps.

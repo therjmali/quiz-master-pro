@@ -1571,12 +1571,12 @@
 /* Screen transition — GPU-accelerated, no blur/filter */
 @keyframes screenEnter {
   from { opacity: 0; transform: translate3d(0, 8px, 0) scale(0.998); }
-  to   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  to   { opacity: 1; transform: none; }
 }
+/* `backwards` (not `forwards`) + no standing will-change: once finished the wrapper has NO transform,
+   so position:fixed children (action bar, dock, quiz card) anchor to the real viewport. */
 .animate-screen-enter {
-  animation: screenEnter 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform, opacity;
-  backface-visibility: hidden;
+  animation: screenEnter 0.22s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
 @keyframes screenExitBack {
@@ -2878,4 +2878,279 @@ html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in 
 /* Bottom-nav clearance: nav height + safe area, so the last card is never hidden underneath it */
 .qmp-shell.qmp-has-nav {
   padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FLOATING DOCK — glass pill navigation. Theme-aware (uses the active theme tokens).
+   Selected tab lifts into a gradient tile; a glow glides between tabs on a spring.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.qmp-dock {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  padding: 0 max(12px, env(safe-area-inset-left, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform;
+}
+.qmp-dock-hidden { transform: translateY(calc(100% + 16px)); }
+.qmp-dock-bar {
+  position: relative;
+  pointer-events: auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  align-items: stretch;
+  width: 100%;
+  max-width: 560px;
+  height: 68px;
+  padding: 0 6px;
+  border-radius: 34px;
+  background: hsl(var(--card) / 0.9);
+  border: 1px solid hsl(var(--foreground) / 0.1);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: 0 18px 44px -16px rgb(0 0 0 / 0.55), 0 1px 0 hsl(var(--foreground) / 0.08) inset;
+}
+.qmp-dock-glow {
+  position: absolute;
+  bottom: 4px;
+  left: calc(6px + (100% - 12px) / 5 * var(--dock-i, 0) + (100% - 12px) / 10);
+  width: 22px; height: 4px;
+  margin-left: -11px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+  box-shadow: 0 0 14px 2px hsl(var(--primary) / 0.55);
+  opacity: 0;
+  transition: left 0.55s cubic-bezier(0.34, 1.45, 0.64, 1), opacity 0.3s ease;
+  pointer-events: none;
+}
+.qmp-dock-glow.is-on { opacity: 1; }
+.qmp-dock-item {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px;
+  padding: 0 0 12px;
+  min-width: 0;
+  background: none; border: 0;
+  color: hsl(var(--foreground) / 0.5);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: color 0.25s ease;
+}
+.qmp-dock-item:focus-visible { outline: 2px solid hsl(var(--primary)); outline-offset: -4px; border-radius: 28px; }
+.qmp-dock-icon {
+  position: relative;
+  display: grid; place-items: center;
+  width: 40px; height: 30px;
+  border-radius: 15px;
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s ease, box-shadow 0.3s ease, color 0.25s ease;
+}
+.qmp-dock-svg { width: 20px; height: 20px; transition: transform 0.2s ease; }
+.qmp-dock-label { font-size: 10px; font-weight: 800; letter-spacing: 0.04em; line-height: 1; transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.25s ease, opacity 0.25s ease; }
+.qmp-dock-item:active .qmp-dock-svg { transform: scale(0.84); }
+
+.qmp-dock-item.is-active { color: hsl(var(--foreground)); }
+.qmp-dock-item.is-active .qmp-dock-icon {
+  width: 50px; height: 40px; border-radius: 20px;
+  transform: translateY(-7px);
+  color: hsl(var(--primary-foreground));
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  box-shadow: 0 10px 22px -8px hsl(var(--primary) / 0.75), 0 1px 0 rgb(255 255 255 / 0.25) inset;
+}
+.qmp-dock-item.is-active .qmp-dock-label { transform: translateY(-7px); }
+
+/* Create: always the hero of the dock, raised above the bar */
+.qmp-dock-item.is-create .qmp-dock-icon {
+  width: 54px; height: 54px; border-radius: 21px;
+  transform: translateY(-12px);
+  color: hsl(var(--primary-foreground));
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  box-shadow: 0 14px 26px -10px hsl(var(--primary) / 0.8), 0 1px 0 rgb(255 255 255 / 0.3) inset;
+}
+.qmp-dock-item.is-create .qmp-dock-svg { width: 24px; height: 24px; }
+.qmp-dock-item.is-create .qmp-dock-label { transform: translateY(-10px); color: hsl(var(--foreground) / 0.7); }
+.qmp-dock-item.is-create.is-active .qmp-dock-label { color: hsl(var(--foreground)); }
+.qmp-dock-item.is-create:active .qmp-dock-icon { transform: translateY(-10px) scale(0.93); }
+
+.qmp-dock-badge {
+  position: absolute; top: -5px; right: -4px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9px;
+  font-size: 9px; font-weight: 900; line-height: 1;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border: 2px solid hsl(var(--card));
+  box-sizing: content-box;
+}
+.qmp-dock-badge.is-accent { color: hsl(var(--accent-foreground)); background: hsl(var(--accent)); }
+@media (prefers-reduced-motion: reduce) {
+  .qmp-dock, .qmp-dock-glow, .qmp-dock-icon, .qmp-dock-label { transition: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CREATE QUIZ — hero, cards, two-column tablet layout, sticky action bar
+   ═══════════════════════════════════════════════════════════════════════════ */
+.cq-hero {
+  position: relative; overflow: hidden;
+  padding: 1.1rem 1.25rem 1rem;
+  border-radius: 28px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, hsl(var(--primary) / 0.2), transparent 55%),
+    radial-gradient(110% 130% at 100% 100%, hsl(var(--accent) / 0.18), transparent 55%),
+    hsl(var(--card) / 0.7);
+  border: 1px solid hsl(var(--foreground) / 0.09);
+  box-shadow: 0 14px 40px -22px rgb(0 0 0 / 0.55), 0 1px 0 hsl(var(--foreground) / 0.07) inset;
+}
+.cq-hero-top { display: flex; align-items: center; gap: 0.85rem; }
+@media (min-width: 768px) {
+  .cq-hero { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; padding: 0.85rem 1.25rem; }
+  .cq-hero .cq-chips { margin-top: 0; justify-content: flex-end; max-width: 46%; }
+}
+.cq-hero-icon {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 46px; height: 46px; border-radius: 16px;
+  color: hsl(var(--primary-foreground));
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+  box-shadow: 0 10px 22px -10px hsl(var(--primary) / 0.8);
+}
+.cq-hero-title { font-size: 1.35rem; line-height: 1.15; font-weight: 900; letter-spacing: -0.02em; color: hsl(var(--foreground)); }
+.cq-hero-sub { margin-top: 3px; font-size: 0.75rem; font-weight: 500; color: hsl(var(--foreground) / 0.55); }
+.cq-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.85rem; }
+.cq-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 11px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; text-transform: capitalize;
+  color: hsl(var(--foreground) / 0.8);
+  background: hsl(var(--foreground) / 0.06);
+  border: 1px solid hsl(var(--foreground) / 0.08);
+}
+
+.cq-rail > * { border-radius: 999px !important; }
+
+.cq-grid { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.cq-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; min-width: 0; }
+.cq-card, .cq-card-body { min-width: 0; max-width: 100%; }
+.cq-card-body > * { min-width: 0; }
+@media (min-width: 1024px) {
+  .cq-grid { grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr); }
+  .cq-card.cq-side {
+    position: sticky;
+    top: 5.5rem;
+    max-height: calc(var(--qmp-app-h) - 12rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+.cq-card {
+  position: relative;
+  border-radius: 28px;
+  background: hsl(var(--card) / 0.72);
+  border: 1px solid hsl(var(--foreground) / 0.08);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  box-shadow: 0 14px 40px -24px rgb(0 0 0 / 0.55), 0 1px 0 hsl(var(--foreground) / 0.06) inset;
+}
+.cq-card-head { display: flex; align-items: center; gap: 0.75rem; padding: 1.1rem 1.25rem 0; }
+.cq-card-icon {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 13px;
+  color: hsl(var(--primary));
+  background: hsl(var(--primary) / 0.13);
+  border: 1px solid hsl(var(--primary) / 0.22);
+}
+.cq-card-title { font-size: 0.95rem; font-weight: 900; line-height: 1.2; color: hsl(var(--foreground)); }
+.cq-card-sub { margin-top: 2px; font-size: 0.7rem; font-weight: 500; color: hsl(var(--foreground) / 0.5); }
+.cq-card-body { padding: 1rem 1.25rem 1.25rem; }
+@media (min-width: 768px) {
+  .cq-card-head { padding: 1.25rem 1.5rem 0; }
+  .cq-card-body { padding: 1.1rem 1.5rem 1.5rem; }
+}
+.cq-card input[type="text"], .cq-card textarea { border-radius: 18px; }
+
+/* Fixed action bar — sits just above the dock and glides down when the dock tucks away */
+.cq-cta-bar {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  z-index: 60;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 0 max(12px, env(safe-area-inset-left, 0px)) 0 max(12px, env(safe-area-inset-right, 0px));
+  pointer-events: none;
+  transition: bottom 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+/* Room under the last card so nothing hides behind the action bar */
+.cq-page { padding-bottom: 84px; animation: cq-fade 0.35s ease both; }
+@keyframes cq-fade { from { opacity: 0; } to { opacity: 1; } }
+.cq-cta-bar > * { pointer-events: auto; }
+
+.cq-cta {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 12px;
+  flex: 1 1 auto; max-width: 640px;
+  min-height: 64px;
+  padding: 8px 10px 8px 10px;
+  border-radius: 32px;
+  text-align: left;
+  color: hsl(var(--foreground) / 0.4);
+  background: hsl(var(--card) / 0.9);
+  border: 1px solid hsl(var(--foreground) / 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 14px 34px -18px rgb(0 0 0 / 0.6);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease, background 0.3s ease, color 0.3s ease;
+  cursor: not-allowed;
+}
+.cq-cta.is-ready, .cq-cta.is-loading {
+  cursor: pointer;
+  color: hsl(var(--primary-foreground));
+  background: linear-gradient(120deg, hsl(var(--primary)), hsl(var(--accent)));
+  border-color: rgb(255 255 255 / 0.18);
+  box-shadow: 0 18px 38px -14px hsl(var(--primary) / 0.7), 0 1px 0 rgb(255 255 255 / 0.3) inset;
+}
+.cq-cta.is-loading { cursor: progress; }
+.cq-cta.is-ready:hover { box-shadow: 0 22px 44px -14px hsl(var(--primary) / 0.8), 0 1px 0 rgb(255 255 255 / 0.3) inset; }
+.cq-cta.is-ready:active { transform: scale(0.965); }
+.cq-cta-icon, .cq-cta-go {
+  position: relative; z-index: 1; flex-shrink: 0;
+  display: grid; place-items: center;
+  width: 46px; height: 46px; border-radius: 50%;
+  background: hsl(var(--foreground) / 0.07);
+}
+.cq-cta.is-ready .cq-cta-icon, .cq-cta.is-loading .cq-cta-icon { background: rgb(255 255 255 / 0.22); }
+.cq-cta.is-ready .cq-cta-go, .cq-cta.is-loading .cq-cta-go { background: rgb(0 0 0 / 0.2); }
+.cq-cta.is-ready:hover .cq-cta-go { transform: translateX(2px); }
+.cq-cta-go { transition: transform 0.3s ease; }
+.cq-cta-text { position: relative; z-index: 1; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cq-cta-title { font-size: 1rem; font-weight: 900; line-height: 1.1; letter-spacing: -0.01em; }
+.cq-cta-sub { font-size: 0.7rem; font-weight: 600; line-height: 1.25; opacity: 0.8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cq-cta-sweep {
+  position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(100deg, transparent 20%, rgb(255 255 255 / 0.38) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: cq-sweep 1.4s ease-in-out infinite;
+}
+@keyframes cq-sweep { to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .cq-cta-sweep { animation: none; transform: none; opacity: 0.3; } }
+
+.cq-cta-secondary {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  min-height: 64px; padding: 0 20px; border-radius: 32px;
+  font-size: 0.8rem; font-weight: 900; color: #fff;
+  background: linear-gradient(120deg, #f59e0b, #ea580c);
+  box-shadow: 0 16px 32px -14px rgb(245 158 11 / 0.7);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.cq-cta-secondary:active { transform: scale(0.96); }
+
+/* Legacy full-width inner padding rule must not squeeze the new cards on phones */
+@media (max-width: 430px) {
+  .cq-card, .cq-hero { padding-left: 0; padding-right: 0; }
+  .cq-hero { padding-left: 1rem; padding-right: 1rem; }
+  .cq-cta-secondary span { display: none; }
+  .cq-cta-secondary { padding: 0 18px; }
 }

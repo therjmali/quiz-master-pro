@@ -399,10 +399,12 @@ export default function SettingsPanel({ settings, onChange, collapsible = false 
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <Zap className="w-3.5 h-3.5 text-primary" />
-        <span className="text-[10px] font-black text-foreground/35 uppercase tracking-[0.12em]">Settings &amp; Rules</span>
-      </div>
+      {!collapsible && (
+        <div className="flex items-center gap-2">
+          <Zap className="w-3.5 h-3.5 text-primary" />
+          <span className="text-[10px] font-black text-foreground/35 uppercase tracking-[0.12em]">Settings &amp; Rules</span>
+        </div>
+      )}
 
       {/* ── Live Mode Active Banner ── */}
       {settings.mode === 'live' && (
@@ -607,7 +609,8 @@ export default function SettingsPanel({ settings, onChange, collapsible = false 
           {/* Scoring Accordion */}
           <CollapsibleSection title="Scoring & Marks" icon={<Target className="w-3.5 h-3.5 text-primary" />} badge={`${settings.marksPerQuestion}/Q${settings.negativeMarking ? ` · -${settings.negativeMarks}` : ''}`} collapsible={collapsible}>
           <div className={collapsible ? '' : 'bg-foreground/[0.03] rounded-xl border border-foreground/[0.07] overflow-hidden'}>
-            <button onClick={() => setScoringOpen(o => !o)}
+            {/* In accordion mode the outer section already is the header — no second one. */}
+            {!collapsible && <button onClick={() => setScoringOpen(o => !o)}
               className="w-full flex items-center justify-between p-4 text-sm text-foreground/80 font-black focus:outline-none hover:bg-foreground/[0.04] transition-colors">
               <span className="flex items-center gap-2">
                 <Target className="w-3.5 h-3.5 text-primary" /> Scoring &amp; Marks
@@ -618,10 +621,10 @@ export default function SettingsPanel({ settings, onChange, collapsible = false 
                 </span>
                 {scoringOpen ? <ChevronUp className="w-4 h-4 text-foreground/40" /> : <ChevronDown className="w-4 h-4 text-foreground/40" />}
               </div>
-            </button>
+            </button>}
 
-            {scoringOpen && (
-              <div className="px-4 pb-5 pt-4 border-t border-foreground/[0.05] space-y-5">
+            {(scoringOpen || collapsible) && (
+              <div className={`px-4 pb-5 pt-4 space-y-5 ${collapsible ? '' : 'border-t border-foreground/[0.05]'}`}>
                 {/* Marks per question */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
