@@ -27,6 +27,13 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
     return () => vv.removeEventListener('resize', onResize);
   }, []);
 
+  // Escape closes the editor (keyboard / hardware-keyboard tablets)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   // Prevent body scroll when modal is open
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -243,7 +250,7 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
         {/* ── Footer ── */}
         <div
           className="flex-shrink-0 border-t border-border/40 px-5 py-3.5 flex items-center gap-2.5"
-          style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom, 0.875rem))' }}
+          style={{ paddingBottom: 'max(0.875rem, var(--qmp-inset-bottom))' }}
         >
           <button
             onClick={onClose}

@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "2.5.0",
+  "version": "2.6.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,7 +17,8 @@
     "test:unit": "node --import tsx --test tests/*.test.ts",
     "test:sql": "bash scripts/test-sql.sh",
     "test": "npm run test:unit && npm run test:sql",
-    "check:cloud": "node scripts/check-cloud.mjs"
+    "check:cloud": "node scripts/check-cloud.mjs",
+    "test:ui": "node scripts/ui-qa.mjs"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.45.6",

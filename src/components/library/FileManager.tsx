@@ -123,7 +123,7 @@ function CtxMenu({ x, y, items, title, onClose }: {
     <div className="fixed inset-0 z-[1300] flex flex-col justify-end bg-black/45 animate-fade-in">
       <div ref={ref}
         className="bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-y-auto overscroll-contain"
-        style={{ maxHeight: '78dvh', paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}>
+        style={{ maxHeight: '78dvh', paddingBottom: 'max(var(--qmp-inset-bottom), 12px)' }}>
         <div className="sticky top-0 bg-card z-10 pt-2.5 pb-1">
           <div className="w-10 h-1 rounded-full bg-foreground/15 mx-auto mb-2" />
           {title && <p className="px-4 pb-1.5 text-[11px] font-black text-foreground/40 uppercase tracking-widest truncate">{title}</p>}

@@ -38,7 +38,7 @@ export default function GestureShortcutsPanel() {
 
       {/* Panel overlay */}
       {open && (
-        <div className="fixed inset-0 z-[200] flex items-end justify-center p-4 pb-[calc(80px+env(safe-area-inset-bottom,0px))] md:items-center md:pb-4">
+        <div className="fixed inset-0 z-[200] flex items-end justify-center p-4 pb-[calc(80px+var(--qmp-inset-bottom))] md:items-center md:pb-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="relative w-full max-w-sm bg-card/95 backdrop-blur-xl border border-border rounded-3xl shadow-2xl overflow-hidden animate-fade-in">
             {/* Header */}

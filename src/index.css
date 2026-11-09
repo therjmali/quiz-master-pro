@@ -93,10 +93,10 @@
     --shadow-xl: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread) rgb(var(--shadow-rgb) / var(--shadow-opacity)), var(--shadow-x) calc(var(--shadow-y) * 2) calc(var(--shadow-blur) * 5) calc(var(--shadow-spread) - 1px) rgb(var(--shadow-rgb) / var(--shadow-opacity));
     --shadow-2xl: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread) rgb(var(--shadow-rgb) / calc(var(--shadow-opacity) * 2.5));
 
-    --safe-top:    env(safe-area-inset-top,    0px);
-    --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --safe-left:   env(safe-area-inset-left,   0px);
-    --safe-right:  env(safe-area-inset-right,  0px);
+    --safe-top:    var(--qmp-inset-top);
+    --safe-bottom: var(--qmp-inset-bottom);
+    --safe-left:   var(--qmp-inset-left);
+    --safe-right:  var(--qmp-inset-right);
     --bottom-nav-h: 72px;
 
     --glass-blur: 40px;
@@ -433,7 +433,7 @@
   backdrop-filter: blur(48px) saturate(200%);
   -webkit-backdrop-filter: blur(48px) saturate(200%);
   border-top: 1px solid rgba(255,255,255,0.05);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--qmp-inset-bottom);
   box-shadow: 0 -4px 24px rgba(0,0,0,0.25);
   will-change: transform;
 }
@@ -673,8 +673,8 @@
   min-height: 0;
   max-height: none;
   margin: 0;
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
+  padding-left: var(--qmp-inset-left);
+  padding-right: var(--qmp-inset-right);
   --qmp-quiz-gutter: max(0.75rem, calc((100% - 1180px) / 2));
 }
 @supports (height: 100dvh) {
@@ -723,7 +723,7 @@
 
 .quiz-footer {
   flex-shrink: 0;
-  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0.5rem));
+  padding-bottom: max(0.5rem, var(--qmp-inset-bottom));
   z-index: 60;
 }
 
@@ -734,8 +734,8 @@
 .zoom-control-group {
   position: fixed;
   /* Sits in the top-right corner under the header, never over the answer options. */
-  top: calc(5rem + var(--qmp-safe-top));
-  right: max(0.75rem, env(safe-area-inset-right, 0px));
+  top: calc(5rem + var(--qmp-inset-top));
+  right: max(0.75rem, var(--qmp-inset-right));
   left: auto;
   bottom: auto;
   z-index: 200;
@@ -889,7 +889,7 @@
   .zoom-label { display: none; }
   .zoom-btn { width: 34px; height: 34px; }
   .zoom-control-group {
-    top: calc(4.75rem + var(--qmp-safe-top));
+    top: calc(4.75rem + var(--qmp-inset-top));
     bottom: auto;
     padding: 2px;
     border-radius: 12px;
@@ -1173,7 +1173,7 @@
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid rgba(255,255,255,0.06);
   box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+  padding-bottom: max(0.75rem, var(--qmp-inset-bottom));
 }
 .app-light .premium-quiz-footer {
   background: rgba(255,255,255,0.8);
@@ -2381,11 +2381,11 @@ button, .q-ball, .option-btn, .prem-option-btn, .pqn-btn { -webkit-user-select: 
 }
 .fab-ring-pulse { animation: fabRingPulse 2s ease-in-out infinite; }
 
-.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
-.pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+.pb-safe { padding-bottom: var(--qmp-inset-bottom); }
+.pt-safe { padding-top: var(--qmp-inset-top); }
 
 @supports (padding: max(0px)) {
-  .navbar-safe { padding-top: max(0.75rem, env(safe-area-inset-top)); }
+  .navbar-safe { padding-top: max(0.75rem, var(--qmp-inset-top)); }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2686,7 +2686,7 @@ button, .q-ball, .option-btn, .prem-option-btn, .pqn-btn { -webkit-user-select: 
 
   /* Bottom nav safe area */
   .bottom-nav {
-    padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(8px, var(--qmp-inset-bottom));
   }
 
   /* Ensure adequate spacing between interactive rows */
@@ -2697,9 +2697,9 @@ button, .q-ball, .option-btn, .prem-option-btn, .pqn-btn { -webkit-user-select: 
 
   /* Safe area insets for full viewport apps */
   .min-h-screen {
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
+    padding-top: var(--qmp-inset-top);
+    padding-left: var(--qmp-inset-left);
+    padding-right: var(--qmp-inset-right);
   }
 }
 
@@ -2861,14 +2861,14 @@ html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in 
   width: 100%;
   max-width: 1440px;
   margin-inline: auto;
-  padding-left: max(0.75rem, env(safe-area-inset-left, 0px));
-  padding-right: max(0.75rem, env(safe-area-inset-right, 0px));
-  padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
+  padding-left: max(0.75rem, var(--qmp-inset-left));
+  padding-right: max(0.75rem, var(--qmp-inset-right));
+  padding-top: max(0.5rem, var(--qmp-inset-top));
 }
 @media (min-width: 768px) {
   .qmp-shell {
-    padding-left: max(1rem, env(safe-area-inset-left, 0px));
-    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+    padding-left: max(1rem, var(--qmp-inset-left));
+    padding-right: max(1rem, var(--qmp-inset-right));
   }
 }
 .qmp-shell.qmp-shell-quiz {
@@ -2877,7 +2877,7 @@ html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in 
 }
 /* Bottom-nav clearance: nav height + safe area, so the last card is never hidden underneath it */
 .qmp-shell.qmp-has-nav {
-  padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(88px + var(--qmp-inset-bottom));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2890,7 +2890,7 @@ html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in 
   z-index: 100;
   display: flex;
   justify-content: center;
-  padding: 0 max(12px, env(safe-area-inset-left, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right, 0px));
+  padding: 0 max(12px, var(--qmp-inset-left)) calc(10px + var(--qmp-inset-bottom)) max(12px, var(--qmp-inset-right));
   pointer-events: none;
   transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
@@ -3075,14 +3075,14 @@ html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in 
 .cq-cta-bar {
   position: fixed;
   left: 0; right: 0;
-  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(92px + var(--qmp-inset-bottom));
   z-index: 60;
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  padding: 0 max(12px, env(safe-area-inset-left, 0px)) 0 max(12px, env(safe-area-inset-right, 0px));
+  padding: 0 max(12px, var(--qmp-inset-left)) 0 max(12px, var(--qmp-inset-right));
   pointer-events: none;
   transition: bottom 0.5s cubic-bezier(0.32, 0.72, 0, 1);
 }
-html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + var(--qmp-inset-bottom)); }
 /* Room under the last card so nothing hides behind the action bar */
 .cq-page { padding-bottom: 84px; animation: cq-fade 0.35s ease both; }
 @keyframes cq-fade { from { opacity: 0; } to { opacity: 1; } }
@@ -3168,12 +3168,11 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + env(safe-area-in
 }
 
 /* Status-bar aware: CSS zoom scales env() too, so take the larger of the compensated and raw inset. */
-:root { --qmp-safe-top: calc(env(safe-area-inset-top, 0px) / var(--qmp-zoom, 1)); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    QUIZ HEADER — one merged bar: ring · question + stats · timer · actions · progress track
    ═══════════════════════════════════════════════════════════════════════════ */
-.qh { padding-top: max(var(--qmp-safe-top), env(safe-area-inset-top, 0px)); }
+.qh { padding-top: var(--qmp-inset-top); }
 .qh-row { display: flex; align-items: center; gap: 6px; padding: 8px 10px; }
 .qh-lead {
   flex: 1 1 auto; min-width: 0;
@@ -3257,8 +3256,8 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + env(safe-area-in
 /* Quiz card is full-bleed on every phone: neutralise the generic .glass-card inner padding, border and shadow */
 .quiz-screen-card.quiz-screen-card.glass-card {
   padding: 0 !important;
-  padding-left: env(safe-area-inset-left, 0px) !important;
-  padding-right: env(safe-area-inset-right, 0px) !important;
+  padding-left: var(--qmp-inset-left) !important;
+  padding-right: var(--qmp-inset-right) !important;
   border: 0;
   box-shadow: none;
 }
@@ -3274,3 +3273,51 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + env(safe-area-in
   .qh-btn { width: 32px; height: 32px; border-radius: 10px; }
   .qh-menu { min-width: 210px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SYSTEM-BAR INSETS — one token per edge, used everywhere instead of raw env().
+   The WebView often reports env(safe-area-inset-*) as 0 on Android (status bar drawn over the app), so take
+   the largest of: the browser value, Capacitor's injected --safe-area-inset-*, and the overlap measured
+   natively by MainActivity (--qmp-native-inset-*). CSS `zoom` scales lengths, so divide it back out to keep
+   the inset equal to the real bar height at every zoom level.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --qmp-inset-top:    calc(max(env(safe-area-inset-top, 0px),    var(--safe-area-inset-top, 0px),    var(--qmp-native-inset-top, 0px))    / var(--qmp-zoom, 1));
+  --qmp-inset-right:  calc(max(env(safe-area-inset-right, 0px),  var(--safe-area-inset-right, 0px),  var(--qmp-native-inset-right, 0px))  / var(--qmp-zoom, 1));
+  --qmp-inset-bottom: calc(max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px), var(--qmp-native-inset-bottom, 0px)) / var(--qmp-zoom, 1));
+  --qmp-inset-left:   calc(max(env(safe-area-inset-left, 0px),   var(--safe-area-inset-left, 0px),   var(--qmp-native-inset-left, 0px))   / var(--qmp-zoom, 1));
+}
+
+/* Header actions: same compact set in portrait and landscape (flag, edit, settings, zoom live in ⋯) */
+.qh-btn { position: relative; }
+.qh-btn.is-exit { background: rgb(239 68 68 / 0.1); border-color: rgb(239 68 68 / 0.3); color: #ef4444; }
+.qh-flagdot { position: absolute; top: 5px; right: 5px; width: 8px; height: 8px; border-radius: 50%; background: #f59e0b; box-shadow: 0 0 0 2px hsl(var(--card)); }
+.qh-menu-item.is-on { color: #f59e0b; }
+@media (min-width: 640px) { .qh-btn { width: 40px; height: 40px; border-radius: 12px; } .qh-actions { gap: 6px; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESULTS — fills the screen: two columns in landscape, compact action tiles
+   ═══════════════════════════════════════════════════════════════════════════ */
+.rh-grid { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 0.25rem; }
+.rh-left, .rh-right { display: flex; flex-direction: column; align-items: center; width: 100%; min-width: 0; }
+@media (min-width: 900px) {
+  .rh-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); align-items: center; column-gap: 2rem; }
+}
+/* Action tiles: portrait = grid of 4 per row (7 tiles → 2 rows); landscape = every tile on ONE row */
+.res-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; margin-top: 0.75rem; }
+@media (orientation: landscape) and (min-width: 700px) {
+  .res-actions { grid-template-columns: repeat(var(--n, 6), minmax(0, 1fr)); }
+}
+.res-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-height: 62px; padding: 8px 4px; border-radius: 16px; text-align: center;
+}
+.res-btn-icon { display: grid; place-items: center; height: 22px; font-size: 18px; line-height: 1; }
+.res-btn-label { font-size: 11px; font-weight: 800; line-height: 1.15; letter-spacing: 0.01em; }
+@media (min-width: 640px) { .res-btn { min-height: 70px; } .res-btn-label { font-size: 12px; } }
+
+.res-actions { align-items: stretch; grid-auto-rows: minmax(62px, auto); }
+.res-btn { height: 100%; align-self: stretch; margin: 0; transform: none; }
+.res-btn:active { transform: scale(0.96); }
+/* A generic phone rule adds margin-top to sibling buttons; tiles in a grid must stay aligned */
+.res-actions > .res-btn { margin: 0 !important; }

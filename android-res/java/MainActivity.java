@@ -7,13 +7,65 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.webkit.JavascriptInterface;
+import android.webkit.WebView;
+
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import java.util.Arrays;
 
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
 
+    /** Overlap of the system bars with the WebView, in dp: {top, right, bottom, left}. */
+    private volatile int[] insetsDp = new int[] {0, 0, 0, 0};
+
+    /**
+     * Measures how much of the WebView is covered by the status / navigation bars (edge-to-edge) and
+     * hands it to the web layer. Android WebViews frequently report env(safe-area-inset-*) as 0, which
+     * drew the status bar over the app header. Measuring the real overlap works on every WebView
+     * version and is 0 automatically when the content already sits below the bars.
+     */
+    private void measureInsets() {
+        try {
+            if (getBridge() == null) return;
+            final WebView wv = getBridge().getWebView();
+            final View decor = getWindow().getDecorView();
+            if (wv == null || decor.getWidth() == 0 || decor.getHeight() == 0) return;
+            WindowInsetsCompat root = ViewCompat.getRootWindowInsets(decor);
+            if (root == null) return;
+            Insets bars = root.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+            int[] loc = new int[2];
+            wv.getLocationInWindow(loc);
+            int top = Math.max(0, bars.top - loc[1]);
+            int left = Math.max(0, bars.left - loc[0]);
+            int right = Math.max(0, bars.right - (decor.getWidth() - (loc[0] + wv.getWidth())));
+            int bottom = Math.max(0, bars.bottom - (decor.getHeight() - (loc[1] + wv.getHeight())));
+            float d = getResources().getDisplayMetrics().density;
+            int[] next = new int[] {Math.round(top / d), Math.round(right / d), Math.round(bottom / d), Math.round(left / d)};
+            if (Arrays.equals(next, insetsDp)) return;
+            insetsDp = next;
+            final String js = "try{var s=document.documentElement.style;"
+                + "s.setProperty('--qmp-native-inset-top','" + next[0] + "px');"
+                + "s.setProperty('--qmp-native-inset-right','" + next[1] + "px');"
+                + "s.setProperty('--qmp-native-inset-bottom','" + next[2] + "px');"
+                + "s.setProperty('--qmp-native-inset-left','" + next[3] + "px');}catch(e){}";
+            wv.post(new Runnable() { @Override public void run() { wv.evaluateJavascript(js, null); } });
+        } catch (Throwable ignored) {}
+    }
+
     public class NativeBridge {
+        /** JSON {top,right,bottom,left} in dp - read by the web layer after every (re)load. */
+        @JavascriptInterface
+        public String getInsets() {
+            int[] i = insetsDp;
+            return "{\"top\":" + i[0] + ",\"right\":" + i[1] + ",\"bottom\":" + i[2] + ",\"left\":" + i[3] + "}";
+        }
+
         @JavascriptInterface
         public void updateWidgetData(String json) {
             try {
@@ -71,6 +123,16 @@ public class MainActivity extends BridgeActivity {
             getBridge().getWebView().addJavascriptInterface(bridge, "RJNative");
             getBridge().getWebView().addJavascriptInterface(bridge, "QmNative");
         }
+
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+            @Override public void onGlobalLayout() { measureInsets(); }
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        measureInsets();
     }
 
     @Override

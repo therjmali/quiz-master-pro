@@ -136,39 +136,38 @@ export default function PremiumHeader({
           </div>
         )}
 
-        {/* ── Actions ── */}
+        {/* ── Actions: bookmark · pause · exit stay outside; everything else lives in the ⋯ menu (same in every orientation) ── */}
         <div className="qh-actions">
-          <button onClick={onToggleFlag} aria-label={isFlagged ? 'Unflag' : 'Flag for review'} aria-pressed={isFlagged}
-            className={`qh-btn ${isFlagged ? 'is-flag' : ''}`}><Flag className="w-4 h-4" /></button>
           <button onClick={onToggleBookmark} aria-label={isBookmarked ? 'Remove Bookmark' : 'Bookmark'} aria-pressed={isBookmarked}
             className={`qh-btn ${isBookmarked ? 'is-mark' : ''}`}><Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} /></button>
-          {onEditQuestion && (
-            <button onClick={onEditQuestion} aria-label="Edit question" className="qh-btn qh-wide"><Pencil className="w-4 h-4" /></button>
-          )}
-          {onEditSettings && (
-            <button onClick={() => { onPause(); onEditSettings(); }} aria-label="Edit quiz settings" className="qh-btn qh-wide"><Settings2 className="w-4 h-4" /></button>
-          )}
           <button onClick={onTogglePause} aria-label={isPaused ? 'Resume quiz' : 'Pause quiz'} aria-pressed={isPaused}
             className={`qh-btn ${isPaused ? 'is-resume' : 'is-pause'}`}>{isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button>
 
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(o => !o)} aria-label="More options" aria-haspopup="menu" aria-expanded={menuOpen}
-              className={`qh-btn ${menuOpen ? 'is-open' : ''}`}><MoreHorizontal className="w-4 h-4" /></button>
+              className={`qh-btn ${menuOpen ? 'is-open' : ''} ${isFlagged && !menuOpen ? 'has-flag' : ''}`}>
+              <MoreHorizontal className="w-4 h-4" />
+              {isFlagged && <span className="qh-flagdot" aria-hidden="true" />}
+            </button>
             {menuOpen && (
               <div role="menu" className="qh-menu">
+                <button role="menuitem" className={`qh-menu-item ${isFlagged ? 'is-on' : ''}`} onClick={closeAnd(onToggleFlag)}>
+                  <Flag className="w-4 h-4" fill={isFlagged ? 'currentColor' : 'none'} />{isFlagged ? 'Remove flag' : 'Flag for review'}
+                </button>
                 {onEditQuestion && (
-                  <button role="menuitem" className="qh-menu-item qh-narrow" onClick={closeAnd(onEditQuestion)}><Pencil className="w-4 h-4" />Edit question</button>
+                  <button role="menuitem" className="qh-menu-item" onClick={closeAnd(onEditQuestion)}><Pencil className="w-4 h-4" />Edit question</button>
                 )}
                 {onEditSettings && (
-                  <button role="menuitem" className="qh-menu-item qh-narrow" onClick={closeAnd(() => { onPause(); onEditSettings(); })}><Settings2 className="w-4 h-4" />Quiz settings</button>
+                  <button role="menuitem" className="qh-menu-item" onClick={closeAnd(() => { onPause(); onEditSettings(); })}><Settings2 className="w-4 h-4" />Quiz settings</button>
                 )}
                 <button role="menuitem" className="qh-menu-item" onClick={closeAnd(() => window.dispatchEvent(new Event('qmp:zoom-panel')))}>
                   <ZoomIn className="w-4 h-4" />Interface zoom <span className={`ml-auto text-xs font-black ${isDefault ? 'text-foreground/40' : 'text-amber-500'}`}>{zoom}%</span>
                 </button>
-                <button role="menuitem" className="qh-menu-item is-danger" onClick={closeAnd(() => { onPause(); onExit(); })}><LogOut className="w-4 h-4" />Exit quiz</button>
               </div>
             )}
           </div>
+
+          <button onClick={() => { onPause(); onExit(); }} aria-label="Exit quiz" className="qh-btn is-exit"><LogOut className="w-4 h-4" /></button>
         </div>
       </div>
 

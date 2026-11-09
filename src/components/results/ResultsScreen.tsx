@@ -56,6 +56,8 @@ interface Props {
   onNavigateResult?: (direction: 'prev' | 'next') => void;
 }
 
+let revisionApiMissing = false;
+
 export default function ResultsScreen({
   result: rawResult, settings, rationaleCache, history,
   rationalePrefs, onRationalePrefsChange, reportHelper, onReportHelperChange,
@@ -122,8 +124,11 @@ export default function ResultsScreen({
   }, [onNavigateResult, historyIndex, historyTotal]);
 
   // ── Pre-generate revision sheet in background ──
+  // Only when online, and never again after the server said the endpoint does not exist (static/offline builds
+  // have no backend) — that used to fire a failing request on every results screen.
   useEffect(() => {
     let cancelled = false;
+    if (revisionApiMissing || (typeof navigator !== 'undefined' && navigator.onLine === false)) return;
     (async () => {
       const cached = await getRevisionCache(result.timestamp);
       if (cached || cancelled) return;
@@ -144,7 +149,9 @@ export default function ResultsScreen({
           quizTitle: result.quizTitle,
         });
         if (!cancelled) await setRevisionCache(result.timestamp, data.revisionSheet);
-      } catch { /* silent background fail */ }
+      } catch (e) {
+        if (/404|not found|failed to fetch|network/i.test(String((e as Error)?.message || e))) revisionApiMissing = true;
+      }
     })();
     return () => { cancelled = true; };
   }, [result.timestamp]); // eslint-disable-line
@@ -350,7 +357,7 @@ export default function ResultsScreen({
   // ── Loading skeleton ──
   if (phase === 'loading') {
     return (
-      <div className="max-w-4xl mx-auto pb-12 flex flex-col items-center gap-6 pt-8">
+      <div className="w-full pb-12 flex flex-col items-center gap-6 pt-8">
         <div className="glass-card w-full p-8 flex flex-col items-center gap-6">
           {/* Emoji placeholder */}
           <div className="w-16 h-16 rounded-full bg-foreground/5 shimmer" />
@@ -377,7 +384,7 @@ export default function ResultsScreen({
   return (
     <div
       ref={swipeContainerRef}
-      className="max-w-4xl mx-auto pb-12 animate-fade-in"
+      className="w-full pb-12 animate-fade-in"
       onTouchStart={onNavigateResult ? handleResultSwipeStart : undefined}
       onTouchEnd={onNavigateResult ? handleResultSwipeEnd : undefined}
     >

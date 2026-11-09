@@ -44,6 +44,8 @@ interface Props {
   onPrev: () => void;
   onJump: (idx: number) => void;
   onFinish: () => void;
+  /** Submit straight from the "Submit All Answers?" dialog (no second confirmation page). */
+  onSubmitNow?: () => void;
   onTimeExpired: (idx: number) => void;
   /** Called ~1 s after a question expires: move on (or finish) without any tap. */
   onAdvanceAfterExpiry?: (idx: number) => void;
@@ -206,7 +208,7 @@ export default function QuizScreen({
   timeLeftPerQ, totalTimeLeft, forcedNext, settings,
   rationaleCache = {}, getAiRationale,
   onAnswer, onNext, onPrev, onJump,
-  onFinish, onTimeExpired, onAdvanceAfterExpiry, onToggleFlag, onExitQuiz, onSettingsChange, onEditSettings,
+  onFinish, onSubmitNow, onTimeExpired, onAdvanceAfterExpiry, onToggleFlag, onExitQuiz, onSettingsChange, onEditSettings,
   onEditQuestion,
   isPaused: externalPaused, onPauseChange,
   saveSignal,
@@ -469,7 +471,7 @@ export default function QuizScreen({
   return (
     <>
       {/* Exit Dialog */}
-      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+      <AlertDialog open={showExitDialog} onOpenChange={(open) => { setShowExitDialog(open); if (!open) doResume(); }}>
         <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold text-lg">Exit without saving?</AlertDialogTitle>
@@ -500,7 +502,7 @@ export default function QuizScreen({
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel className="bg-muted border-border text-foreground hover:bg-muted/80 w-full sm:w-auto">Go Back</AlertDialogCancel>
-            <AlertDialogAction onClick={onFinish} className="bg-primary hover:brightness-110 text-primary-foreground border-none w-full sm:w-auto font-black">Submit Quiz</AlertDialogAction>
+            <AlertDialogAction onClick={onSubmitNow ?? onFinish} className="bg-primary hover:brightness-110 text-primary-foreground border-none w-full sm:w-auto font-black">Submit Quiz</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

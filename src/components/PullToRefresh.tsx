@@ -96,7 +96,7 @@ export default function PullToRefresh({ onRefresh, children, enabled = true }: P
       <div
         ref={overlayRef}
         aria-hidden
-        className="fixed left-1/2 top-[env(safe-area-inset-top,0px)] z-50 pointer-events-none flex flex-col items-center gap-1 rounded-full bg-card/90 backdrop-blur px-3 py-1.5 shadow-md border border-border will-change-transform"
+        className="fixed left-1/2 top-[var(--qmp-inset-top)] z-50 pointer-events-none flex flex-col items-center gap-1 rounded-full bg-card/90 backdrop-blur px-3 py-1.5 shadow-md border border-border will-change-transform"
         style={{ opacity: 0, transform: 'translate3d(-50%, -40px, 0)' }}
       >
         <div ref={spinnerRef} className="flex items-center justify-center">
@@ -108,7 +108,7 @@ export default function PullToRefresh({ onRefresh, children, enabled = true }: P
       {refreshing && (
         <div
           role="status"
-          className="fixed left-1/2 -translate-x-1/2 top-[calc(env(safe-area-inset-top,0px)+12px)] z-50 pointer-events-none flex items-center gap-2 rounded-full bg-card/90 backdrop-blur px-3 py-1.5 shadow-md border border-border text-primary"
+          className="fixed left-1/2 -translate-x-1/2 top-[calc(var(--qmp-inset-top)+12px)] z-50 pointer-events-none flex items-center gap-2 rounded-full bg-card/90 backdrop-blur px-3 py-1.5 shadow-md border border-border text-primary"
         >
           <Loader2 className="w-4 h-4 animate-spin" />
           <span className="text-[10px] font-bold text-foreground/60">Refreshing…</span>

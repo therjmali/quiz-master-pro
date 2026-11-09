@@ -101,7 +101,7 @@ export default function ScoreHero({
   ];
 
   return (
-    <div className="glass-card p-6 md:p-10 mb-6 flex flex-col items-center relative overflow-hidden animate-fade-in">
+    <div className="glass-card rh-card p-4 md:p-6 mb-4 flex flex-col items-center relative overflow-hidden animate-fade-in">
       <Confetti show={showConfetti} />
 
       {/* Perfect score banner */}
@@ -111,6 +111,8 @@ export default function ScoreHero({
         </div>
       )}
 
+      <div className="rh-grid">
+      <div className="rh-left">
       {/* Quiz title & subject */}
       {(result.quizTitle || result.subject) && (
         <div className="relative z-10 flex flex-wrap items-center justify-center gap-2 mb-3">
@@ -181,7 +183,7 @@ export default function ScoreHero({
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <Calculator className="w-3.5 h-3.5" />
-                    <span className="hidden xs:inline">➖🎯</span>
+                    <span>➖🎯</span>
                   </span>
                 )}
               </button>
@@ -191,8 +193,10 @@ export default function ScoreHero({
         <PremiumSpeedometer percentage={percentage} precisePct={precisePercentage} netScore={netScore} maxScore={maxScore} startAnimation={startAnimation} showDecimal={showDecimalPct} />
       </div>
 
+      </div>
+      <div className="rh-right">
       {/* Score formula */}
-      <div className="speedo-formula flex flex-wrap items-center justify-center gap-4 text-xs font-mono px-6 py-4 rounded-2xl border mb-6 max-w-sm w-full">
+      <div className="speedo-formula flex flex-wrap items-center justify-center gap-4 text-xs font-mono px-4 py-3 rounded-2xl border mb-4 max-w-md w-full">
         <div className="flex flex-col items-center">
           <span className="speedo-stat-green font-black text-lg">{gain}</span>
           <span className="speedo-formula-label text-[9px] uppercase tracking-widest mt-0.5">Gain</span>
@@ -222,7 +226,7 @@ export default function ScoreHero({
       </div>
 
       {/* Question Breakdown */}
-      <div className="relative z-10 w-full max-w-sm space-y-3 mb-6">
+      <div className="relative z-10 w-full max-w-md space-y-3 mb-4">
         <QuestionBreakdownStrip
           totalQ={totalQuestions}
           correct={correct}
@@ -233,7 +237,7 @@ export default function ScoreHero({
 
       {/* Stat cards */}
       <div className="text-[10px] text-foreground/30 font-bold tracking-widest uppercase mb-2 self-start ml-1">👆 Tap card to filter review</div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-2xl mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full mb-2">
         {stats.map(({ label, value, color, filter, hoverBg, activeRing, subtitle }) => {
           const isActive = filter && activeFilter === filter;
           return (
@@ -250,29 +254,25 @@ export default function ScoreHero({
         })}
       </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-col xs:flex-row justify-center flex-wrap gap-2.5 w-full max-w-2xl">
-        <ActionBtn onClick={onHome} cls="speedo-btn-default">🏠 Home</ActionBtn>
-        <ActionBtn onClick={() => setShowShare(true)} cls="speedo-btn-subtle"><Share2 className="w-4 h-4" /> Share</ActionBtn>
-        <ActionBtn onClick={onRetry} cls="speedo-btn-purple">🔄 Retry</ActionBtn>
+      </div>
+      </div>
+
+      {/* Action buttons — compact tiles: one row in landscape, a 2-row grid in portrait */}
+      <div className="res-actions" style={{ ['--n' as string]: 4 + (wrong + skipped > 0 ? 1 : 0) + (wrong > 0 ? 1 : 0) + (onMoreLikeThis ? 1 : 0) }}>
+        <ActionBtn onClick={onHome} cls="speedo-btn-default" icon={<span aria-hidden="true">🏠</span>} label="Home" />
+        <ActionBtn onClick={() => setShowShare(true)} cls="speedo-btn-subtle" icon={<Share2 className="w-[18px] h-[18px]" />} label="Share" />
+        <ActionBtn onClick={onRetry} cls="speedo-btn-purple" icon={<span aria-hidden="true">🔄</span>} label="Retry" />
         {(wrong > 0 || skipped > 0) && (
-          <ActionBtn onClick={onRetryAll} cls="speedo-btn-amber">🔁 Retry ({wrong + skipped})</ActionBtn>
+          <ActionBtn onClick={onRetryAll} cls="speedo-btn-amber" icon={<span aria-hidden="true">🔁</span>} label={`Retry (${wrong + skipped})`} />
         )}
         {wrong > 0 && (
-          <ActionBtn onClick={onPracticeMistakes} cls="speedo-btn-red">🎯 Practice</ActionBtn>
+          <ActionBtn onClick={onPracticeMistakes} cls="speedo-btn-red" icon={<span aria-hidden="true">🎯</span>} label="Practice" />
         )}
-        <ActionBtn onClick={onNewQuiz} cls="speedo-btn-blue">➕ New Quiz</ActionBtn>
+        <ActionBtn onClick={onNewQuiz} cls="speedo-btn-blue" icon={<span aria-hidden="true">➕</span>} label="New Quiz" />
         {onMoreLikeThis && (
-          <button
-            onClick={onMoreLikeThis}
-            disabled={moreLikeThisLoading}
-            className="speedo-btn-gradient flex-1 xs:flex-none flex items-center justify-center gap-2 font-bold text-sm py-3.5 px-5 rounded-2xl transition-all active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed backdrop-blur-sm"
-          >
-            {moreLikeThisLoading
-              ? <><span className="qmp-spinner" style={{ width: 14, height: 14 }} /> Generating…</>
-              : <><Sparkles className="w-4 h-4" /> More Like This</>
-            }
-          </button>
+          <ActionBtn onClick={onMoreLikeThis} disabled={moreLikeThisLoading} cls="speedo-btn-gradient"
+            icon={moreLikeThisLoading ? <span className="qmp-spinner" style={{ width: 16, height: 16 }} /> : <Sparkles className="w-[18px] h-[18px]" />}
+            label={moreLikeThisLoading ? 'Generating…' : 'More Like This'} />
         )}
       </div>
 
@@ -297,11 +297,12 @@ export default function ScoreHero({
   );
 }
 
-function ActionBtn({ onClick, cls, children }: { onClick: () => void; cls: string; children: React.ReactNode }) {
+function ActionBtn({ onClick, cls, icon, label, disabled }: { onClick: () => void; cls: string; icon: React.ReactNode; label: string; disabled?: boolean }) {
   return (
-    <button onClick={onClick}
-      className={`flex-1 xs:flex-none flex items-center justify-center gap-2 border font-bold text-sm py-3.5 px-5 rounded-2xl transition-all active:scale-[0.97] backdrop-blur-sm ${cls}`}>
-      {children}
+    <button type="button" onClick={onClick} disabled={disabled}
+      className={`res-btn border font-bold backdrop-blur-sm transition-all active:scale-[0.96] disabled:opacity-60 ${cls}`}>
+      <span className="res-btn-icon">{icon}</span>
+      <span className="res-btn-label">{label}</span>
     </button>
   );
 }

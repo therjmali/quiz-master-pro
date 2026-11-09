@@ -20,6 +20,7 @@ import './fonts.css';
 import './index.css';
 import './liquid-glass.css';
 import { initPlatform } from './platform/runtime';
+import { initNativeInsets } from './platform/insets';
 import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
 import { HammerIcon } from 'lucide-react';
@@ -87,6 +88,7 @@ if (typeof localStorage !== 'undefined' && localStorage.getItem(ZOOM_KEY) === nu
 }
 
 initPlatform();
+initNativeInsets();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -83,7 +83,7 @@ export default function PromptTool() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed z-[100] flex items-center justify-center bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-90 bottom-[calc(var(--bottom-nav-h)+env(safe-area-inset-bottom,0px)+16px)] left-4 w-12 h-12 rounded-full md:bottom-6 md:left-6 md:w-auto md:h-auto md:rounded-2xl md:px-4 md:py-3"
+          className="fixed z-[100] flex items-center justify-center bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-90 bottom-[calc(var(--bottom-nav-h)+var(--qmp-inset-bottom)+16px)] left-4 w-12 h-12 rounded-full md:bottom-6 md:left-6 md:w-auto md:h-auto md:rounded-2xl md:px-4 md:py-3"
           title="Quick Actions"
         >
           <Wand2 className="w-5 h-5 md:w-4 md:h-4 flex-shrink-0" />

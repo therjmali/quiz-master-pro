@@ -861,7 +861,10 @@ function AppScreens({
               }}
               onPrev={() => {
                 const n = prevOpenIndex(quiz.currentIndex, quiz.forcedNext, !settings.mockExamMode);
-                if (n < 0) return;
+                if (n < 0) {
+                  if (quiz.currentIndex > 0) toast(settings.mockExamMode ? '🔒 Going back is off in Mock Exam mode' : '🔒 Earlier questions are locked — their time was up');
+                  return;
+                }
                 quiz.recordCurrentQuestionTime();
                 quiz.setCurrentIndex(n);
               }}
@@ -874,6 +877,7 @@ function AppScreens({
                 quiz.setCurrentIndex(idx);
               }}
               onFinish={() => setScreen('summary')}
+              onSubmitNow={() => doFinishQuiz(true)}
               onTimeExpired={quiz.handleTimeExpired}
               onAdvanceAfterExpiry={(idx) => {
                 if (quiz.currentIdxRef.current !== idx) return;

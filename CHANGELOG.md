@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.6.0] - 2026-11-08
+
+Status-bar fix, compact header, results that fit, and a UI regression suite.
+
+### Fixed
+- **Status bar drawn over the quiz header** (clock/signal icons on top of "Q1/30" and the buttons) on phones and tablets. The Android WebView reports no safe-area inset, so MainActivity now measures how much the system bars actually cover the WebView and the app pads every screen by exactly that (works on any WebView version; 0 when the content already sits below the bars). All safe-area uses go through one token.
+- **Results screen did not fit the screen** — a narrow centred column with empty sides. It now uses the full width: two columns in landscape (score gauge left, details right), single column in portrait.
+- **Result action buttons stacked vertically** (a `xs:` breakpoint that does not exist kept them in a column): now compact tiles — one single row in landscape, a 2-row grid in portrait.
+- **Submitting asked twice** ("Submit All Answers?" and then again on a summary page). The dialog now submits directly.
+- Exit dialog dismissed with Esc or a tap outside left the quiz paused; it now resumes. Esc closes the question editor.
+- Going back when blocked (expired question / Mock Exam) now says why instead of doing nothing.
+- Results no longer fire a failing background request to a revision-sheet server that does not exist in static/offline builds.
+
+### Changed
+- **Quiz header, all orientations**: bookmark, pause and **exit** stay outside; **flag**, edit question, quiz settings and zoom live in the ⋯ menu (a dot on ⋯ shows a flagged question). Landscape no longer shows a wide row of icons.
+
+### Added
+- `npm run test:ui` — 45 real-browser checks: header fit on phone/tablet in both orientations, left/right swipes (including slow, vertical and edge cases), every popup and menu, pause/resume, submit, exit, results tiles, safe-area handling.
+
 ## [2.5.0] - 2026-11-08
 
 Reliable timed quizzes, a merged quiz header, in-app updates, and a signed-update fix.
