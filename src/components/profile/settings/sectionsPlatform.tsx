@@ -22,7 +22,7 @@ import {
 } from '../../../utils/historyTrash';
 import { restoreFromHistoryTrash } from '../../../utils/historyTrashActions';
 import { appVersion, isNative, isStandalonePwa, platformName } from '../../../platform/native';
-import { usePwaState, promptInstall, checkForUpdate, applyUpdate } from '../../../platform/pwa';
+import { usePwaState, promptInstall } from '../../../platform/pwa';
 import {
   getAppIcon, useAppIcon, saveAppIcon, resetAppIcon, loadBitmap, renderIcon, buildLauncherIcon, pinIconShortcut, nativeIconSupported,
   IconError, type CropState,
@@ -356,12 +356,10 @@ export const DeviceSection = memo(function DeviceSection({ open, onToggle }: Sec
         <div className="flex flex-wrap gap-2 py-2">
           {pwa.canInstall && <Btn tone="primary" icon={<Download className="w-3.5 h-3.5" />} onClick={() => void promptInstall()}>Install app</Btn>}
           {pwa.installed && <Pill tone="good">Installed</Pill>}
-          {pwa.updateReady
-            ? <Btn tone="success" icon={<RotateCcw className="w-3.5 h-3.5" />} onClick={applyUpdate}>Update ready - restart now</Btn>
-            : <Btn busy={pwa.checking} onClick={() => void checkForUpdate().then(r => toast[r === 'update-ready' ? 'success' : 'info'](r === 'update-ready' ? 'A new version is ready' : r === 'unsupported' ? 'Updates are managed by your browser' : "You're on the latest version"))}>Check for updates</Btn>}
         </div>
       )}
       {!pwa.canInstall && !pwa.installed && !native && <p className="text-[11px] text-foreground/40">To install: use your browser menu -&gt; "Install app" or "Add to Home Screen".</p>}
+      <p className="text-[11px] text-foreground/40 pb-1">New versions: see <b>App updates</b> at the top of Settings.</p>
 
       <SubHeading>App icon</SubHeading>
       <div className="flex items-center gap-4 py-2">

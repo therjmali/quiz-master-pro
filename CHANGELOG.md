@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.7.0] - 2026-11-10
+
+In-app updates that really install, a Settings hub behind your profile photo, and a premium Progress screen.
+
+### Added
+- **True in-app update (like RJ Tracker).** *Settings → App updates* downloads the new APK inside the app with live progress, verifies SHA-256 (when published), package name, higher version and the same signing key on the device, then opens Android's installer. Handles the "allow installs from this app" permission, offline, GitHub rate limits and bad downloads with clear messages. Only `github.com/therjmali/quiz-master-pro/releases/download/…` over https is ever downloaded; the native side re-checks this. A leftover downloaded APK is removed on the next start.
+- **Settings hub behind the profile photo (top right)**: account card (photo, name, emoji, sign-in, cloud data), quick jumps (updates, cloud, backups, trash), the full searchable settings list, and sub-pages for Awards, AI notes, Quiz templates, Trash and API keys. A dot on the photo shows when an update is waiting.
+- **Profile photo that works offline**: the chosen picture is centre-cropped and stored on the device as a small JPEG (the old upload needed a server that does not exist in the APK).
+- **Premium Progress screen** (bottom tab, was *Profile*): status hero with avatar, rank, streak and cloud state, a **next-rank meter** (quizzes and accuracy still needed), six lifetime tiles, live Cloud / Backup / Storage / App status, Lifetime Score, report builder, and the Overview with Correct / Mistakes / Skipped views.
+- `npm run test:ui:settings`: real-browser checks for the new navigation on three screen sizes. New unit tests for the updater state machine, URL trust, digest parsing, rank maths and photo cropping.
+
+### Changed
+- Status-strip tiles and the home update strip open the right Settings section directly.
+- *App icon & device* no longer duplicates update buttons.
+
+### Removed
+- **Export, Deploy & Install** (source-code zip, Android project template, third-party APK generators, install guide) and the *Downloads* tab. Backup & restore stays under Settings → Library & Data and Automatic Backups.
+- Profile tabs (Notes, Awards, Templates, Trash, API keys, Settings, Downloads) from the bottom screen; they now live in Settings.
+
+### Notes
+- Updating requires the installed copy to be signed with the permanent key (v2.5.0 and later). Older copies still need the one-time backup, uninstall, install, restore.
+- Android's install confirmation cannot be bypassed by any app.
+
 ## [2.6.0] - 2026-11-08
 
 Status-bar fix, compact header, results that fit, and a UI regression suite.

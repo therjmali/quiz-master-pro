@@ -7,7 +7,9 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   'quiz': '/quiz',
   'summary': '/quiz/summary',
   'results': '/results',
+  // 'profile' is the Progress screen (lifetime score, report, overview); the path stays for old links.
   'profile': '/profile',
+  'settings': '/settings',
   'library': '/library',
   'stats': '/stats',
   'report-preview': '/report',
@@ -31,7 +33,8 @@ export const TAB_LABELS: Record<string, string> = {
   library: 'Library',
   setup: 'Create',
   stats: 'Stats',
-  profile: 'Profile',
+  profile: 'Progress',
+  settings: 'Settings',
 };
 
 export const BG_THEMES = [

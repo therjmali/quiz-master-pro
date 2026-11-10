@@ -11,15 +11,16 @@ export interface SettingEntry {
 }
 
 export type SectionId =
-  | 'appearance' | 'accessibility' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
+  | 'updates' | 'appearance' | 'accessibility' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
   | 'gestures' | 'cloud' | 'account' | 'device' | 'advanced';
 
 export const SECTION_META: Record<SectionId, { title: string; desc: string }> = {
+  updates:       { title: 'App updates',             desc: 'Download and install the latest version inside the app' },
   appearance:    { title: 'Appearance',              desc: 'Theme, colour, text size and visual effects' },
   accessibility: { title: 'Accessibility',         desc: 'Zoom the whole app in or out' },
   quiz:          { title: 'Quiz & Study',            desc: 'Study targets, cards, exam dates and quiz features' },
   ai:            { title: 'AI & Content',            desc: 'AI features, API keys and quiz templates' },
-  library:       { title: 'Library & Data',          desc: 'Backups, downloads and trash' },
+  library:       { title: 'Library & Data',          desc: 'Backups, awards, AI notes and trash' },
   autobackup:    { title: 'Automatic Backups',       desc: 'Scheduled snapshots, restore and export' },
   data:          { title: 'Data & Trash',            desc: 'Storage, deleted results and data checks' },
   notifications: { title: 'Notifications & Email',   desc: 'Daily reminder and email reports' },
@@ -27,13 +28,15 @@ export const SECTION_META: Record<SectionId, { title: string; desc: string }> = 
   gestures:      { title: 'Gestures & Shortcuts',    desc: 'Haptics, swipes and keyboard shortcuts' },
   cloud:         { title: 'Account & Cloud Sync',    desc: 'Sign in and sync across devices' },
   account:       { title: 'Profile',                 desc: 'Display name, avatar and preferences' },
-  device:        { title: 'App Icon & Device',       desc: 'Install, updates, custom icon' },
+  device:        { title: 'App Icon & Device',       desc: 'Install, custom icon and device info' },
   advanced:      { title: 'Advanced & About',        desc: 'Platform badge and resetting preferences' },
 };
 
-export const SECTION_ORDER: SectionId[] = ['appearance', 'accessibility', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
+export const SECTION_ORDER: SectionId[] = ['updates', 'appearance', 'accessibility', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
 
 export const SETTINGS: SettingEntry[] = [
+  // App updates
+  { id: 'appUpdate', section: 'updates', title: 'Check for updates', hint: 'See what is new, then download and install the latest version in one tap', keywords: ['update', 'upgrade', 'version', 'install', 'apk', 'release', 'download', 'new version', 'latest'] },
   // Appearance
   { id: 'theme', section: 'appearance', title: 'Theme', hint: 'Light or AMOLED black — styles the whole app and quiz screen', keywords: ['dark mode', 'night', 'black', 'colour scheme', 'skin'] },
   { id: 'accent', section: 'appearance', title: 'Accent colour', hint: 'Highlight colour used for buttons and active states', keywords: ['color', 'primary', 'tint', 'brand'] },
@@ -54,7 +57,8 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'templates', section: 'ai', title: 'Quiz templates', hint: 'Saved quiz configurations for one-tap setup', keywords: ['preset', 'mode', 'exam mode', 'practice', 'norcet', 'aao'] },
   // Library & Data
   { id: 'backup', section: 'library', title: 'Backup & restore', hint: 'Export, import and restore your quiz data', keywords: ['export', 'import', 'json', 'restore', 'save', 'file', 'drive'] },
-  { id: 'downloads', section: 'library', title: 'Downloads', hint: 'PDFs and reports you have generated', keywords: ['pdf', 'files', 'reports'] },
+  { id: 'awards', section: 'library', title: 'Awards', hint: 'Badges and milestones you have earned', keywords: ['badge', 'achievement', 'milestone', 'trophy', 'reward'] },
+  { id: 'aiNotes', section: 'library', title: 'AI notes', hint: 'Study notes built from your quiz explanations', keywords: ['notes', 'revision', 'rationale', 'study', 'summary'] },
   { id: 'trash', section: 'library', title: 'Trash', hint: 'Restore or permanently delete removed quizzes', keywords: ['deleted', 'bin', 'recycle', 'restore', 'undo'] },
   // Notifications
   { id: 'reportEmail', section: 'notifications', title: 'Report email', hint: 'Where email reports and weekly summaries are sent', keywords: ['email', 'mail', 'address', 'inbox', 'weekly'] },
@@ -80,7 +84,7 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'autoSync', section: 'cloud', title: 'Automatic sync', hint: 'Keep devices in step in the background', keywords: ['sync', 'cloud', 'devices', 'upload'] },
   // Device
   { id: 'appIcon', section: 'device', title: 'App icon', hint: 'Use your own picture as the app icon', keywords: ['logo', 'icon', 'image', 'shortcut', 'home screen'] },
-  { id: 'installApp', section: 'device', title: 'Install & updates', hint: 'Install the web app and check for updates', keywords: ['pwa', 'install', 'update', 'version', 'offline'] },
+  { id: 'installApp', section: 'device', title: 'Install the web app', hint: 'Add the web app to your home screen and see device info', keywords: ['pwa', 'install', 'version', 'offline', 'home screen'] },
   // Account
   { id: 'signIn', section: 'account', title: 'Account', hint: 'Sign in to sync and back up your data', keywords: ['login', 'logout', 'sign out', 'google', 'user'] },
   { id: 'displayName', section: 'account', title: 'Display name', hint: 'The name shown on your dashboard and reports', keywords: ['name', 'username', 'nickname', 'profile'] },

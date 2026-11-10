@@ -74,6 +74,17 @@ if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
   sed -i 's#<application#<uses-permission android:name="android.permission.INTERNET" />\n    <application#' "$MANIFEST"
 fi
 
+# In-app updates: let the user confirm installing the downloaded update (Android still asks every time).
+if ! grep -q 'android.permission.REQUEST_INSTALL_PACKAGES' "$MANIFEST"; then
+  sed -i 's#<application#<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application#' "$MANIFEST"
+fi
+# The updater hands the verified APK to Android through the Capacitor template's FileProvider
+# (authority ${applicationId}.fileprovider, cache path). Fail the build if a template change removes it.
+grep -q 'REQUEST_INSTALL_PACKAGES' "$MANIFEST" || { echo "::error::REQUEST_INSTALL_PACKAGES was not added to the manifest" >&2; exit 1; }
+grep -q '\.fileprovider' "$MANIFEST" || { echo "::error::FileProvider is missing from the manifest - the in-app updater cannot install" >&2; exit 1; }
+grep -q 'cache-path' "$RES/xml/file_paths.xml" || { echo "::error::file_paths.xml has no cache-path - the in-app updater cannot install" >&2; exit 1; }
+[ -f "$JAVA_DIR/ApkUpdater.java" ] || { echo "::error::ApkUpdater.java was not copied" >&2; exit 1; }
+
 # Android Home Screen AppWidgets
 if ! grep -q "StudyWidgetProvider" "$MANIFEST"; then
   sed -i 's#</application>#    <receiver android:name=".StudyWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_study_widget_info" />\n    </receiver>\n    <receiver android:name=".FocusWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_focus_widget_info" />\n    </receiver>\n    <receiver android:name=".SubjectWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_subject_widget_info" />\n    </receiver>\n    <receiver android:name=".ExamWidgetProvider" android:exported="true">\n        <intent-filter>\n            <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n        </intent-filter>\n        <meta-data android:name="android.appwidget.provider" android:resource="@xml/rj_exam_widget_info" />\n    </receiver>\n    </application>#' "$MANIFEST"

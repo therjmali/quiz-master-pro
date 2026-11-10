@@ -1,4 +1,6 @@
 import UpdateBanner from './components/update/UpdateBanner';
+import { OPEN_UPDATES_EVENT, hasUpdate, scheduleUpdateCheck, useUpdateState } from './platform/updater';
+import { requestOpenSettingsSection } from './components/cloud/CloudGate';
 import { nextOpenIndex, prevOpenIndex, canEnterQuestion } from './utils/quizNav';
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, startTransition } from 'react';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
@@ -75,7 +77,8 @@ const SetupScreen = lazyRetry(() => import('./components/setup/SetupScreen'));
 const QuizScreen = lazyRetry(() => import('./components/quiz/QuizScreen'));
 const ResultsScreen = lazyRetry(() => import('./components/results/ResultsScreen'));
 const SummaryModal = lazyRetry(() => import('./components/SummaryModal'));
-const ProfileScreen = lazyRetry(() => import('./components/profile/ProfileScreen'));
+const ProgressScreen = lazyRetry(() => import('./components/profile/ProgressScreen'));
+const SettingsScreen = lazyRetry(() => import('./components/settings/SettingsScreen'));
 const DashboardScreen = lazyRetry(() => import('./components/dashboard/DashboardScreen'));
 const LibraryScreen = lazyRetry(() => import('./components/library/LibraryScreen'));
 const StatsScreen = lazyRetry(() => import('./components/stats/StatsScreen'));
@@ -93,7 +96,8 @@ const WidgetManagerModal = lazyRetry(() => import('./components/widgets/WidgetMa
 const PREFETCH_SCREENS: Array<() => Promise<unknown>> = [
   () => import('./components/library/LibraryScreen'),
   () => import('./components/stats/StatsScreen'),
-  () => import('./components/profile/ProfileScreen'),
+  () => import('./components/profile/ProgressScreen'),
+  () => import('./components/settings/SettingsScreen'),
   () => import('./components/setup/SetupScreen'),
   () => import('./components/results/ResultsScreen'),
   () => import('./components/flashcards/FlashcardScreen'),
@@ -420,6 +424,44 @@ function AppScreens({
     requestAnimationFrame(() => restoreScrollPosition(targetScreen));
   }, [navigate, restoreScrollPosition, navStack]);
 
+  /** Opens the Settings hub (profile photo, status tiles, update banner); `section` jumps to one group of settings. */
+  const openSettings = useCallback((section?: string) => {
+    if (screenRef.current !== 'settings') {
+      screenMetaRef.current = { ...screenMetaRef.current, settingsView: 'main' };
+      navigateTo('settings');
+    }
+    if (section) requestOpenSettingsSection(section);
+  }, [navigateTo]);
+
+  /** Back from a screen that was opened on top of another: restores the previous screen, its scroll and sub-state. */
+  const goBackFromScreen = useCallback(() => {
+    const prev = navStack.pop();
+    if (prev) {
+      if (prev.meta) screenMetaRef.current = prev.meta;
+      scrollPositionsRef.current[prev.screen] = prev.scrollY;
+      navigate(SCREEN_PATHS[prev.screen], { replace: true });
+      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, prev.scrollY)));
+    } else {
+      navigate(SCREEN_PATHS['dashboard'], { replace: true });
+      requestAnimationFrame(() => window.scrollTo(0, 0));
+    }
+  }, [navigate, navStack]);
+
+  // In-app updates: quiet check on start-up (installed app), and "open the updates" requests from banners and toasts.
+  const updateState = useUpdateState();
+  const updateAvailable = hasUpdate(updateState);
+  useEffect(() => scheduleUpdateCheck(info => {
+    toast.info(`Update available · v${info.version}`, {
+      id: 'app-update', duration: 12000, description: 'Download and install it without leaving the app.',
+      action: { label: 'View', onClick: () => openSettings('updates') },
+    });
+  }), [openSettings]);
+  useEffect(() => {
+    const open = () => openSettings('updates');
+    window.addEventListener(OPEN_UPDATES_EVENT, open);
+    return () => window.removeEventListener(OPEN_UPDATES_EVENT, open);
+  }, [openSettings]);
+
   /** Load full quiz detail and navigate to results */
   const viewResultWithDetail = useCallback(async (summary: QuizResult, origin?: Screen) => {
     // If currentResult already matches, just navigate
@@ -669,8 +711,9 @@ function AppScreens({
         {screen !== 'quiz' && screen !== 'report-preview' && (
           <Navbar
             onHome={() => navigateTo('dashboard')}
-            onProfile={() => navigateTo('profile')}
-            onLogin={() => openSignIn()}
+            onOpenSettings={() => openSettings()}
+            settingsActive={screen === 'settings'}
+            updateAvailable={updateAvailable}
             syncStatus={syncStatus}
             quizCount={history.length}
             theme={theme}
@@ -776,9 +819,9 @@ function AppScreens({
                   onHistoryChanged={() => { if (userRef.current) handleHistoryChanged(); else { try { setHistory(getHistorySync()); } catch {} } }}
                   onOpenReportPreview={handleOpenReportPreview}
                   onOpenTrash={() => {
-                    // Navigate first (it snapshots the Library's meta), then point Profile at its Trash tab
-                    navigateTo('profile');
-                    screenMetaRef.current = { ...screenMetaRef.current, profileTab: 'trash' };
+                    // Navigate first (it snapshots the Library's meta), then open Settings on its Trash page
+                    navigateTo('settings');
+                    screenMetaRef.current = { ...screenMetaRef.current, settingsView: 'trash' };
                   }}
                   onEditQuiz={(id, title, subject, notes, timestamp) => {
                     const matchedRecord = historyRef.current.find(r => (r.id && r.id === id) || (!r.id && String(r.timestamp) === id));
@@ -973,37 +1016,37 @@ function AppScreens({
           </ErrorBoundary>
         )}
 
-        {/* Profile */}
+        {/* Progress (route id "profile"): lifetime score, report, overview */}
         {screen === 'profile' && (
-          <ErrorBoundary screenName="Profile" onReset={() => navigateTo('dashboard')}>
-            <ProfileScreen
+          <ErrorBoundary screenName="Progress" onReset={() => navigateTo('dashboard')}>
+            <ProgressScreen
               history={history} setHistory={setHistory} rationaleCache={rationaleCache} getAiRationale={getAiRationale}
               isSyncing={syncStatus === 'syncing'}
-              onBack={() => {
-                const prev = navStack.pop();
-                if (prev) {
-                  if (prev.meta) screenMetaRef.current = prev.meta;
-                  scrollPositionsRef.current[prev.screen] = prev.scrollY;
-                  navigate(SCREEN_PATHS[prev.screen], { replace: true });
-                  requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, prev.scrollY)));
-                } else {
-                  navigate(SCREEN_PATHS['dashboard'], { replace: true });
-                  requestAnimationFrame(() => window.scrollTo(0, 0));
-                }
-              }}
               onDeleteHistory={id => {
-                // Independent from the Organizer — see Library delete handler.
+                // Independent from the Organizer - see Library delete handler.
                 trashResult(id); onCloudDirty('quiz', 'critical');
               }}
               onPracticeMistakes={qs => { quiz.startQuiz(qs); setScreen('quiz'); }}
               onViewResult={r => viewResultWithDetail(r, 'profile')}
               rationalePrefs={rationalePrefs} onRationalePrefsChange={setRationalePrefs}
               reportHelper={aiPrefs.reportHelper} onReportHelperChange={handleReportHelperChange}
-              theme={theme} onThemeChange={setTheme}
-              onHistoryChanged={handleHistoryChanged}
               onOpenReportPreview={handleOpenReportPreview}
-              initialTab={screenMetaRef.current.profileTab}
-              onTabChange={tab => { screenMetaRef.current = { ...screenMetaRef.current, profileTab: tab }; }}
+              onOpenSettings={openSettings}
+            />
+          </ErrorBoundary>
+        )}
+
+        {/* Settings hub (profile photo, top right) */}
+        {screen === 'settings' && (
+          <ErrorBoundary screenName="Settings" onReset={() => navigateTo('dashboard')}>
+            <SettingsScreen
+              history={history} rationaleCache={rationaleCache}
+              theme={theme} onThemeChange={setTheme}
+              onBack={goBackFromScreen}
+              onSignIn={() => openSignIn()}
+              onHistoryChanged={handleHistoryChanged}
+              initialView={screenMetaRef.current.settingsView}
+              onViewChange={v => { screenMetaRef.current = { ...screenMetaRef.current, settingsView: v }; }}
             />
           </ErrorBoundary>
         )}

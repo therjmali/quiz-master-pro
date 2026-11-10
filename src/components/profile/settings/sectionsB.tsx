@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import { useAuth, loginWithRedirect, logout } from 'zitejs/auth';
 import { sendWeeklyReport } from 'zitejs/api';
 import {
-  Sparkles, KeyRound, LayoutTemplate, Database, Download, Trash2, Bell, Hand, UserRound, Settings2,
+  Sparkles, KeyRound, LayoutTemplate, Database, Trophy, BookOpenText, Trash2, Bell, Hand, UserRound, Settings2,
   LogIn, LogOut, Loader2, Send, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ import { AiProvidersPanel } from './sectionsPlatform';
 import { hasBackend } from '../../../platform/ai/caller';
 import type { SectionProps } from './sectionsA';
 
-export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'downloads';
+export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'awards' | 'notes';
 type Dirty = () => void;
 
 /* ═════════ AI & Content ═════════ */
@@ -51,8 +51,9 @@ export const LibrarySection = memo(function LibrarySection({ open, onToggle, onO
       <SubHeading>Backup</SubHeading>
       <SettingRow id="backup" title="Backup & restore" hint="Export, import and restore your quiz data" inline={false}
         control={open ? <BackupSection isLoggedIn={isLoggedIn} history={history} /> : null} />
-      <SubHeading>Files</SubHeading>
-      <LinkRow id="downloads" icon={<Download className="w-4 h-4" />} title="Downloads" hint="PDFs and reports you have generated" onClick={() => onOpenTab?.('downloads')} />
+      <SubHeading>Collections</SubHeading>
+      <LinkRow id="awards" icon={<Trophy className="w-4 h-4" />} title="Awards" hint="Badges and milestones you have earned" onClick={() => onOpenTab?.('awards')} />
+      <LinkRow id="aiNotes" icon={<BookOpenText className="w-4 h-4" />} title="AI notes" hint="Study notes built from your quiz explanations" onClick={() => onOpenTab?.('notes')} />
       <LinkRow id="trash" icon={<Trash2 className="w-4 h-4" />} title="Trash" hint="Restore or permanently delete removed quizzes" onClick={() => onOpenTab?.('trash')} />
     </SettingsSection>
   );

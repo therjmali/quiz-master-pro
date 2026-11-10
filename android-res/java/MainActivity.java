@@ -58,12 +58,66 @@ public class MainActivity extends BridgeActivity {
         } catch (Throwable ignored) {}
     }
 
+    /** Progress / result events of the in-app updater, pushed to the web layer (window.__qmUpdate). */
+    private final ApkUpdater.Listener updateListener = new ApkUpdater.Listener() {
+        @Override public void onEvent(String state, long done, long total, String error) {
+            js("window.__qmUpdate&&window.__qmUpdate({state:" + q(state) + ",done:" + done + ",total:" + total + ",error:" + q(error) + "})");
+        }
+    };
+
+    private void js(final String script) {
+        try {
+            if (getBridge() == null || getBridge().getWebView() == null) return;
+            final WebView wv = getBridge().getWebView();
+            wv.post(new Runnable() { @Override public void run() { wv.evaluateJavascript(script, null); } });
+        } catch (Throwable ignored) {}
+    }
+
+    /** JSON-quotes a string for safe inclusion in a script (null becomes null). */
+    private static String q(String v) {
+        if (v == null) return "null";
+        StringBuilder sb = new StringBuilder("\"");
+        for (int i = 0; i < v.length(); i++) {
+            char c = v.charAt(i);
+            switch (c) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                default:
+                    if (c < 0x20) sb.append(' '); else sb.append(c);
+            }
+        }
+        return sb.append('"').toString();
+    }
+
     public class NativeBridge {
         /** JSON {top,right,bottom,left} in dp - read by the web layer after every (re)load. */
         @JavascriptInterface
         public String getInsets() {
             int[] i = insetsDp;
             return "{\"top\":" + i[0] + ",\"right\":" + i[1] + ",\"bottom\":" + i[2] + ",\"left\":" + i[3] + "}";
+        }
+
+        /* ── In-app updates (downloads the new APK from this project's GitHub releases) ── */
+        @JavascriptInterface
+        public boolean canInstallPackages() {
+            return Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls();
+        }
+
+        @JavascriptInterface
+        public void openInstallPermission() {
+            runOnUiThread(new Runnable() { @Override public void run() { ApkUpdater.openPermissionSettings(MainActivity.this); } });
+        }
+
+        @JavascriptInterface
+        public void downloadUpdate(String url, String sha256) {
+            ApkUpdater.download(getApplicationContext(), url, sha256, updateListener);
+        }
+
+        @JavascriptInterface
+        public void installUpdate() {
+            runOnUiThread(new Runnable() { @Override public void run() { ApkUpdater.install(MainActivity.this, updateListener); } });
         }
 
         @JavascriptInterface
@@ -117,6 +171,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(QmNativePlugin.class);
         super.onCreate(savedInstanceState);
+        ApkUpdater.cleanupStale(getApplicationContext());
 
         if (getBridge() != null && getBridge().getWebView() != null) {
             NativeBridge bridge = new NativeBridge();

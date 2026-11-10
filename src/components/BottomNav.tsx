@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { LayoutDashboard, BookOpen, Plus, BarChart2, User, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Plus, BarChart2, Gauge, type LucideIcon } from 'lucide-react';
 import { hapticTap } from '../utils/haptics';
 
 interface Props {
@@ -67,7 +67,7 @@ export default function BottomNav({ screen, onHome, onCreate, onLibrary, onStats
     { key: 'library', label: 'Library', icon: BookOpen,        onClick: () => { hapticTap(); onLibrary(); }, badge: quizCount > 0 ? Math.min(quizCount, 99) : undefined, badgeTone: 'primary' },
     { key: 'create',  label: 'Create',  icon: Plus,            onClick: () => { hapticTap(); onCreate(); } },
     { key: 'stats',   label: 'Stats',   icon: BarChart2,       onClick: () => { hapticTap(); onStats(); } },
-    { key: 'profile', label: 'Profile', icon: User,            onClick: () => { hapticTap(); onProfile(); }, badge: bookmarkCount && bookmarkCount > 0 ? Math.min(bookmarkCount, 99) : undefined, badgeTone: 'accent' },
+    { key: 'profile', label: 'Progress', icon: Gauge,            onClick: () => { hapticTap(); onProfile(); }, badge: bookmarkCount && bookmarkCount > 0 ? Math.min(bookmarkCount, 99) : undefined, badgeTone: 'accent' },
   ];
 
   return (

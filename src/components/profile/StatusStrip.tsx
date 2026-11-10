@@ -1,11 +1,10 @@
-import { readCachedResult } from '../../platform/updater';
+import { hasUpdate, useUpdateState } from '../../platform/updater';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Cloud, CloudOff, HardDrive, Loader2, RefreshCw, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 import { useCloudAuth } from '../../platform/cloud/authStore';
 import { useSyncState } from '../../platform/cloud/syncEngine';
 import { listBackups, type BackupMeta } from '../../platform/autoBackup';
 import { triggerOpenSettings } from '../cloud/CloudGate';
-import { appVersion } from '../../platform/native';
 
 type Tone = 'good' | 'warn' | 'bad' | 'info' | 'busy';
 
@@ -36,6 +35,7 @@ export default function StatusStrip({ onJump }: { onJump?: (section: string) => 
   const sync = useSyncState();
   const [backups, setBackups] = useState<BackupMeta[]>([]);
   const [, tick] = useState(0);
+  const upd = useUpdateState();
 
   useEffect(() => {
     void listBackups().then(setBackups).catch(() => undefined);
@@ -76,9 +76,10 @@ export default function StatusStrip({ onJump }: { onJump?: (section: string) => 
   tiles.push({ id: 'storage', tone: 'good', icon: <ShieldCheck className={ic} />, label: 'Storage', title: 'Protected', detail: 'Safe on device', section: 'data' });
 
   // ── App ──
-  const upd = readCachedResult();
-  const appDetail = upd?.status === 'update' ? `v${upd.latest.version} available` : upd?.status === 'latest' ? 'Latest version' : 'Installed version';
-  tiles.push({ id: 'version', tone: 'info', icon: <Sparkles className={ic} />, label: 'App', title: `v${appVersion()}`, detail: appDetail, section: 'about' });
+  const newer = hasUpdate(upd);
+  tiles.push(newer && upd.info
+    ? { id: 'version', tone: 'warn', icon: <Sparkles className={ic} />, label: 'App', title: 'Update ready', detail: `v${upd.info.version} available`, section: 'updates' }
+    : { id: 'version', tone: 'info', icon: <Sparkles className={ic} />, label: 'App', title: `v${upd.current}`, detail: upd.phase === 'uptodate' ? 'Latest version' : 'Installed version', section: 'updates' });
 
   const rank = (t: Tone) => (t === 'bad' ? 3 : t === 'warn' ? 2 : t === 'busy' ? 1 : 0);
   const worst = tiles.reduce<Tone>((w, t) => (rank(t.tone) > rank(w) ? t.tone : w), 'good');

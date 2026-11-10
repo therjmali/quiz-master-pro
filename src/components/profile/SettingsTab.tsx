@@ -9,6 +9,7 @@ import { searchSettings, SECTION_META, SECTION_ORDER, type SectionId } from './s
 import { AppearanceSection, QuizStudySection } from './settings/sectionsA';
 import { CloudSection } from './settings/sectionsCloud';
 import { AccessibilitySection } from './settings/sectionsAccessibility';
+import { UpdatesSection } from './settings/sectionsUpdates';
 import { AutoBackupSection, RemindersSection, DataSection, DeviceSection } from './settings/sectionsPlatform';
 import { AISection, LibrarySection, NotificationsSection, GesturesSection, AccountSection, AdvancedSection, type ProfileTabLink } from './settings/sectionsB';
 
@@ -31,6 +32,11 @@ interface Props {
 
 const OPEN_KEY = 'qmp_settings_open';
 const EMPTY: QuizResult[] = [];
+/** Status-tile / banner keys -> the Settings section that owns them. */
+const DEEP_LINKS: Record<string, SectionId> = {
+  updates: 'updates', about: 'updates', backup: 'autobackup', data: 'data', notifications: 'notifications', reminders: 'reminders',
+  appearance: 'appearance', ai: 'ai', account: 'account', device: 'device',
+};
 type OpenMap = Record<SectionId, boolean>;
 
 function loadOpen(): OpenMap {
@@ -86,12 +92,22 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
     }));
   }, []);
 
-  // Deep link: "Sign in" prompts elsewhere in the app land here and open the right section.
+  // Deep links from elsewhere in the app (sign-in prompts, status tiles, the update banner) land here and open the right section.
   useEffect(() => {
     const run = () => {
       let wanted: string | null = null;
       try { wanted = sessionStorage.getItem('qm-open-section'); sessionStorage.removeItem('qm-open-section'); } catch { /* ignore */ }
-      if (wanted === 'cloud') goTo('cloudAccount', 'cloud');
+      if (!wanted) return;
+      if (wanted === 'cloud') { goTo('cloudAccount', 'cloud'); return; }
+      const section = DEEP_LINKS[wanted];
+      if (!section) return;
+      setOpen(p => ({ ...p, [section]: true }));
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const el = document.getElementById(`section-${section}`);
+        if (!el) return;
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      }));
     };
     run();
     window.addEventListener('qm:open-settings', run);
@@ -154,6 +170,7 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
           )}
         </div>
 
+        {visible('updates') && <UpdatesSection {...sectionProps('updates')} />}
         {visible('appearance') && <AppearanceSection {...sectionProps('appearance')} theme={theme} onThemeChange={onThemeChange} />}
         {visible('accessibility') && <AccessibilitySection {...sectionProps('accessibility')} />}
         {visible('quiz') && <QuizStudySection {...sectionProps('quiz')} />}

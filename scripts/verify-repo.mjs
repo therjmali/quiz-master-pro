@@ -58,7 +58,8 @@ const REQUIRED = [
   'src/platform/runtime.ts', 'src/platform/autoBackup.ts', 'src/platform/appIcon.ts', 'src/platform/cloud/syncEngine.ts',
   'src/platform/cloud/sections.ts', 'src/platform/cloud/authStore.ts', 'src/platform/notify/planner.ts', 'src/platform/notify/notifier.ts',
   'src/platform/ai/providers.ts', 'src/platform/ai/caller.ts', 'src/utils/historyTrash.ts',
-  'android-res/java/MainActivity.java', 'android-res/java/QmNativePlugin.java',
+  'android-res/java/MainActivity.java', 'android-res/java/QmNativePlugin.java', 'android-res/java/ApkUpdater.java',
+  'src/platform/updater.ts', 'src/components/update/UpdatePanel.tsx', 'src/components/settings/SettingsScreen.tsx', 'src/components/profile/ProgressScreen.tsx', 'tests/updaterState.test.ts',
   'tests/syncEngine.test.ts', 'tests/backup.test.ts', 'tests/notify.test.ts', 'tests/ai.test.ts', 'tests/platform.test.ts', 'tests/merge3.test.ts',
 ];
 for (const f of REQUIRED) check(`file exists: ${f}`, exists(f), 'missing');
@@ -173,6 +174,25 @@ if (exists('.github/workflows/ci.yml')) {
   const ci = read('.github/workflows/ci.yml');
   check('ci.yml runs the unit tests', ci.includes('npm run test:unit'));
   check('ci.yml runs the database tests', ci.includes('scripts/test-sql.sh'));
+}
+
+// ---------------------------------------------------------------- in-app updates + settings hub contracts
+{
+  const act = read('android-res/java/MainActivity.java');
+  const upd = read('android-res/java/ApkUpdater.java');
+  const prep = read('scripts/android-prepare.sh');
+  for (const m of ['downloadUpdate', 'installUpdate', 'canInstallPackages', 'openInstallPermission']) {
+    check(`MainActivity exposes ${m} to the web layer`, act.includes(`public ${m === 'canInstallPackages' ? 'boolean' : 'void'} ${m}(`), 'missing');
+  }
+  check('updater only downloads from this repo\'s GitHub releases', upd.includes('https://github.com/therjmali/quiz-master-pro/releases/download/'), 'ALLOWED_PREFIX changed');
+  check('updater verifies package name, version and signing key', /getPackageName\(\)/.test(upd) && /versionCodeOf/.test(upd) && /signersOf/.test(upd), 'verification missing');
+  check('android-prepare adds REQUEST_INSTALL_PACKAGES and checks the FileProvider', prep.includes('REQUEST_INSTALL_PACKAGES') && prep.includes('.fileprovider') && prep.includes('cache-path'), 'missing');
+  const ui = files.filter(f => /^src\/.*\.(ts|tsx)$/.test(f)).map(f => ({ f, t: read(f) }));
+  const stale = ui.filter(x => /Export, Deploy|Deploy & Install|webintoapp\.com|appsgeyser\.com/i.test(x.t)).map(x => x.f);
+  check('Export / Deploy & Install screens are gone', stale.length === 0, stale.join(', '));
+  const nav = read('src/components/BottomNav.tsx');
+  check('bottom tab is "Progress" (not Profile)', nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'"), 'bottom nav label');
+  check('Navbar profile photo opens Settings', read('src/components/Navbar.tsx').includes('onOpenSettings'), 'missing');
 }
 
 // ---------------------------------------------------------------- .gitignore hygiene

@@ -44,7 +44,9 @@ emulator, including a cold start in airplane mode. Each release lists the file's
 - **Smart reminders** — real Android notifications for daily study, due cards, streak saver, exam countdown and a weekly summary, with quiet hours.
 - **AI on your device** — bring your own Gemini, Claude, OpenAI or Cohere key; quiz generation and explanations run directly from the device.
 - **Data & Trash** — deleted quiz results are restorable for 30 days (and sync), storage meter, data check.
-- **App icon & device** — custom app icon, install and update controls.
+- **App icon & device** — custom app icon and install controls.
+- **In-app updates** — *Settings → App updates* downloads the new APK inside the app with live progress, verifies it and opens Android's installer. No browser, no manual download.
+- **Progress** — the bottom *Progress* tab is your lifetime score, report and overview, with a rank meter and live cloud / backup / storage / app status. Everything else lives in **Settings**, opened from your profile photo at the top right.
 - **Still backend-only:** photo-to-quiz OCR, PDF reports and e-mailed reports.
 
 ### Works offline vs. needs a connection
@@ -146,14 +148,30 @@ Keep `release.keystore` somewhere safe and **never commit it** — losing it mea
 **Status:** the repository secrets are set (from v2.5.0 every release is signed with the same permanent key), so new
 versions install over the old one and keep your data. APKs from **before v2.5.0** were signed with a different
 throw-away key each time; Android reports *"App not installed as package conflicts with an existing package"* when you
-try to update one of those. Fix once: back up in the app (Profile → Backup), uninstall the old copy, install the new APK,
+try to update one of those. Fix once: back up in the app (profile photo → Settings → Backups), uninstall the old copy, install the new APK,
 restore. After that, updates install in place.
 
 ### In-app updates
 
-*Profile → App updates* (and a dismissible strip on the home screen) checks the latest GitHub Release, shows what's new
-and downloads the APK; Android then asks to install it. The check runs quietly at most every 12 hours, only in the
-installed app, never blocks start-up, and fails clearly when offline.
+Tap your profile photo (top right) → **Settings → App updates** (a dot on the photo and a strip on the home screen
+tell you when a new version exists). *Download & install* then:
+
+1. downloads the APK from this repository's GitHub Releases only (https, `github.com/therjmali/quiz-master-pro/releases/download/…`) with a live progress bar;
+2. verifies it on the device — SHA-256 fingerprint (when the release publishes one), package name, a higher version number and the **same signing key** as the installed app;
+3. opens Android's installer. Android always asks you to confirm; that step cannot be skipped by any app. The first time, Android also asks you to allow installs from R.J QUIZ (the app opens that settings page for you).
+
+The check runs quietly at most every 12 hours, only in the installed app, never blocks start-up and fails clearly when
+offline. A leftover downloaded file is deleted on the next start. On the web / installed PWA, updates apply through the
+service worker (*Update & reload*). If something goes wrong the panel shows the reason and a link to the release page.
+
+## Navigation
+
+| Where | What |
+| --- | --- |
+| **Bottom bar** | Home · Library · Create · Stats · **Progress** (lifetime score, report, overview) |
+| **Profile photo, top right** | **Settings**: account card (photo, name, emoji, sign-in), quick jumps (updates, cloud, backups, trash), then every setting (appearance, quiz & study, AI, backups, data & trash, notifications, reminders, gestures, cloud, device, advanced), plus Awards, AI notes, templates and API keys |
+
+The profile photo is stored on the device as a small cropped JPEG (no server needed), so it works offline.
 
 ## Configuration
 

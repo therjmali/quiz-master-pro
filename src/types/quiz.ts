@@ -1,4 +1,4 @@
-export type Screen = 'dashboard' | 'practice-dashboard' | 'setup' | 'quiz' | 'summary' | 'results' | 'profile' | 'library' | 'stats' | 'report-preview' | 'flashcards';
+export type Screen = 'dashboard' | 'practice-dashboard' | 'setup' | 'quiz' | 'summary' | 'results' | 'profile' | 'settings' | 'library' | 'stats' | 'report-preview' | 'flashcards';
 
 // ─── AI Source ────────────────────────────────────────────────────────────────
 export type AIMode = 'off' | 'local' | 'cloud';

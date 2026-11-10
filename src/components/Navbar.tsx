@@ -4,7 +4,6 @@ import { useCloudAuth } from '../platform/cloud/authStore';
 import { useSyncState } from '../platform/cloud/syncEngine';
 import {
   GraduationCap,
-  LogIn,
   Cloud,
   CloudOff,
   Loader2,
@@ -13,9 +12,8 @@ import {
   Sparkles,
   Bell,
   Smartphone,
-  X,
+  UserRound,
 } from 'lucide-react';
-import { Dialog, DialogContent } from '@project/components/ui/dialog';
 import type { AppTheme } from '../types/quiz';
 import type { SessionMode } from './SessionSelector';
 import type { QuizResult } from '../types/quiz';
@@ -31,8 +29,10 @@ interface SubjectOption {
 
 interface NavbarProps {
   onHome: () => void;
-  onProfile: () => void;
-  onLogin: () => void;
+  /** Opens the Settings hub (the profile photo at the top right). */
+  onOpenSettings: () => void;
+  settingsActive?: boolean;
+  updateAvailable?: boolean;
   syncStatus?: SyncStatus;
   quizCount?: number;
   theme: AppTheme;
@@ -100,8 +100,9 @@ const THEME_CONFIGS: Record<AppTheme, { label: string; nextLabel: string }> = {
 
 function NavbarInner({
   onHome,
-  onProfile,
-  onLogin,
+  onOpenSettings,
+  settingsActive,
+  updateAvailable,
   syncStatus = 'idle',
   theme,
   onToggleTheme,
@@ -118,7 +119,6 @@ function NavbarInner({
   const isLoading = account.loading;
   const user = account.signedIn ? account : null;
   const themeConf = THEME_CONFIGS[theme];
-  const [avatarViewerOpen, setAvatarViewerOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
 
   useEffect(() => {
@@ -193,7 +193,7 @@ function NavbarInner({
               {/* Cloud Sync indicator — clickable */}
               <SyncBadge
                 status={effectiveSyncStatus}
-                onClick={onOpenSyncCenter || (() => { onProfile(); triggerOpenSettings('cloud'); })}
+                onClick={onOpenSyncCenter || (() => { onOpenSettings(); triggerOpenSettings('cloud'); })}
               />
 
               {/* Widgets shortcut */}
@@ -238,36 +238,31 @@ function NavbarInner({
                 {theme === 'glass' ? <Sparkles className="h-4 w-4" /> : theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
               </button>
 
-              {/* Profile Avatar / Login */}
+              {/* Profile photo: opens Settings (account, updates, backup, cloud, everything else) */}
               {isLoading ? (
                 <div className="h-9 w-9 animate-pulse rounded-2xl bg-muted shrink-0" />
-              ) : user ? (
-                <button
-                  type="button"
-                  onClick={onProfile}
-                  className="w-9 h-9 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 flex items-center justify-center text-xs font-semibold text-primary shrink-0 border border-primary/25 hover:scale-105 active:scale-95 transition-all overflow-hidden shadow-sm"
-                  aria-label="Open profile"
-                  title={`${user.name} (${user.email})`}
-                >
-                  {profileAvatarUrl ? (
-                    <img src={profileAvatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                  ) : profileAvatarEmoji ? (
-                    <span className="text-base">{profileAvatarEmoji}</span>
-                  ) : (
-                    <span className="text-xs font-black">
-                      {(user.name?.[0] || user.email?.[0] || 'U').toUpperCase()}
-                    </span>
-                  )}
-                </button>
               ) : (
                 <button
                   type="button"
-                  onClick={onLogin}
-                  className="flex h-9 px-2.5 sm:px-3 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-[11px] font-black uppercase tracking-wider hover:bg-primary/20 active:scale-95 shrink-0 transition-all shadow-sm"
-                  aria-label="Sign in"
+                  onClick={onOpenSettings}
+                  className={`relative w-9 h-9 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-accent/20 flex items-center justify-center text-xs font-semibold text-primary shrink-0 border hover:scale-105 active:scale-95 transition-all shadow-sm ${settingsActive ? 'border-primary ring-2 ring-primary/30' : 'border-primary/25'}`}
+                  aria-label={updateAvailable ? 'Open settings (update available)' : 'Open settings'}
+                  title={user ? `${user.name} (${user.email}) · Settings` : 'Settings & sign in'}
+                  data-testid="avatar-settings"
                 >
-                  <LogIn className="h-3.5 w-3.5" />
-                  <span className="hidden xs:inline">Sign in</span>
+                  <span className="absolute inset-0 rounded-2xl overflow-hidden flex items-center justify-center">
+                    {profileAvatarUrl ? (
+                      <img src={profileAvatarUrl} alt="" className="w-full h-full object-cover" />
+                    ) : profileAvatarEmoji ? (
+                      <span className="text-base">{profileAvatarEmoji}</span>
+                    ) : user ? (
+                      <span className="text-xs font-black">{(user.name?.[0] || user.email?.[0] || 'U').toUpperCase()}</span>
+                    ) : (
+                      <UserRound className="h-4 w-4" />
+                    )}
+                  </span>
+                  {updateAvailable && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-rose-500" aria-hidden="true" />}
+                  {!user && !updateAvailable && <span className="absolute -right-1 -bottom-1 h-3 w-3 rounded-full border-2 border-background bg-amber-400" aria-hidden="true" />}
                 </button>
               )}
             </div>
@@ -275,33 +270,6 @@ function NavbarInner({
         </div>
       </header>
 
-      {/* Avatar Viewer Dialog */}
-      <Dialog open={avatarViewerOpen} onOpenChange={setAvatarViewerOpen}>
-        <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-lg items-center justify-center overflow-hidden rounded-3xl border-none bg-black/90 p-0">
-          <button
-            type="button"
-            onClick={() => setAvatarViewerOpen(false)}
-            className="absolute right-3 top-3 z-50 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          {profileAvatarUrl ? (
-            <img src={profileAvatarUrl} alt="Profile photo" className="max-h-[80vh] max-w-full object-contain rounded-2xl" />
-          ) : profileAvatarEmoji ? (
-            <span className="text-[120px]">{profileAvatarEmoji}</span>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => {
-              setAvatarViewerOpen(false);
-              onProfile();
-            }}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-white/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-white hover:bg-white/20"
-          >
-            Edit profile
-          </button>
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
