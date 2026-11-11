@@ -99,6 +99,32 @@ public class MainActivity extends BridgeActivity {
             return "{\"top\":" + i[0] + ",\"right\":" + i[1] + ",\"bottom\":" + i[2] + ",\"left\":" + i[3] + "}";
         }
 
+        /* ── Reports: save to Downloads/R.J QUIZ, open, share (all local) ── */
+        @JavascriptInterface
+        public String saveReport(String name, String mime, String base64) {
+            return ReportSaver.save(getApplicationContext(), name, mime, base64);
+        }
+
+        @JavascriptInterface
+        public boolean openReport(String uri, String mime) {
+            return ReportSaver.open(getApplicationContext(), uri, mime);
+        }
+
+        @JavascriptInterface
+        public boolean shareReport(String uri, String mime, String title) {
+            return ReportSaver.share(getApplicationContext(), uri, mime, title);
+        }
+
+        @JavascriptInterface
+        public boolean reportExists(String uri) {
+            return ReportSaver.exists(getApplicationContext(), uri);
+        }
+
+        @JavascriptInterface
+        public boolean deleteReport(String uri) {
+            return ReportSaver.delete(getApplicationContext(), uri);
+        }
+
         /* ── In-app updates (downloads the new APK from this project's GitHub releases) ── */
         @JavascriptInterface
         public boolean canInstallPackages() {

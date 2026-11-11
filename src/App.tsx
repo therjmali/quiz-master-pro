@@ -1,6 +1,7 @@
 import UpdateBanner from './components/update/UpdateBanner';
 import { OPEN_UPDATES_EVENT, hasUpdate, scheduleUpdateCheck, useUpdateState } from './platform/updater';
 import { requestOpenSettingsSection } from './components/cloud/CloudGate';
+import { initReportNotificationTap, pruneMissingReports } from './platform/reportFiles';
 import { nextOpenIndex, prevOpenIndex, canEnterQuestion } from './utils/quizNav';
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, startTransition } from 'react';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
@@ -264,6 +265,8 @@ function AppScreens({
   /** Sub-state metadata for current screen (e.g. profile tab, library folder) */
   const screenMetaRef = useRef<Record<string, string>>({});
   const [reportPreviewData, setReportPreviewData] = useState<ReportPreviewData | null>(null);
+  /** True while the preview is being closed: the route guard must not bounce to the dashboard mid-transition. */
+  const previewClosingRef = useRef(false);
   const [chatbotState, setChatbotState] = useState<{ open: boolean; questionContext?: import('./components/AIChatbot').QuestionContext }>({ open: false });
   const [flashcardInitFilter, setFlashcardInitFilter] = useState<'all' | 'known' | 'review' | 'unmarked'>('all');
   const [detailLoading, setDetailLoading] = useState(false);
@@ -343,7 +346,7 @@ function AppScreens({
         // Restore to exact previous screen + scroll + sub-state
         if (prev.meta) screenMetaRef.current = prev.meta;
         scrollPositionsRef.current[prev.screen] = prev.scrollY;
-        if (cur === 'report-preview') setReportPreviewData(null);
+        if (cur === 'report-preview') { previewClosingRef.current = true; setReportPreviewData(null); }
         if (cur === 'results') setResultOrigin(null);
         navigate(SCREEN_PATHS[prev.screen], { replace: true });
         // Restore scroll after render
@@ -381,7 +384,7 @@ function AppScreens({
       (screen === 'quiz' && !quiz.quizData.length && !quiz.hasSavedSession) ||
       (screen === 'results' && !currentResult) ||
       (screen === 'summary' && !quiz.quizData.length) ||
-      (screen === 'report-preview' && !reportPreviewData);
+      (screen === 'report-preview' && !reportPreviewData && !previewClosingRef.current);
     if (shouldRedirect) {
       startTransition(() => { navigate('/', { replace: true }); });
     }
@@ -448,6 +451,7 @@ function AppScreens({
   }, [navigate, navStack]);
 
   // In-app updates: quiet check on start-up (installed app), and "open the updates" requests from banners and toasts.
+  useEffect(() => { initReportNotificationTap(); pruneMissingReports(); }, []);
   const updateState = useUpdateState();
   const updateAvailable = hasUpdate(updateState);
   useEffect(() => scheduleUpdateCheck(info => {
@@ -577,11 +581,13 @@ function AppScreens({
       scrollY: window.scrollY,
       meta: { ...screenMetaRef.current },
     });
+    previewClosingRef.current = false;
     setReportPreviewData(data); setScreen('report-preview');
     requestAnimationFrame(() => window.scrollTo(0, 0));
   }, [setScreen, navStack]);
 
   const handleCloseReportPreview = useCallback(() => {
+    previewClosingRef.current = true;
     setReportPreviewData(null);
     // Pop from nav stack to restore exact previous screen + scroll + sub-state
     const prev = navStack.pop();

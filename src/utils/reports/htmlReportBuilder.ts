@@ -1156,31 +1156,18 @@ export function getReportFilename(results: QuizResult[], format: ExportFormat): 
   return `R.J_Quiz_${title}${subject}_${getDateStr()}.${extMap[format]}`;
 }
 
-function downloadBlob(content: string, mimeType: string, filename: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
-}
+function fileTitle(filename: string): string { return filename.replace(/\.[a-z0-9]+$/i, '').replace(/[_]+/g, ' ').trim() || 'Report'; }
 
+/**
+ * Saves a report built as HTML. Works offline in the app and browser: PDF is generated on the device (no print
+ * window, no server), DOC / HTML are saved to Downloads, and a notification confirms it.
+ */
 export function exportSmartReport(html: string, format: ExportFormat, filename: string): void {
-  if (format === 'html') { downloadBlob(html, 'text/html;charset=utf-8', filename); return; }
-  if (format === 'doc')  { downloadBlob(html, 'application/msword', filename); return; }
-  const win = window.open('', '_blank');
-  if (!win) {
-    downloadBlob(html, 'text/html;charset=utf-8', filename.replace('.pdf', '.html'));
-    alert('⚠️ Popup blocked.\n\nFile saved as HTML. Open it in your browser and press Ctrl+P → "Save as PDF".');
-    return;
-  }
-  win.document.open(); win.document.write(html); win.document.close();
-  win.addEventListener('load', () => { setTimeout(() => { win.focus(); win.print(); }, 500); });
-  setTimeout(() => { try { win.focus(); win.print(); } catch(_) {} }, 1100);
+  void import('./exportReport').then(m => m.exportLegacyHtml(html, format, filename, fileTitle(filename)));
 }
 
 export function exportTextReport(text: string, filename: string): void {
-  downloadBlob(text, 'text/plain;charset=utf-8', filename);
+  void import('./exportReport').then(m => m.exportLegacyHtml(text, 'text', filename, fileTitle(filename)));
 }
 
 export function wrapHtmlForWord(html: string, docTitle: string): string {

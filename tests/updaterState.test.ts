@@ -127,3 +127,12 @@ test('avatar: square crop is centred; bad files are rejected with friendly error
   assert.throws(() => validateAvatarFile({ type: 'image/png', size: 50 * 1024 * 1024 }), AvatarError);
   assert.doesNotThrow(() => validateAvatarFile({ type: 'image/jpeg', size: 1000 }));
 });
+
+test('forgetStoredSession removes the saved sign-in from both storages (sign-out works offline)', async () => {
+  const { forgetStoredSession } = await import('../src/platform/cloud/authStore');
+  const { AUTH_STORAGE_KEY } = await import('../src/platform/cloud/supabase');
+  localStorage.setItem(AUTH_STORAGE_KEY, '{"a":1}'); sessionStorage.setItem(AUTH_STORAGE_KEY, '{"a":1}'); localStorage.setItem(`${AUTH_STORAGE_KEY}-user`, '{}'); localStorage.setItem('keep-me', '1');
+  forgetStoredSession();
+  assert.equal(localStorage.getItem(AUTH_STORAGE_KEY), null); assert.equal(sessionStorage.getItem(AUTH_STORAGE_KEY), null);
+  assert.equal(localStorage.getItem(`${AUTH_STORAGE_KEY}-user`), null); assert.equal(localStorage.getItem('keep-me'), '1');
+});

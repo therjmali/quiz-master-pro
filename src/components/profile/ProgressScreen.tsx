@@ -18,7 +18,6 @@ import OverviewTab from './OverviewTab';
 import HistoryList from './HistoryList';
 import ReportDownloadPanel from '../reports/ReportDownloadPanel';
 import { ReportPreviewData } from '../reports/ReportPreviewPage';
-import StatusStrip from './StatusStrip';
 import SessionSelector, { SessionMode, filterBySession, getSessionLabel } from '../SessionSelector';
 
 type View = 'overview' | 'correct' | 'wrong' | 'skipped';
@@ -405,9 +404,6 @@ export default function ProgressScreen({
         </button>
       </section>
 
-      {/* Cloud / backup / storage / app status */}
-      <StatusStrip onJump={section => onOpenSettings(section)} />
-
       {/* ── Lifetime Score ── */}
       {masterFiltered.length > 0 && (
         <div className="glass-card p-5 mb-4 relative overflow-hidden">
@@ -525,6 +521,7 @@ export default function ProgressScreen({
           reportHelper={reportHelper}
           onReportHelperChange={onReportHelperChange}
           onOpenPreviewPage={onOpenReportPreview}
+          getAiRationale={getAiRationale}
           controlledSubject={profileSubjectFilter === 'all' ? null : profileSubjectFilter}
           controlledUnit={profileUnitFilter}
           controlledDiffFilter={profileDiffFilter}

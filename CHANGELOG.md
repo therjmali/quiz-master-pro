@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.8.0] - 2026-11-11
+
+Reports rebuilt from scratch: one new format, made on the device, saved to Downloads with a notification, full-page premium preview. Plus Sync Center fixes.
+
+### Added
+- **New report format** (numbered `Q1.`, lettered options, dashed rule, bold `Ans.1. : (B) …`, explanation, one or two columns, `Page N of M` footer with your brand). Used for Full report, Correct, Mistakes, Skipped, Study notes, Exam paper (answer key at the end) and Revision sheet. Hindi, Greek and medical symbols render correctly (fonts are bundled).
+- **PDF is created on the device**: no print window, no server, works with no internet. Word, text and web-page versions follow the same settings.
+- **Saved to Downloads / R.J QUIZ** (Android, no permission needed) with a **“Report saved” notification** that opens the file when tapped. Open / Share buttons, a “Recently saved” list, and a share-sheet fallback.
+- **Full-page premium preview**: real pages (exactly what you download), page indicator and jump, zoom and pinch, report-type tabs, options for answers (after each / key at end / hidden), your answer, book and AI rationale, columns, text size, level and order. “Generate AI explanations” fills missing ones with your own key.
+- **Settings → Reports & downloads**: columns, text size, paper (A4 / Letter), footer name, notifications, saved-files list.
+- **Revision sheets run on the device** with your own AI key (no server).
+
+### Changed
+- The “All systems healthy…” status card moved from Progress to **Settings** (profile photo). Progress now shows only your progress.
+- E-mail report button is hidden when there is no server (it could not work).
+
+### Fixed
+- **Sync Center**: header no longer sits under the status bar; **dialogs (rename device, sign out others, upload / download copy, delete, change password) were rendering behind the Sync Center and could not be seen or used** — fixed for every dialog in the app; **sign out now works offline** and really forgets the saved session (it used to silently stay signed in); sign-out asks for confirmation; renaming a device updates the cloud list.
+- Back from a report preview returned to the home screen instead of Progress.
+- Report downloads in the Android app (blob links and the print window do nothing in the WebView).
+- Server-only PDF/revision calls no longer delay or break downloads.
+
 ## [2.7.0] - 2026-11-10
 
 In-app updates that really install, a Settings hub behind your profile photo, and a premium Progress screen.

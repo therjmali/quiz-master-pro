@@ -58,7 +58,9 @@ const REQUIRED = [
   'src/platform/runtime.ts', 'src/platform/autoBackup.ts', 'src/platform/appIcon.ts', 'src/platform/cloud/syncEngine.ts',
   'src/platform/cloud/sections.ts', 'src/platform/cloud/authStore.ts', 'src/platform/notify/planner.ts', 'src/platform/notify/notifier.ts',
   'src/platform/ai/providers.ts', 'src/platform/ai/caller.ts', 'src/utils/historyTrash.ts',
-  'android-res/java/MainActivity.java', 'android-res/java/QmNativePlugin.java', 'android-res/java/ApkUpdater.java',
+  'android-res/java/MainActivity.java', 'android-res/java/QmNativePlugin.java', 'android-res/java/ApkUpdater.java', 'android-res/java/ReportSaver.java',
+  'src/utils/reports/pdf/layout.ts', 'src/utils/reports/pdf/fontSet.ts', 'src/utils/reports/pdf/pdfWriter.ts', 'src/platform/reportFiles.ts', 'scripts/ui-qa-reports.mjs', 'tests/reportEngine.test.ts',
+  ...['inter-latin-400', 'inter-latin-700', 'inter-latin-ext-400', 'inter-latin-ext-700', 'inter-greek-400', 'inter-greek-700', 'noto-devanagari-400', 'noto-devanagari-700'].map(f => `src/assets/report-fonts/${f}.ttf`),
   'src/platform/updater.ts', 'src/components/update/UpdatePanel.tsx', 'src/components/settings/SettingsScreen.tsx', 'src/components/profile/ProgressScreen.tsx', 'tests/updaterState.test.ts',
   'tests/syncEngine.test.ts', 'tests/backup.test.ts', 'tests/notify.test.ts', 'tests/ai.test.ts', 'tests/platform.test.ts', 'tests/merge3.test.ts',
 ];
@@ -190,6 +192,17 @@ if (exists('.github/workflows/ci.yml')) {
   const ui = files.filter(f => /^src\/.*\.(ts|tsx)$/.test(f)).map(f => ({ f, t: read(f) }));
   const stale = ui.filter(x => /Export, Deploy|Deploy & Install|webintoapp\.com|appsgeyser\.com/i.test(x.t)).map(x => x.f);
   check('Export / Deploy & Install screens are gone', stale.length === 0, stale.join(', '));
+  for (const m of ['saveReport', 'openReport', 'shareReport', 'reportExists', 'deleteReport']) {
+    check(`MainActivity exposes ${m} for offline report downloads`, act.includes(` ${m}(`), 'missing');
+  }
+  check('reports are saved to Downloads/R.J QUIZ through MediaStore', read('android-res/java/ReportSaver.java').includes('MediaStore.Downloads.EXTERNAL_CONTENT_URI'), 'ReportSaver changed');
+  const exp = read('src/utils/reports/htmlReportBuilder.ts');
+  check('PDF export no longer uses a print window or the server', !/window\.open\(/.test(exp), 'old print-window export is back');
+  const serverPdf = ui.filter(x => /(import[^;]*\b(revisionSheetPdf|generateReportPdf)\b|\b(revisionSheetPdf|generateReportPdf)\()/.test(x.t) && !/EmailReportButton|^src\/api\//.test(x.f)).map(x => x.f);
+  check('no screen depends on the PDF server any more', serverPdf.length === 0, serverPdf.join(', '));
+  check('Settings has the Reports & downloads section', read('src/components/profile/settings/settingsSearch.ts').includes("reports:"), 'missing');
+  check('status card is in Settings, not on the Progress screen', read('src/components/settings/SettingsScreen.tsx').includes('<StatusStrip') && !read('src/components/profile/ProgressScreen.tsx').includes('<StatusStrip'), 'moved back');
+  check('dialogs sit above full-screen panels (Sync Center)', !/\bz-50\b/.test(read('packages/components/ui/dialog.tsx')) && !/\bz-50\b/.test(read('packages/components/ui/alert-dialog.tsx')), 'z-50 dialogs would hide behind the Sync Center');
   const nav = read('src/components/BottomNav.tsx');
   check('bottom tab is "Progress" (not Profile)', nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'"), 'bottom nav label');
   check('Navbar profile photo opens Settings', read('src/components/Navbar.tsx').includes('onOpenSettings'), 'missing');

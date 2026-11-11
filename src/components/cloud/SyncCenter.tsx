@@ -27,7 +27,7 @@ import { toast } from 'sonner';
 
 import {
   type CloudDevice, changePassword, deleteAccount, listDevices,
-  removeDevice, signOut, useCloudAuth,
+  removeDevice, renameThisDevice, signOut, useCloudAuth,
 } from '../../platform/cloud/authStore';
 import { getCloudEndpoint } from '../../platform/cloud/config';
 import { getDeviceIdentity, renameDevice } from '../../platform/cloud/device';
@@ -104,6 +104,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
     | { kind: 'push-device' }
     | { kind: 'wipe-cloud' }
     | { kind: 'delete-account' }
+    | { kind: 'sign-out' }
     | { kind: 'revoke-device'; device: CloudDevice }
     | { kind: 'revoke-others' }
     | { kind: 'restore'; revision: RevisionRow }
@@ -280,6 +281,10 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
           setBusy(null);
         }
         break;
+      case 'sign-out':
+        setConfirm(null);
+        await handleSignOut();
+        return;
       case 'revoke-others':
         setBusy('revoke-others');
         try {
@@ -310,9 +315,12 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
   };
 
   const handleSignOut = async () => {
-    await signOut('local');
+    setBusy('sign-out');
+    try { await signOut('local'); } catch { /* the stored session is removed regardless */ }
+    setBusy(null);
+    toast.success('Signed out. Your quizzes stay on this device.');
     onClose();
-    setTimeout(() => window.location.reload(), 200);
+    setTimeout(() => window.location.reload(), 350);
   };
 
   const handleChangePassword = async () => {
@@ -344,10 +352,11 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
   const handleRename = async () => {
     const name = deviceName.trim();
-    if (!name) return;
+    if (!name) { toast.error('Type a name for this device.'); return; }
     renameDevice(name);
     setRenameOpen(false);
-    toast.success('Device renamed');
+    try { await renameThisDevice(name); toast.success('Device renamed'); }
+    catch { toast.success('Renamed on this device. Other devices see it after the next sync.'); }
     if (tab === 'devices') void loadDevices();
   };
 
@@ -356,9 +365,9 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
   if (!cloud.user) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[100] bg-background overflow-y-auto">
-        <div className="sticky top-0 z-10 glass-header border-b border-border/20">
+        <div className="sticky top-0 z-10 glass-header border-b border-border/20" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }}>
           <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-3xl mx-auto">
-            <button onClick={onClose} className="w-8 h-8 rounded-xl bg-muted/20 flex items-center justify-center hover:bg-muted/30 transition-colors">
+            <button onClick={onClose} aria-label="Back" className="w-8 h-8 rounded-xl bg-muted/20 flex items-center justify-center hover:bg-muted/30 transition-colors">
               <ArrowLeft className="w-4 h-4 text-foreground" />
             </button>
             <h1 className="text-sm font-bold text-foreground">Cloud Sync &amp; Backup</h1>
@@ -408,7 +417,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
       className="fixed inset-0 z-[100] bg-background overflow-y-auto"
     >
       {/* Header */}
-      <div className="sticky top-0 z-10 glass-header border-b border-border/20">
+      <div className="sticky top-0 z-10 glass-header border-b border-border/20" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }}>
         <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-3xl mx-auto">
           <button onClick={onClose} className="w-8 h-8 rounded-xl bg-muted/20 flex items-center justify-center hover:bg-muted/30 transition-colors" aria-label="Back">
             <ArrowLeft className="w-4 h-4 text-foreground" />
@@ -465,7 +474,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 space-y-4">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-4 space-y-4" style={{ paddingBottom: 'calc(var(--qmp-inset-bottom, 0px) + 32px)' }}>
         <AnimatePresence mode="wait">
           {/* ── OVERVIEW ─────────────────────────────────────────── */}
           {tab === 'overview' && (
@@ -586,7 +595,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleSignOut}
+                    onClick={() => setConfirm({ kind: 'sign-out' })}
                     className="h-8 rounded-xl text-xs font-bold gap-1.5 text-destructive border-destructive/25 hover:bg-destructive/10"
                   >
                     <LogOut className="w-3 h-3" /> Sign Out
@@ -813,6 +822,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
               {confirm?.kind === 'push-device' && 'Upload this device to the cloud?'}
               {confirm?.kind === 'wipe-cloud' && 'Clear cloud copy?'}
               {confirm?.kind === 'delete-account' && 'Delete your cloud account?'}
+              {confirm?.kind === 'sign-out' && 'Sign out of this device?'}
               {confirm?.kind === 'revoke-device' && `Sign out ${confirm.device.name}?`}
               {confirm?.kind === 'revoke-others' && 'Sign out every other device?'}
               {confirm?.kind === 'restore' && `Restore cloud version ${confirm.revision.version}?`}
@@ -822,6 +832,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
               {confirm?.kind === 'push-device' && 'This device will become the definitive source of truth across all your devices.'}
               {confirm?.kind === 'wipe-cloud' && 'The server copy will be cleared. This device keeps all its data.'}
               {confirm?.kind === 'delete-account' && 'Your cloud account and remote backups will be permanently deleted.'}
+              {confirm?.kind === 'sign-out' && 'Sync stops on this device. Everything stays saved here, and you can sign in again any time.'}
               {confirm?.kind === 'revoke-device' && 'That device will need to sign in again to sync.'}
               {confirm?.kind === 'revoke-others' && 'All other sessions will be terminated.'}
               {confirm?.kind === 'restore' && 'The cloud copy will be rolled back to this restore point.'}

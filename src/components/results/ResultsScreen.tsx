@@ -5,7 +5,9 @@ import { toast } from 'sonner';
 import { QuizResult, QuizSettings, ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import { getUserSubjects } from '../../utils/subjects';
 import FolderPickerSheet from '../shared/FolderPickerSheet';
-import { generateReportPdf } from 'zitejs/api';
+import { buildQuestionDoc, reportFilename, styleFor } from '../../utils/reports/pdf/model';
+import { loadReportPrefs } from '../../utils/reports/reportPrefs';
+import { announceSaved, exportMarkdownReport, exportReportDoc, friendlyError, openSavedReportToast, shareSavedReportToast } from '../../utils/reports/exportReport';
 import { applyNegativeMarking, removeNegativeMarking, getOriginalScore, getQuizKey } from '../../utils/negativeMarkingStore';
 import { useProfileStore } from '../../hooks/useProfileStore';
 import ScoreHero from './ScoreHero';
@@ -18,7 +20,7 @@ import WeakTopicsSummary from './WeakTopicsSummary';
 import DifficultyRating from './DifficultyRating';
 import EmailReportButton from './EmailReportButton';
 import RevisionSheetModal from './RevisionSheetModal';
-import { generateRevisionSheet, revisionSheetPdf } from 'zitejs/api';
+import { generateRevisionSheet } from 'zitejs/api';
 import { buildRevisionSheetHtml, buildRevisionSheetText } from '../../utils/reports/revisionHtmlBuilder';
 import { exportSmartReport, exportTextReport, wrapHtmlForWord } from '../../utils/reports/htmlReportBuilder';
 import { getRevisionCache, setRevisionCache } from '../../utils/revisionCache';
@@ -215,49 +217,19 @@ export default function ResultsScreen({
     }, 100);
   };
 
-  // ── PDF generation via backend ──
+  // ── PDF generation: on the device (offline), same format as the report panel ──
   const handleGeneratePdf = async (filter: 'all' | 'correct' | 'wrong' | 'skipped' = 'all') => {
     setPdfLoading(true);
+    const tid = toast.loading('Building PDF…');
     try {
-      const payload = {
-        results: [{
-          quizTitle: result.quizTitle,
-          subject: result.subject,
-          percentage: result.maxScore > 0 ? Math.max(0, Math.min(100, Math.round((result.netScore / result.maxScore) * 100))) : result.percentage,
-          netScore: result.netScore,
-          maxScore: result.maxScore,
-          correct: result.correct,
-          wrong: result.wrong,
-          skipped: result.skipped,
-          totalQuestions: result.totalQuestions,
-          accuracy: result.accuracy,
-          gain: result.gain,
-          penalty: result.penalty,
-          timeTaken: result.timeTaken,
-          timestamp: result.timestamp,
-          passMark: result.passMark ?? settings.passMark ?? 50,
-          quizData: result.quizData.map(q => ({
-            question: q.question,
-            options: q.options,
-            correctAnswer: q.correctAnswer,
-            difficulty: q.difficulty || 'medium',
-            rationale: q.rationale,
-            imageUrl: (q as any).imageUrl,
-            questionType: q.questionType,
-          })),
-          userAnswers: result.userAnswers,
-        }],
-        filter,
-        reportType: 'full' as const,
-        rationaleCache,
-        includeRationale: true,
-      };
-      const { url } = await generateReportPdf(payload);
-      window.open(url, '_blank');
-      toast.success('📄 PDF report generated!');
+      const doc = buildQuestionDoc([result], { kind: filter, order: reportOrder, difficulty: 'all', rationale: rationalePrefs, rationaleCache, scope: 'quiz' });
+      if (!doc.items?.length) { toast.error(filter === 'wrong' ? 'No mistakes to put in a report. 🎉' : 'No questions match this filter.'); return; }
+      const saved = await exportReportDoc(doc, styleFor(filter, loadReportPrefs()), 'pdf', { filename: reportFilename(filter, [result], 'pdf') });
+      announceSaved(saved, openSavedReportToast, shareSavedReportToast);
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to generate PDF');
+      toast.error(friendlyError(e));
     } finally {
+      toast.dismiss(tid);
       setPdfLoading(false);
     }
   };
@@ -317,18 +289,7 @@ export default function ResultsScreen({
             const h = editedHtml || buildRevisionSheetHtml(capturedMd, { quizTitle: baseTitle, subject });
             exportSmartReport(wrapHtmlForWord(h, `Revision Sheet — ${baseTitle}`), 'doc', `${fname}.doc`);
           } else {
-            (async () => {
-              try {
-                toast.info('Generating PDF…');
-                const { url } = await revisionSheetPdf({ markdownContent: capturedMd, subject: subject || undefined, quizTitle: baseTitle || undefined });
-                const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.click();
-                toast.success('📥 PDF downloaded!');
-              } catch {
-                const h = editedHtml || buildRevisionSheetHtml(capturedMd, { quizTitle: baseTitle, subject });
-                exportSmartReport(h, 'pdf', `${fname}.pdf`);
-                toast.success('📥 PDF downloaded!');
-              }
-            })();
+            void exportMarkdownReport(capturedMd, 'pdf', { title: `Revision Sheet — ${baseTitle}`, filename: `${fname}.pdf`, meta: [subject || '', baseTitle || ''].filter(Boolean) });
             return;
           }
           toast.success(`📥 ${fmt.toUpperCase()} downloaded!`);
@@ -799,6 +760,7 @@ export default function ResultsScreen({
           reportHelper={reportHelper}
           onReportHelperChange={onReportHelperChange}
           onOpenPreviewPage={onOpenReportPreview}
+          getAiRationale={getAiRationale}
         />
       </div>
 

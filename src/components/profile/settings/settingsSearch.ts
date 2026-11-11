@@ -11,13 +11,14 @@ export interface SettingEntry {
 }
 
 export type SectionId =
-  | 'updates' | 'appearance' | 'accessibility' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
+  | 'updates' | 'appearance' | 'accessibility' | 'reports' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
   | 'gestures' | 'cloud' | 'account' | 'device' | 'advanced';
 
 export const SECTION_META: Record<SectionId, { title: string; desc: string }> = {
   updates:       { title: 'App updates',             desc: 'Download and install the latest version inside the app' },
   appearance:    { title: 'Appearance',              desc: 'Theme, colour, text size and visual effects' },
   accessibility: { title: 'Accessibility',         desc: 'Zoom the whole app in or out' },
+  reports:       { title: 'Reports & downloads',     desc: 'PDF layout, notifications and saved files' },
   quiz:          { title: 'Quiz & Study',            desc: 'Study targets, cards, exam dates and quiz features' },
   ai:            { title: 'AI & Content',            desc: 'AI features, API keys and quiz templates' },
   library:       { title: 'Library & Data',          desc: 'Backups, awards, AI notes and trash' },
@@ -32,11 +33,19 @@ export const SECTION_META: Record<SectionId, { title: string; desc: string }> = 
   advanced:      { title: 'Advanced & About',        desc: 'Platform badge and resetting preferences' },
 };
 
-export const SECTION_ORDER: SectionId[] = ['updates', 'appearance', 'accessibility', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
+export const SECTION_ORDER: SectionId[] = ['updates', 'appearance', 'accessibility', 'reports', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
 
 export const SETTINGS: SettingEntry[] = [
   // App updates
   { id: 'appUpdate', section: 'updates', title: 'Check for updates', hint: 'See what is new, then download and install the latest version in one tap', keywords: ['update', 'upgrade', 'version', 'install', 'apk', 'release', 'download', 'new version', 'latest'] },
+  // Reports & downloads
+  { id: 'reportColumns', section: 'reports', title: 'Report columns', hint: 'One or two columns in PDF reports', keywords: ['pdf', 'layout', 'column', 'report', 'format'] },
+  { id: 'reportText', section: 'reports', title: 'Report text size', hint: 'Small, medium or large text in reports', keywords: ['pdf', 'font', 'size', 'report', 'print'] },
+  { id: 'reportPaper', section: 'reports', title: 'Paper size', hint: 'A4 or Letter', keywords: ['a4', 'letter', 'paper', 'pdf', 'print'] },
+  { id: 'reportUserAnswer', section: 'reports', title: 'Show your answer in reports', hint: 'Adds your answer under each answer', keywords: ['pdf', 'answer', 'report', 'mistakes'] },
+  { id: 'reportBrand', section: 'reports', title: 'Report footer name', hint: 'Name printed on every page', keywords: ['brand', 'footer', 'watermark', 'name', 'pdf'] },
+  { id: 'reportNotify', section: 'reports', title: 'Report saved notification', hint: 'Notify when a download finishes', keywords: ['notification', 'download', 'pdf', 'saved', 'alert'] },
+  { id: 'reportWhere', section: 'reports', title: 'Where reports are saved', hint: 'Downloads / R.J QUIZ', keywords: ['downloads', 'folder', 'storage', 'location', 'pdf', 'file'] },
   // Appearance
   { id: 'theme', section: 'appearance', title: 'Theme', hint: 'Light or AMOLED black — styles the whole app and quiz screen', keywords: ['dark mode', 'night', 'black', 'colour scheme', 'skin'] },
   { id: 'accent', section: 'appearance', title: 'Accent colour', hint: 'Highlight colour used for buttons and active states', keywords: ['color', 'primary', 'tint', 'brand'] },

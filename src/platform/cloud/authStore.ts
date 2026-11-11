@@ -8,7 +8,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { isCloudConfigured } from './config';
-import { getSupabase } from './supabase';
+import { AUTH_STORAGE_KEY, getSupabase } from './supabase';
 import { setEphemeralSession, isEphemeral } from './session';
 import { setCloudUser, type CloudUser } from './cloudUser';
 import { getDeviceIdentity, renameDevice } from './device';
@@ -209,10 +209,28 @@ export async function updateDisplayName(name: string): Promise<boolean> {
 
 export async function signOut(scope: 'local' | 'global' | 'others' = 'local'): Promise<void> {
   await guarded(async () => {
-    if (isCloudConfigured()) await getSupabase().auth.signOut({ scope });
+    if (isCloudConfigured()) {
+      // With no connection supabase-js returns an error BEFORE it forgets the session, so "Sign out" would silently
+      // do nothing and the next start would sign you straight back in. Never let that happen for this device.
+      try { await getSupabase().auth.signOut({ scope }); } catch { /* handled below */ }
+    }
     if (scope === 'others') setState({ notice: 'Signed out of all other devices.' });
   });
-  if (scope !== 'others') applySession(null);
+  if (scope !== 'others') {
+    forgetStoredSession();
+    applySession(null);
+    setState({ error: null });
+  }
+}
+
+/** Removes the saved session from this device (both storages), whatever the network says. */
+export function forgetStoredSession(): void {
+  for (const store of [() => localStorage, () => sessionStorage]) {
+    try {
+      const st = store();
+      for (const k of [AUTH_STORAGE_KEY, `${AUTH_STORAGE_KEY}-user`, `${AUTH_STORAGE_KEY}-code-verifier`]) st.removeItem(k);
+    } catch { /* storage blocked */ }
+  }
 }
 
 export function clearAuthMessages(): void { setState({ error: null, notice: null }); }

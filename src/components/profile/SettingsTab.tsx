@@ -10,6 +10,7 @@ import { AppearanceSection, QuizStudySection } from './settings/sectionsA';
 import { CloudSection } from './settings/sectionsCloud';
 import { AccessibilitySection } from './settings/sectionsAccessibility';
 import { UpdatesSection } from './settings/sectionsUpdates';
+import { ReportsSection } from './settings/sectionsReports';
 import { AutoBackupSection, RemindersSection, DataSection, DeviceSection } from './settings/sectionsPlatform';
 import { AISection, LibrarySection, NotificationsSection, GesturesSection, AccountSection, AdvancedSection, type ProfileTabLink } from './settings/sectionsB';
 
@@ -35,7 +36,7 @@ const EMPTY: QuizResult[] = [];
 /** Status-tile / banner keys -> the Settings section that owns them. */
 const DEEP_LINKS: Record<string, SectionId> = {
   updates: 'updates', about: 'updates', backup: 'autobackup', data: 'data', notifications: 'notifications', reminders: 'reminders',
-  appearance: 'appearance', ai: 'ai', account: 'account', device: 'device',
+  appearance: 'appearance', reports: 'reports', ai: 'ai', account: 'account', device: 'device',
 };
 type OpenMap = Record<SectionId, boolean>;
 
@@ -173,6 +174,7 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
         {visible('updates') && <UpdatesSection {...sectionProps('updates')} />}
         {visible('appearance') && <AppearanceSection {...sectionProps('appearance')} theme={theme} onThemeChange={onThemeChange} />}
         {visible('accessibility') && <AccessibilitySection {...sectionProps('accessibility')} />}
+        {visible('reports') && <ReportsSection {...sectionProps('reports')} />}
         {visible('quiz') && <QuizStudySection {...sectionProps('quiz')} />}
         {visible('ai') && <AISection {...sectionProps('ai')} onOpenTab={openTab} />}
         {visible('library') && <LibrarySection {...sectionProps('library')} onOpenTab={openTab} isLoggedIn={isLoggedIn} history={history} />}

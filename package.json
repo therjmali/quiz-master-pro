@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "2.7.0",
+  "version": "2.8.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -19,7 +19,8 @@
     "test": "npm run test:unit && npm run test:sql",
     "check:cloud": "node scripts/check-cloud.mjs",
     "test:ui": "node scripts/ui-qa.mjs",
-    "test:ui:settings": "node scripts/ui-qa-settings.mjs"
+    "test:ui:settings": "node scripts/ui-qa-settings.mjs",
+    "test:ui:reports": "node scripts/ui-qa-reports.mjs"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.45.6",
@@ -39,11 +40,14 @@
     "@fillout/react": "^3.1.2",
     "@floating-ui/react": "^0.27.17",
     "@fontsource/dm-sans": "^5.2.8",
+    "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.2.8",
+    "@fontsource/noto-sans-devanagari": "^5.3.0",
     "@fontsource/plus-jakarta-sans": "^5.2.8",
     "@fontsource/syne": "^5.2.8",
     "@googlemaps/js-api-loader": "^1.16.8",
     "@hookform/resolvers": "^4.1.3",
+    "@pdf-lib/fontkit": "^1.1.1",
     "@radix-ui/react-accordion": "^1.2.3",
     "@radix-ui/react-alert-dialog": "^1.1.6",
     "@radix-ui/react-aspect-ratio": "^1.1.2",
@@ -111,6 +115,7 @@
     "react-router-dom": "^7.5.3",
     "react-webcam": "^7.2.0",
     "recharts": "^2.15.1",
+    "regenerator-runtime": "^0.14.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "resend": "^6.25.0",

@@ -65,7 +65,81 @@ export async function localExplainQuestion(input: ExplainInput, fetchImpl?: type
   return { rationale: value, provider: `${provider}_device` };
 }
 
+
+export interface RevisionInput extends KeyOverrides {
+  wrongQuestions: { question: string; correctAnswer: string; userAnswer?: string; rationale?: string }[];
+  subject?: string;
+  quizTitle?: string;
+}
+
+/** Same prompt as the server endpoint (src/api/generateRevisionSheet.ts), run with the user's own key on the device. */
+export function buildRevisionPrompt(input: RevisionInput): string {
+  const questionsText = input.wrongQuestions.map((q, i) =>
+    `Q${i + 1}: ${q.question}\nCorrect Answer: ${q.correctAnswer}${q.userAnswer ? `\nStudent Picked: ${q.userAnswer}` : ''}${q.rationale ? `\nRationale: ${q.rationale}` : ''}`).join('\n\n');
+  return `You are an expert tutor creating a CONCISE REVISION SHEET for a student who got these questions wrong.
+
+${input.subject ? `Subject: ${input.subject}` : ''}
+${input.quizTitle ? `Quiz: ${input.quizTitle}` : ''}
+Total wrong: ${input.wrongQuestions.length}
+
+WRONG QUESTIONS:
+${questionsText}
+
+FORMAT RULES - FOLLOW EXACTLY:
+- Use proper markdown formatting throughout
+- Every bullet point MUST be on its own line
+- Leave a blank line before every heading (### )
+- Bold key terms with **double asterisks**
+- Keep each bullet to 1-2 lines maximum - exam-focused, not verbose
+
+PRODUCE THIS EXACT STRUCTURE:
+
+## Quick Revision Sheet
+
+### Key Facts
+
+Write each concept the student got wrong as a bullet point. Start each bullet with the **key term** in bold, followed by a dash and a clear 1-line explanation. Group related facts together.
+
+### Memory Aids
+
+Create 2-3 memorable mnemonics or memory tricks for the hardest concepts. Format each one as:
+
+- **MNEMONIC PHRASE** - What it helps you remember: explanation
+
+### Common Mistakes
+
+For each wrong answer the student gave, explain WHY it was wrong in 1 line:
+
+- Q1: You picked "X" - this is wrong because [reason]. The answer is **Y** because [reason].
+
+### Quick Recall
+
+Bullet-point summary of the MOST critical facts (max 8 bullets). Each line:
+
+- **Term** - one-line definition or fact
+
+---
+
+> Focus on the Common Mistakes section to understand your errors, then memorize the Quick Recall points.
+
+IMPORTANT: Output ONLY the markdown. No extra commentary. No code blocks. Keep it concise and scannable.`;
+}
+
+export async function localGenerateRevisionSheet(input: RevisionInput, fetchImpl?: typeof fetch) {
+  const prompt = buildRevisionPrompt(input);
+  const { value } = await withFallback({
+    providers: availableProviders(overrides(input)),
+    attempt: async p => {
+      const text = (await callProvider({ provider: p.provider, key: p.key, system: 'You are an expert exam tutor. Answer only with the requested markdown.', prompt, fetchImpl })).trim();
+      if (!text) throw new AiError('The AI answer was empty.', 'bad_response', p.provider);
+      return text.replace(/^```(?:markdown)?\s*|\s*```$/g, '');
+    },
+  });
+  return { revisionSheet: value };
+}
+
 export const LOCAL_ENDPOINTS: Record<string, (input: never) => Promise<unknown>> = {
   generateQuiz: localGenerateQuiz as (input: never) => Promise<unknown>,
   explainQuestion: localExplainQuestion as (input: never) => Promise<unknown>,
+  generateRevisionSheet: localGenerateRevisionSheet as (input: never) => Promise<unknown>,
 };

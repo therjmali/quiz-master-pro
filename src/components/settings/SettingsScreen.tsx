@@ -16,6 +16,7 @@ import TemplatesTab from '../profile/TemplatesTab';
 import TrashTab from '../profile/TrashTab';
 import ApiKeysTab from '../profile/ApiKeysTab';
 import CloudDataManager from '../CloudDataManager';
+import StatusStrip from '../profile/StatusStrip';
 import { requestOpenSettingsSection } from '../cloud/CloudGate';
 import type { ProfileTabLink } from '../profile/settings/sectionsB';
 
@@ -81,13 +82,6 @@ export default function SettingsScreen({ history, rationaleCache, theme, onTheme
   };
 
   const jump = (section: string) => requestOpenSettingsSection(section);
-
-  const tiles: { key: string; label: string; sub: string; icon: string; onClick: () => void; badge?: string }[] = [
-    { key: 'updates', label: 'App updates', sub: updateReady ? `v${upd.info?.version} ready` : `v${upd.current}`, icon: '🚀', onClick: () => jump('updates'), badge: updateReady ? 'NEW' : undefined },
-    { key: 'cloud', label: 'Cloud & sync', sub: account.signedIn ? 'Signed in' : 'Guest', icon: '☁️', onClick: () => jump('cloud') },
-    { key: 'backup', label: 'Backups', sub: 'Auto & restore', icon: '💾', onClick: () => jump('backup') },
-    { key: 'trash', label: 'Trash', sub: 'Recover quizzes', icon: '🗑️', onClick: () => setView('trash') },
-  ];
 
   if (view !== 'main') {
     return (
@@ -205,23 +199,8 @@ export default function SettingsScreen({ history, rationaleCache, theme, onTheme
         )}
       </section>
 
-      {/* Quick jumps */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4" role="list" aria-label="Quick settings">
-        {tiles.map(t => (
-          <button key={t.key} type="button" role="listitem" onClick={t.onClick}
-            className={`relative text-left p-3 rounded-2xl border bg-card/50 hover:bg-card/80 active:scale-[0.98] transition-all ${t.badge ? 'border-primary/40' : 'border-border'}`}>
-            <span className="text-xl leading-none">{t.icon}</span>
-            <span className="mt-2 flex items-center justify-between gap-1">
-              <span className="min-w-0">
-                <span className="block text-xs font-black text-foreground truncate">{t.label}</span>
-                <span className="block text-[10px] text-foreground/45 truncate">{t.sub}</span>
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-foreground/25 shrink-0" />
-            </span>
-            {t.badge && <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 text-[8px] font-black px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground"><Rocket className="w-2.5 h-2.5" />{t.badge}</span>}
-          </button>
-        ))}
-      </div>
+      {/* System status: cloud, backup, storage, app version - each tile jumps to its settings */}
+      <StatusStrip onJump={jump} />
 
       <SettingsTab theme={theme} onThemeChange={onThemeChange} isLoggedIn={account.signedIn} history={history} onOpenTab={t => setView(t)} />
 

@@ -43,7 +43,7 @@ async function run(label, w, h) {
   ok(`[${label}] profile photo button is visible`, await av.isVisible());
   const box = await av.boundingBox();
   ok(`[${label}] profile photo sits in the top-right and inside the screen`, !!box && box.x + box.width <= w + 0.5 && box.x > w * 0.6 && box.y < 80, JSON.stringify(box));
-  await av.click(); await page.waitForTimeout(700);
+  await av.click(); await page.getByRole('heading', { name: 'Settings', level: 2 }).waitFor({ timeout: 10000 }).catch(() => {}); await page.waitForTimeout(500);
   ok(`[${label}] tap opens /settings`, new URL(page.url()).pathname === '/settings', page.url());
   ok(`[${label}] Settings heading`, await page.getByRole('heading', { name: 'Settings', level: 2 }).isVisible());
   const body = (await page.locator('body').innerText());
@@ -78,8 +78,9 @@ async function run(label, w, h) {
   ok(`[${label}] display name edit works`, await page.locator('section[aria-label="Your account"]').getByText('Rana QA').count() >= 1);
 
   // sub page (Trash tile) + back
-  await page.getByRole('listitem').filter({ hasText: 'Trash' }).first().click(); await page.waitForTimeout(500);
-  ok(`[${label}] Trash tile opens the Trash page`, await page.getByRole('heading', { name: 'Trash', level: 2 }).isVisible());
+  await page.locator('#section-library button[aria-expanded]').first().click(); await page.waitForTimeout(400);
+  await page.locator('#section-library').getByRole('button', { name: /^Trash/ }).first().click(); await page.waitForTimeout(500);
+  ok(`[${label}] Library & Data > Trash opens the Trash page`, await page.getByRole('heading', { name: 'Trash', level: 2 }).isVisible());
   await page.getByRole('button', { name: 'Back to settings' }).click(); await page.waitForTimeout(400);
   ok(`[${label}] back returns to the Settings hub`, await page.getByRole('heading', { name: 'Settings', level: 2 }).isVisible());
 

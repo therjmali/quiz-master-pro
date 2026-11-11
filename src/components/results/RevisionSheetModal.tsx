@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { X, Loader2, FileDown, RefreshCw, BookOpen, Brain, Zap, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuizResult } from '../../types/quiz';
-import { generateRevisionSheet, revisionSheetPdf } from 'zitejs/api';
+import { generateRevisionSheet } from 'zitejs/api';
+import { exportMarkdownReport } from '../../utils/reports/exportReport';
 import { Markdown } from '@project/components/markdown';
 import GenerationProgressOverlay from '../GenerationProgressOverlay';
 
@@ -74,28 +75,11 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const { url } = await revisionSheetPdf({
-        markdownContent: content,
-        subject: result.subject || undefined,
-        quizTitle: result.quizTitle || undefined,
+      await exportMarkdownReport(content, 'pdf', {
+        title: `Revision Sheet${result.quizTitle ? ` — ${result.quizTitle}` : ''}`,
+        filename: `Revision_${(result.quizTitle || 'Sheet').replace(/[^\w\-]+/g, '-').slice(0, 40)}_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.pdf`,
+        meta: [result.subject || '', result.quizTitle || ''].filter(Boolean),
       });
-      // Mobile-friendly: use a link click instead of window.open (avoids popup blockers)
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
-      a.click();
-      toast.success('📥 PDF revision sheet ready!');
-    } catch {
-      // Fallback to .md text download
-      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `revision-${result.quizTitle || 'sheet'}-${new Date().toISOString().split('T')[0]}.md`;
-      a.click();
-      URL.revokeObjectURL(blobUrl);
-      toast.success('📥 Downloaded as text (PDF unavailable)');
     } finally {
       setDownloading(false);
     }

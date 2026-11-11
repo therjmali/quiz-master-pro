@@ -5,6 +5,7 @@ import { useAuth } from 'zitejs/auth';
 import { QuizResult } from '../../types/quiz';
 import { emailReport, generateReportPdf } from 'zitejs/api';
 import { getPreferredEmail } from '../../utils/preferredEmail';
+import { hasBackend } from '../../platform/ai/caller';
 
 interface Props { result: QuizResult; rationaleCache: Record<string, string>; }
 
@@ -13,7 +14,8 @@ export default function EmailReportButton({ result, rationaleCache }: Props) {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
-  if (!user) return null;
+  // E-mailing needs the hosted server; the standalone web app / APK has none, so don't show a button that cannot work.
+  if (!user || !hasBackend()) return null;
 
   const handleEmail = async () => {
     setLoading(true);
