@@ -296,7 +296,7 @@ export default function ProgressScreen({
           {subjects.length > 0 && (
             <div>
               <p className="text-[9px] font-black uppercase tracking-widest text-foreground/25 mb-2">🔖 Subject</p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="qmp-capsules">
                 <FilterBtn active={profileSubjectFilter === 'all'} onClick={() => setSubject('all')}>🌐 All</FilterBtn>
                 {subjects.map(s => (
                   <FilterBtn key={s.name} active={profileSubjectFilter === s.name} onClick={() => setSubject(s.name)}>
@@ -309,7 +309,7 @@ export default function ProgressScreen({
           {units.length > 1 && (
             <div className="pl-3 border-l-2 border-primary/20">
               <p className="text-[9px] font-black uppercase tracking-widest text-foreground/20 mb-2">📁 Unit / Topic</p>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="qmp-capsules">
                 <FilterBtn active={!profileUnitFilter} onClick={() => setProfileUnitFilter(null)} small>All Units</FilterBtn>
                 {units.map(u => (
                   <FilterBtn key={u} active={profileUnitFilter === u} onClick={() => setProfileUnitFilter(u)} small>
@@ -321,7 +321,7 @@ export default function ProgressScreen({
           )}
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest text-foreground/25 mb-2">🎯 Difficulty Level</p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="qmp-capsules">
               <FilterBtn active={profileDiffFilter === 'all'} onClick={() => setProfileDiffFilter('all')}>All</FilterBtn>
               <FilterBtn active={profileDiffFilter === 'easy'} onClick={() => setProfileDiffFilter('easy')}>🟢 Easy</FilterBtn>
               <FilterBtn active={profileDiffFilter === 'medium'} onClick={() => setProfileDiffFilter('medium')}>🟡 Medium</FilterBtn>
@@ -565,26 +565,9 @@ export default function ProgressScreen({
   );
 }
 
-function FilterBtn({
-  active, onClick, children, small,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  small?: boolean;
-}) {
+function FilterBtn({ active, onClick, children, small }: { active: boolean; onClick: () => void; children: React.ReactNode; small?: boolean }) {
   return (
-    <button
-      onClick={onClick}
-      className={`
-        font-bold rounded-lg border transition-all leading-none
-        ${small ? 'text-[10px] px-2.5 py-1' : 'text-xs px-3 py-1.5'}
-        ${active
-          ? 'bg-primary/15 border-primary/30 text-foreground'
-          : 'bg-muted/30 border-border text-foreground/40 hover:text-foreground/70 hover:bg-muted/50'
-        }
-      `}
-    >
+    <button type="button" onClick={onClick} aria-pressed={active} className="qmp-capsule" style={small ? { height: '2rem', fontSize: '0.72rem' } : undefined}>
       {children}
     </button>
   );

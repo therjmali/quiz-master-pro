@@ -21,6 +21,7 @@ import { initBookmarkStore, saveBookmarkStore } from '../../utils/bookmarkStore'
 import { initMistakeStore, saveMistakeStore } from '../../utils/globalMistakes';
 import { initFileTreeStore, saveFileTree, loadTrash, saveTrash } from '../../utils/fileTree';
 import { loadHistoryTrash, saveHistoryTrash, withoutHistoryTrash } from '../../utils/historyTrash';
+import { idbGetMulti as kvGetMulti, idbSet as kvSet } from '../../utils/indexedDB';
 
 export type SectionGroup = 'quiz' | 'library' | 'progress' | 'preferences';
 
@@ -56,6 +57,7 @@ const LS_SECTIONS: SectionInfo[] = [
   { key: 'qmp_original_scores', label: 'Original scores', group: 'progress' },
   { key: 'rjquiz:practice_goal', label: 'Practice goal', group: 'progress' },
   { key: 'qmp_exam_dates', label: 'Exam dates', group: 'progress' },
+  { key: 'qmp_drafts_v1', label: 'Quiz drafts (resume on any device)', group: 'quiz' },
   // preferences
   { key: 'qmp_settings', label: 'App settings', group: 'preferences' },
   { key: 'qmp_ai_prefs', label: 'AI preferences', group: 'preferences' },
@@ -89,6 +91,10 @@ const STORE_MAP: Record<string, (typeof STORE_SECTIONS)[number]> = Object.fromEn
 
 export const HISTORY_PREFIX = 'hist:';
 const HISTORY_KEY_RE = /^hist:(\d{4}-\d{2}|undated)$/;
+/** Full question data of finished quizzes, one section per month (`qd:YYYY-MM`), so every device can open them. */
+export const DETAIL_PREFIX = 'qd:';
+const DETAIL_KEY_RE = /^qd:(\d{4}-\d{2}|undated)$/;
+const DETAIL_IDB_PREFIX = 'qmp_detail_';
 
 /** localStorage keys whose writes mean "the synced data may have changed" (includes the IDB mirrors). */
 export const LS_WATCH_KEYS: ReadonlySet<string> = new Set([
@@ -100,19 +106,26 @@ export const LS_WATCH_KEYS: ReadonlySet<string> = new Set([
 export const DEVICE_ONLY_ITEMS = [
   'AI provider keys',
   'AI caches (rationales, revision notes)',
-  'Drafts and the quiz you are taking right now',
+  'Text typed in the quiz creator box (not yet a quiz)',
   'Install, onboarding and tip flags',
   'Automatic-backup files and settings of this device',
   'Notification schedule of this device',
 ];
 
 export function isSyncKey(key: string): boolean {
-  return key in LS_MAP || key in STORE_MAP || HISTORY_KEY_RE.test(key);
+  return key in LS_MAP || key in STORE_MAP || HISTORY_KEY_RE.test(key) || DETAIL_KEY_RE.test(key);
 }
 
 export function describeSection(key: string): SectionInfo {
   if (LS_MAP[key]) return LS_MAP[key];
   if (STORE_MAP[key]) return STORE_MAP[key];
+  const dm = DETAIL_KEY_RE.exec(key);
+  if (dm) {
+    if (dm[1] === 'undated') return { key, label: 'Quiz questions - undated', group: 'quiz' };
+    const [y, mo] = dm[1].split('-').map(Number);
+    const name = new Date(Date.UTC(y, mo - 1, 1)).toLocaleString('en', { month: 'long', timeZone: 'UTC' });
+    return { key, label: `Quiz questions - ${name} ${y}`, group: 'quiz' };
+  }
   const m = HISTORY_KEY_RE.exec(key);
   if (m) {
     if (m[1] === 'undated') return { key, label: 'Quiz history - undated', group: 'quiz' };
@@ -242,6 +255,23 @@ function historyMonthKey(timestamp: unknown): string {
 }
 
 /** Exposed for tests: split a history list into month shards. */
+/**
+ * Month shards of full quiz details. `lookup` returns the full record (questions, answers) for a history
+ * entry, or undefined when this device does not have it. Entries that already carry their questions are
+ * skipped: they travel inside the history shard.
+ */
+export function buildDetailShards(list: readonly Item[], lookup: (r: Item) => Item | undefined): Record<string, { items: Record<string, Item> }> {
+  const shards: Record<string, { items: Record<string, Item> }> = {};
+  for (const r of list) {
+    if (Array.isArray(r.quizData) && (r.quizData as unknown[]).length > 0) continue;
+    const full = lookup(r);
+    if (!full || !Array.isArray(full.quizData) || (full.quizData as unknown[]).length === 0) continue;
+    const key = historyMonthKey(r.timestamp).replace(HISTORY_PREFIX, DETAIL_PREFIX);
+    (shards[key] ??= { items: {} }).items[resultIdentity(r)] = full;
+  }
+  return shards;
+}
+
 export function shardHistory(list: readonly Item[]): Record<string, { items: Record<string, Item> }> {
   const shards: Record<string, { items: Record<string, Item> }> = {};
   for (const r of list) {
@@ -347,8 +377,16 @@ export async function readAllLocalSections(): Promise<Record<string, unknown>> {
     } catch { /* a broken store must not block the others */ }
   }
   try {
-    const shards = shardHistory((await getHistory()) as unknown as Item[]);
-    Object.assign(out, shards);
+    const history = (await getHistory()) as unknown as Item[];
+    Object.assign(out, shardHistory(history));
+    // Full question data lives in IndexedDB next to (not inside) the history list; without it a second
+    // device shows the quiz in its totals but cannot open it ("Quiz details not available").
+    const need = history.filter(r => !(Array.isArray(r.quizData) && (r.quizData as unknown[]).length > 0));
+    if (need.length) {
+      const keys = [...new Set(need.flatMap(r => [String(r.timestamp), r.id ? String(r.id) : ''].filter(Boolean)))].map(k => DETAIL_IDB_PREFIX + k);
+      const found = await kvGetMulti<Item>(keys);
+      Object.assign(out, buildDetailShards(history, r => found.get(DETAIL_IDB_PREFIX + String(r.timestamp)) ?? (r.id ? found.get(DETAIL_IDB_PREFIX + String(r.id)) : undefined)));
+    }
   } catch { /* ignore */ }
   return out;
 }
@@ -399,6 +437,27 @@ export async function applySectionsToDevice(target: Record<string, unknown>, ski
       withoutHistoryTrash(() => setHistory(unshardHistory(target) as never));
       changed.push(...differing);
     }
+  }
+  // Question details: write what this device does not have yet (details never change once a quiz is finished).
+  for (const key of Object.keys(target)) {
+    if (!DETAIL_KEY_RE.test(key) || skip.has(key)) continue;
+    const items = ((target[key] as { items?: Record<string, Item> } | undefined)?.items) ?? {};
+    const entries = Object.values(items).filter(d => d && Array.isArray(d.quizData) && (d.quizData as unknown[]).length > 0);
+    if (!entries.length) continue;
+    try {
+      const probe = entries.map(d => DETAIL_IDB_PREFIX + String(d.timestamp));
+      const have = await kvGetMulti<Item>(probe);
+      let wrote = false;
+      for (const d of entries) {
+        const tsKey = DETAIL_IDB_PREFIX + String(d.timestamp);
+        const mine = have.get(tsKey);
+        if (mine && Array.isArray(mine.quizData) && (mine.quizData as unknown[]).length > 0) continue;
+        await kvSet(tsKey, d);
+        if (d.id) await kvSet(DETAIL_IDB_PREFIX + String(d.id), d);
+        wrote = true;
+      }
+      if (wrote) changed.push(key);
+    } catch { /* storage full or blocked: the next sync tries again */ }
   }
   return changed;
 }

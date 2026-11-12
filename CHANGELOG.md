@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.9.0] - 2026-11-11
+
+Drafts, true multi-device sync of quiz data, and a tighter question / report UI.
+
+### Added
+- **Drafts.** Leaving a quiz now saves it to Drafts instead of throwing it away. Last **5** quizzes only (the oldest is replaced by the 6th), **one draft per quiz** (same questions = same draft, even if shuffled). The home screen shows them as swipeable cards with progress, device and time, Resume and delete with Undo. Finishing a quiz removes its draft.
+- **Drafts follow you between devices**: leave a quiz on the phone, resume it on the tablet. The newest save wins; resuming something another device used in the last 3 minutes asks first.
+- **Question details sync** (`qd:YYYY-MM` sections). Before, only the summary of a finished quiz synced, so a second device counted it in the totals but could not open it (“Quiz details not available”), and automatic backups and restores had the same hole. Questions, answers and explanations are now part of sync, automatic backups and restore.
+
+### Changed
+- **Reports & downloads**: eight squircle tiles in a compact two-line grid (Full, Correct, Mistakes, Skipped, Notes, Exam, Revise, Saved), one-tap PDF on each, the sentence “Made on your device. Works offline. Saved to Downloads.” on one straight line, filters in a smooth swipeable capsule line.
+- **Capsule filters everywhere** (report options, Progress filters, review dashboard): one line, smooth sideways swipe with snap, rounded capsules, no overlapping labels.
+- **Review dashboard**: status filters are emoji only except **All** (✅ ❌ ⏭️ 🔖); the question card header is one straight line of emoji (number, ✅/❌/⏭️, 🟢/🟡/🔴); tinted card by result; **📖 Rational | ⚖️ Dispute | 💾 Save | 🤖 AI** in one line at the bottom; the explanation sits in a white box with a purple bar titled “Ans. - (b) text”.
+- Exit-quiz dialog now says “Save & exit”.
+
+### Notes
+- The server keeps the last 5 versions of your synced data; question details make those versions larger. The server limits (24 MB total, 300 sections) still apply; details are packed per month and compressed.
+- Question details written on a device reach the other devices after that device's next sync; open the app once on the device that has the quizzes while signed in.
+
 ## [2.8.0] - 2026-11-11
 
 Reports rebuilt from scratch: one new format, made on the device, saved to Downloads with a notification, full-page premium preview. Plus Sync Center fixes.

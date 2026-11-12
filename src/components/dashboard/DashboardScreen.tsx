@@ -1,3 +1,5 @@
+import DraftsRail from './DraftsRail';
+import { listDrafts } from '../../utils/drafts';
 import { useMemo, useState } from 'react';
 import { useAuth } from 'zitejs/auth';
 import { Plus, ChevronRight, Flame, Play, Hash, Target, Clock, ChevronDown, ChevronUp, Filter, TrendingUp, Dumbbell } from 'lucide-react';
@@ -30,6 +32,7 @@ import AnalyticsTrends from '../stats/AnalyticsTrends';
 interface Props {
   history: QuizResult[];
   hasSavedSession: boolean;
+  onResumeDraft?: (id: string) => void;
   onResumeSession: () => void;
   onDiscardSession: () => void;
   onStartCreate: () => void;
@@ -210,7 +213,7 @@ function RecentQuizCard({ result, idx, onClick }: { result: QuizResult; idx: num
   );
 }
 
-export default function DashboardScreen({ history, hasSavedSession, onResumeSession, onDiscardSession, onStartCreate, onViewResult, onLibrary, onPractice, onFlashcards, onOpenChatbot, onPracticeDashboard, loadingOlder, subjectFilter, onSubjectFilterChange, sessionMode, subjectPopupOpen, onSubjectPopupOpen, onSubjectPopupClose }: Props) {
+export default function DashboardScreen({ history, hasSavedSession, onResumeDraft, onResumeSession, onDiscardSession, onStartCreate, onViewResult, onLibrary, onPractice, onFlashcards, onOpenChatbot, onPracticeDashboard, loadingOlder, subjectFilter, onSubjectFilterChange, sessionMode, subjectPopupOpen, onSubjectPopupOpen, onSubjectPopupClose }: Props) {
   const { user } = useAuth();
   const { profile } = useProfileStore();
   const vis = profile.featureVisibility;
@@ -371,8 +374,11 @@ export default function DashboardScreen({ history, hasSavedSession, onResumeSess
         <SmartNudgeBanner history={history} onAction={onStartCreate} />
       )}
 
-      {/* Session Resume Banner */}
-      {hasSavedSession && (
+      {/* Drafts: every quiz you left (max 5), also from your other devices */}
+      {onResumeDraft && <DraftsRail onResume={onResumeDraft} />}
+
+      {/* Fallback if the app was killed before the first draft was written */}
+      {hasSavedSession && listDrafts().length === 0 && (
         <div className="flex items-center gap-3 bg-primary/10 border border-primary/25 rounded-2xl px-4 py-3 animate-slide-up">
           <span className="text-xl flex-shrink-0">💾</span>
           <div className="flex-1 min-w-0">

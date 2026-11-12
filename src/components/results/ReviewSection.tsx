@@ -29,26 +29,21 @@ interface QPair {
   attemptIdx: number;
 }
 
+/** "All" is the only filter with a word; the rest are emoji only (their names are in aria-label / title). */
 const FILTER_BTNS: { key: Filter; label: string; icon: string; color: string }[] = [
-  { key: 'all',     label: 'All',     icon: '📚', color: 'text-blue-400'    },
-  { key: 'correct', label: 'Correct', icon: '✓',  color: 'text-emerald-400' },
-  { key: 'wrong',   label: 'Wrong',   icon: '✗',  color: 'text-red-400'     },
-  { key: 'skipped', label: 'Skipped', icon: '⏭',  color: 'text-amber-400'   },
-  { key: 'bookmarked', label: 'Bookmarked', icon: '🔖', color: 'text-violet-400' },
+  { key: 'all',     label: 'All',        icon: '📚', color: '' },
+  { key: 'correct', label: 'Correct',    icon: '✅', color: '' },
+  { key: 'wrong',   label: 'Wrong',      icon: '❌', color: '' },
+  { key: 'skipped', label: 'Skipped',    icon: '⏭️', color: '' },
+  { key: 'bookmarked', label: 'Bookmarked', icon: '🔖', color: '' },
 ];
 
-function TogglePill({ active, icon, label, activeClass, onClick }: {
-  active: boolean; icon: string; label: string; activeClass: string; onClick: () => void;
+function TogglePill({ active, icon, label, onClick }: {
+  active: boolean; icon: string; label: string; activeClass?: string; onClick: () => void;
 }) {
   return (
-    <button
-      onClick={() => { hapticTap(); onClick(); }}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 flex-shrink-0 h-8 ${
-        active ? activeClass : 'bg-foreground/5 border-border text-foreground/30 hover:text-foreground/50'
-      }`}
-    >
-      <span className="text-sm leading-none">{icon}</span>
-      <span>{label}</span>
+    <button type="button" aria-pressed={active} onClick={() => { hapticTap(); onClick(); }} className="qmp-capsule">
+      <span className="leading-none">{icon}</span><span>{label}</span>
     </button>
   );
 }
@@ -120,6 +115,17 @@ export default function ReviewSection({
       }
     });
   }, [result.subject, result.quizTitle]);
+
+  const counts = useMemo(() => {
+    let correct = 0, wrong = 0, skipped = 0;
+    result.quizData.forEach((q, i) => {
+      const ua = result.userAnswers[i] ?? null;
+      if (ua === null) skipped++;
+      else if (ua === q.correctAnswer || q.correctAnswers?.includes(ua)) correct++;
+      else wrong++;
+    });
+    return { correct, wrong, skipped } as Record<string, number>;
+  }, [result]);
 
   const bookmarkedCount = useMemo(() => {
     return result.quizData.filter(q => bookmarkedSet.has(q.question)).length;
@@ -201,82 +207,70 @@ export default function ReviewSection({
         <span className="leading-snug">{orderMeta.text}</span>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 mb-3 bg-muted/20 p-2.5 rounded-2xl border border-border">
-        {FILTER_BTNS.map(({ key, label, icon, color }) => (
-          <button
-            key={key}
-            onClick={() => onFilterChange(key)}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-sm transition-all ${
-              activeFilter === key
-                ? 'bg-foreground/12 border border-foreground/15 text-foreground shadow-sm'
-                : 'text-foreground/45 hover:text-foreground/80 hover:bg-foreground/5'
-            }`}
-          >
-            <span className={`${color} text-base leading-none`}>{icon}</span>
-            <span>{label}</span>
-          </button>
-        ))}
-
-        {/* Bookmark filter */}
-        {bookmarkedCount > 0 && (
-          <button
-            onClick={() => { hapticTap(); setShowBookmarked(b => !b); }}
-            className={`flex items-center gap-1.5 py-2.5 px-3 rounded-xl font-bold text-sm transition-all ${
-              showBookmarked
-                ? 'bg-amber-500/15 border border-amber-500/25 text-amber-400 shadow-sm'
-                : 'text-amber-400/60 hover:text-amber-400 hover:bg-amber-500/5'
-            }`}
-          >
-            <span className="text-base leading-none">📌</span>
-            <span>{bookmarkedCount}</span>
-          </button>
-        )}
+      {/* Status filters: capsules, one line, swipe sideways */}
+      <div className="qmp-capsules mb-2" role="tablist" aria-label="Filter questions" data-testid="review-filters">
+        {FILTER_BTNS.map(({ key, label, icon }) => {
+          const n = key === 'all' ? result.quizData.length : key === 'bookmarked' ? bookmarkedCount : counts[key];
+          return (
+            <button key={key} type="button" role="tab" aria-selected={activeFilter === key} aria-pressed={activeFilter === key}
+              aria-label={`${label}${n !== undefined ? ` (${n})` : ''}`} title={label}
+              onClick={() => { hapticTap(); onFilterChange(key); }}
+              className={`qmp-capsule ${key === 'all' ? '' : 'qmp-capsule--emoji'}`}>
+              <span className="leading-none">{icon}</span>{key === 'all' && <span>All</span>}
+            </button>
+          );
+        })}
       </div>
 
-      {/* ── Sticky Toggle Pills Row ── */}
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur-md py-2 -mx-1 px-1 mb-4 border-b border-transparent [&:not(:first-child)]:border-border/50">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-0.5">
+      {/* View options: capsules, one line, swipe sideways */}
+      <div className="sticky top-0 z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md">
+        <div className="qmp-capsules" data-testid="review-options">
           <TogglePill
             active={showAnswersInline}
-            icon="👁"
+            icon="👁️"
             label="Answers"
-            activeClass="bg-blue-500/15 border-blue-500/30 text-blue-400"
+            activeClass=""
             onClick={() => preserveScroll(() => setShowAnswersInline(!showAnswersInline))}
           />
           <TogglePill
             active={rationalePrefs.showBook}
             icon="📖"
             label="Book"
-            activeClass="bg-amber-500/15 border-amber-500/30 text-amber-400"
+            activeClass=""
             onClick={() => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showBook: !rationalePrefs.showBook }))}
           />
           <TogglePill
             active={rationalePrefs.showAi}
             icon="💡"
             label="AI"
-            activeClass="bg-purple-500/15 border-purple-500/30 text-purple-400"
+            activeClass=""
             onClick={() => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showAi: !rationalePrefs.showAi }))}
           />
-          <select
-            value={explainDifficulty}
-            onChange={e => preserveScroll(() => setExplainDifficulty(e.target.value))}
-            className="h-8 px-2 py-1 rounded-xl border text-[11px] font-bold bg-foreground/5 border-border text-foreground/70 appearance-none cursor-pointer transition-all hover:bg-foreground/10 flex-shrink-0"
-            style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27%3e%3cpath fill=%27%23888%27 d=%27M3 5l3 3 3-3%27/%3e%3c/svg%3e")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center', paddingRight: '20px' }}
-          >
-            <option value="all">All</option>
-            <option value="easy">🟢 Easy</option>
-            <option value="medium">🟡 Medium</option>
-            <option value="hard">🔴 Hard</option>
-          </select>
+          <label className="qmp-capsule relative cursor-pointer gap-1 pr-2" data-on={explainDifficulty !== 'all'}>
+            <span className="sr-only">Difficulty</span>
+            <select
+              value={explainDifficulty}
+              onChange={e => preserveScroll(() => setExplainDifficulty(e.target.value))}
+              className="cursor-pointer appearance-none bg-transparent pr-4 text-[0.8rem] font-bold outline-none"
+              aria-label="Difficulty filter"
+            >
+              <option value="all">All levels</option>
+              <option value="easy">🟢 Easy</option>
+              <option value="medium">🟡 Medium</option>
+              <option value="hard">🔴 Hard</option>
+            </select>
+            <span className="pointer-events-none absolute right-3 text-[9px] opacity-50">▾</span>
+          </label>
           <button
+            type="button"
             onClick={handleExplainAll}
             disabled={explainAllLoading || difficultyFiltered.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 flex-shrink-0 h-8 bg-purple-500/15 border-purple-500/30 text-purple-400 hover:bg-purple-500/25 disabled:opacity-40 whitespace-nowrap"
+            className="qmp-capsule disabled:opacity-40"
+            data-on={explainAllLoading}
           >
             {explainAllLoading
-              ? <><span className="qmp-spinner" style={{ width: '10px', height: '10px' }} /> {explainProgress.total > 0 ? `${explainProgress.done}/${explainProgress.total}` : 'Starting...'}</>
-              : <><span className="text-sm leading-none">✨</span> Explain {explainDifficulty === 'all' ? 'All' : difficultyFiltered.length}</>
+              ? <><span className="qmp-spinner" style={{ width: '10px', height: '10px' }} /> {explainProgress.total > 0 ? `${explainProgress.done}/${explainProgress.total}` : 'Starting…'}</>
+              : <><span className="leading-none">✨</span> Explain {explainDifficulty === 'all' ? 'all' : difficultyFiltered.length}</>
             }
           </button>
         </div>

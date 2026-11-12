@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "2.8.0",
+  "version": "2.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -20,7 +20,8 @@
     "check:cloud": "node scripts/check-cloud.mjs",
     "test:ui": "node scripts/ui-qa.mjs",
     "test:ui:settings": "node scripts/ui-qa-settings.mjs",
-    "test:ui:reports": "node scripts/ui-qa-reports.mjs"
+    "test:ui:reports": "node scripts/ui-qa-reports.mjs",
+    "test:ui:v29": "node scripts/ui-qa-v29.mjs"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.45.6",

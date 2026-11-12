@@ -5,6 +5,7 @@ import { calculateScore } from '../utils/scoring';
 import { saveConfidenceRecord } from '../utils/confidenceTracker';
 import { addWrongQuestionsToSR } from '../utils/spacedRepetition';
 import { toast } from 'sonner';
+import { getDraft, removeDraftForQuiz, upsertDraft, type SessionBlob } from '../utils/drafts';
 
 const SESSION_KEY = 'qmp_active_session';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -61,6 +62,23 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, []);
 
+  const lastDraftAtRef = useRef(0);
+  const sessionBlob = useCallback((): SessionBlob => ({
+    quizData: quizDataRef.current, settings: settingsRef.current,
+    currentIndex: currentIdxRef.current, userAnswers: userAnswersRef.current,
+    flaggedQuestions: flaggedRef.current, accumulatedTime: accTimeRef.current,
+    timeLeftPerQ: timeLeftPerQRef.current, forcedNext: forcedNextRef.current,
+    totalTimeLeft: totalTimeLeftRef.current, savedAt: Date.now(),
+    targetFolderId: targetFolderIdRef.current,
+  }), [settingsRef]);
+  /** Keeps the quiz in Drafts (max 5, one per quiz, synced). `force` skips the 45 s throttle used while answering. */
+  const saveDraftNow = useCallback((force = false) => {
+    if (!quizDataRef.current.length) return null;
+    if (!force && Date.now() - lastDraftAtRef.current < 45_000) return null;
+    lastDraftAtRef.current = Date.now();
+    return upsertDraft(sessionBlob());
+  }, [sessionBlob]);
+
   // Save session to localStorage during quiz — uses ONLY refs so it's never stale
   const saveSessionToStorage = useCallback((screen: Screen) => {
     if (screen !== 'quiz' || !quizDataRef.current.length) return;
@@ -77,8 +95,9 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
   }, [settingsRef]);
 
   // Immediate save helper — can be called from anywhere without screen arg
-  const saveSessionNow = useCallback(() => {
+  const saveSessionNow = useCallback((forceDraft = false) => {
     if (!quizDataRef.current.length) return;
+    saveDraftNow(forceDraft);
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         quizData: quizDataRef.current, settings: settingsRef.current,
@@ -89,7 +108,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
         targetFolderId: targetFolderIdRef.current,
       }));
     } catch {}
-  }, [settingsRef]);
+  }, [settingsRef, saveDraftNow]);
 
   // Auto-pause on tab switch / app close + save before unload
   useEffect(() => {
@@ -97,7 +116,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
       if (document.hidden && quizDataRef.current.length > 0) {
         isPausedRef.current = true;
         setIsPaused(true);
-        saveSessionNow();
+        saveSessionNow(true);
       }
     };
     const handleBeforeUnload = () => {
@@ -108,7 +127,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     // Use pagehide as well — more reliable on mobile than beforeunload
     const handlePageHide = () => {
       if (quizDataRef.current.length > 0) {
-        saveSessionNow();
+        saveSessionNow(true);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -217,12 +236,24 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
 
   const handleExitQuiz = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
+    // Leaving a quiz never loses it: it goes to Drafts (max 5, one per quiz) and can be resumed on any device.
+    const draft = saveDraftNow(true);
     localStorage.removeItem(SESSION_KEY);
     setHasSavedSession(false);
     setQuizData([]); setUserAnswers([]); setFlaggedQuestions([]);
     setCurrentIndex(0); setAccumulatedTime(0); setIsPaused(false);
-    toast('Quiz exited — not saved to history.');
-  }, []);
+    if (draft) toast.success('Saved to Drafts', { description: `${draft.answered}/${draft.total} answered · resume it from the home screen` });
+    else toast('Quiz exited.');
+  }, [saveDraftNow]);
+
+  /** Opens a draft (from this or another device) as the running quiz. */
+  const resumeFromDraft = useCallback((id: string): boolean => {
+    const d = getDraft(id);
+    if (!d) { toast.error('That draft is no longer available.'); return false; }
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify({ ...d.session, savedAt: Date.now() })); } catch { /* storage full */ }
+    lastDraftAtRef.current = Date.now();
+    return handleResumeSession();
+  }, [handleResumeSession]);
 
   const discardSession = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
@@ -313,7 +344,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     forcedNextRef, isPausedRef, totalTimeLeftRef, timeLeftPerQRef, timerRef,
     questionTimingsRef, questionStartAccRef, doFinishQuizRef,
     // Actions
-    startQuiz, handleResumeSession, handleExitQuiz, handleToggleFlag,
+    startQuiz, handleResumeSession, resumeFromDraft, saveDraftNow, handleExitQuiz, handleToggleFlag,
     handleTimeExpired, recordCurrentQuestionTime, buildResult,
     saveSessionToStorage, saveSessionNow, discardSession,
     SESSION_KEY,

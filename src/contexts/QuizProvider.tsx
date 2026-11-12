@@ -1,3 +1,4 @@
+import { removeDraftForQuiz } from '../utils/drafts';
 import {
   createContext,
   useContext,
@@ -175,6 +176,7 @@ export function QuizProvider({
     (save = true) => {
       if (quiz.timerRef.current) clearInterval(quiz.timerRef.current);
       localStorage.removeItem(quiz.SESSION_KEY);
+      removeDraftForQuiz(quiz.quizDataRef.current); // finished: no longer a draft
       quiz.setHasSavedSession(false);
       const result = quiz.buildResult(quiz.confidenceLevels);
       onResultReady(result);

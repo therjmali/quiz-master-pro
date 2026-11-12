@@ -474,14 +474,14 @@ export default function QuizScreen({
       <AlertDialog open={showExitDialog} onOpenChange={(open) => { setShowExitDialog(open); if (!open) doResume(); }}>
         <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground font-bold text-lg">Exit without saving?</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground font-bold text-lg">Leave this quiz?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              Your progress will be lost. This quiz will <strong className="text-red-500 font-bold">not</strong> be saved.
+              Your progress is saved to <strong className="font-bold text-primary">Drafts</strong> (the last 5 quizzes). Resume it any time from the home screen, on any device you are signed in to. It is not added to your history until you submit.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={doResume} className="bg-muted border-border text-foreground hover:bg-muted/80 w-full sm:w-auto">Continue</AlertDialogCancel>
-            <AlertDialogAction onClick={onExitQuiz} className="bg-red-600 hover:bg-red-500 text-white border-none w-full sm:w-auto">Yes, Exit</AlertDialogAction>
+            <AlertDialogAction onClick={onExitQuiz} className="bg-primary hover:bg-primary/90 text-primary-foreground border-none w-full sm:w-auto">Save &amp; exit</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

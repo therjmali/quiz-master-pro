@@ -754,6 +754,7 @@ function AppScreens({
               <PullToRefresh onRefresh={handlePullRefresh} enabled={!!user}>
                 <DashboardScreen
                   history={history} hasSavedSession={quiz.hasSavedSession}
+                  onResumeDraft={id => { if (quiz.resumeFromDraft(id)) setScreen('quiz'); }}
                   onResumeSession={() => { quiz.handleResumeSession(); setScreen('quiz'); }}
                   onDiscardSession={quiz.discardSession}
                   onStartCreate={() => navigateTo('setup')}

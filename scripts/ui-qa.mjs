@@ -82,7 +82,7 @@ for (const [label,w,h] of [['phone portrait 360x740',360,740],['phone landscape 
   ok('Go Back closes dialog, still in quiz', (await qNum(page))==='Q6/6');
   // Exit dialog: continue → not paused; escape → not paused
   await page.getByRole('button',{name:'Exit quiz'}).click(); await page.waitForTimeout(400);
-  ok('Exit dialog opens', /Exit without saving\?/.test(await page.evaluate(()=>document.body.innerText)));
+  ok('Exit dialog opens', /Leave this quiz\?/.test(await page.evaluate(()=>document.body.innerText)));
   const d2=await page.evaluate(()=>{const d=document.querySelector('[role=alertdialog]').getBoundingClientRect();return {l:Math.round(d.left),r:Math.round(d.right),vw:innerWidth}});
   ok('Exit dialog fits screen', d2.l>=0 && d2.r<=d2.vw, JSON.stringify(d2));
   await page.keyboard.press('Escape'); await page.waitForTimeout(400);

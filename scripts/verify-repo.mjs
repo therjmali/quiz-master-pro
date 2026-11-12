@@ -59,7 +59,7 @@ const REQUIRED = [
   'src/platform/cloud/sections.ts', 'src/platform/cloud/authStore.ts', 'src/platform/notify/planner.ts', 'src/platform/notify/notifier.ts',
   'src/platform/ai/providers.ts', 'src/platform/ai/caller.ts', 'src/utils/historyTrash.ts',
   'android-res/java/MainActivity.java', 'android-res/java/QmNativePlugin.java', 'android-res/java/ApkUpdater.java', 'android-res/java/ReportSaver.java',
-  'src/utils/reports/pdf/layout.ts', 'src/utils/reports/pdf/fontSet.ts', 'src/utils/reports/pdf/pdfWriter.ts', 'src/platform/reportFiles.ts', 'scripts/ui-qa-reports.mjs', 'tests/reportEngine.test.ts',
+  'src/utils/reports/pdf/layout.ts', 'src/utils/reports/pdf/fontSet.ts', 'src/utils/reports/pdf/pdfWriter.ts', 'src/platform/reportFiles.ts', 'scripts/ui-qa-reports.mjs', 'tests/reportEngine.test.ts', 'src/utils/drafts.ts', 'src/components/dashboard/DraftsRail.tsx', 'tests/drafts.test.ts', 'scripts/ui-qa-v29.mjs',
   ...['inter-latin-400', 'inter-latin-700', 'inter-latin-ext-400', 'inter-latin-ext-700', 'inter-greek-400', 'inter-greek-700', 'noto-devanagari-400', 'noto-devanagari-700'].map(f => `src/assets/report-fonts/${f}.ttf`),
   'src/platform/updater.ts', 'src/components/update/UpdatePanel.tsx', 'src/components/settings/SettingsScreen.tsx', 'src/components/profile/ProgressScreen.tsx', 'tests/updaterState.test.ts',
   'tests/syncEngine.test.ts', 'tests/backup.test.ts', 'tests/notify.test.ts', 'tests/ai.test.ts', 'tests/platform.test.ts', 'tests/merge3.test.ts',
@@ -203,6 +203,12 @@ if (exists('.github/workflows/ci.yml')) {
   check('Settings has the Reports & downloads section', read('src/components/profile/settings/settingsSearch.ts').includes("reports:"), 'missing');
   check('status card is in Settings, not on the Progress screen', read('src/components/settings/SettingsScreen.tsx').includes('<StatusStrip') && !read('src/components/profile/ProgressScreen.tsx').includes('<StatusStrip'), 'moved back');
   check('dialogs sit above full-screen panels (Sync Center)', !/\bz-50\b/.test(read('packages/components/ui/dialog.tsx')) && !/\bz-50\b/.test(read('packages/components/ui/alert-dialog.tsx')), 'z-50 dialogs would hide behind the Sync Center');
+  const sec = read('src/platform/cloud/sections.ts');
+  check('drafts sync between devices', sec.includes("key: 'qmp_drafts_v1'"), 'drafts are device-only again');
+  check('full quiz details sync (qd: shards) so other devices and backups can open every quiz', sec.includes('buildDetailShards') && sec.includes('DETAIL_PREFIX'), 'details are not synced');
+  check('leaving a quiz saves a draft (max 5, no duplicates)', read('src/hooks/useQuizSession.ts').includes('saveDraftNow(true)') && read('src/utils/drafts.ts').includes('MAX_DRAFTS = 5'), 'exit no longer saves');
+  const card = read('src/components/results/ReviewCard.tsx');
+  check('question card: one-line emoji header + single-line action bar', card.includes('review-card-header') && card.includes('review-card-actions') && card.includes('grid grid-cols-4'), 'card layout changed');
   const nav = read('src/components/BottomNav.tsx');
   check('bottom tab is "Progress" (not Profile)', nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'"), 'bottom nav label');
   check('Navbar profile photo opens Settings', read('src/components/Navbar.tsx').includes('onOpenSettings'), 'missing');

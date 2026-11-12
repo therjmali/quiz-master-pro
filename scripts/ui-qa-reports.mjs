@@ -101,7 +101,8 @@ async function run(label, w, h) {
   const [dl3] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.getByRole('button', { name: /Download Mistakes as PDF/ }).click()]);
   ok(`[${label}] one-tap PDF from a card`, /^RJQuiz_Mistakes_/.test(dl3.suggestedFilename()), dl3.suggestedFilename());
   await page.waitForTimeout(500);
-  ok(`[${label}] recently saved list appears`, await page.getByText('Recently saved').isVisible());
+  await page.getByRole('button', { name: 'Recently saved reports' }).click(); await page.waitForTimeout(400);
+  ok(`[${label}] recently saved list appears under the Saved tile`, await page.getByText(/RJQuiz_/).first().isVisible());
 
   // Settings: status card lives here, reports section exists
   await page.getByTestId('avatar-settings').click(); await page.waitForTimeout(900);

@@ -10,7 +10,6 @@ import { loadFullResults } from '../../utils/reports/loadFull';
 import { announceSaved, exportReportDoc, friendlyError, openSavedReportToast, shareSavedReportToast } from '../../utils/reports/exportReport';
 import { getRevisionCache, setRevisionCache } from '../../utils/revisionCache';
 import { listSavedReports, openSavedReport, shareSavedReport, hasNativeReportSaver, type SavedReport } from '../../platform/reportFiles';
-import ReportOrderControls from '../ReportOrderControls';
 import RationaleControlsButton from '../RationaleControlsButton';
 import ReportPreviewPage from './ReportPreviewPage';
 import type { ReportPreviewData, ReportSession } from './reportSession';
@@ -61,9 +60,9 @@ export default function ReportDownloadPanel({
   const setDifficulty = (d: Difficulty) => { if (onDiffFilterChange) onDiffFilterChange(d); else setDiffLocal(d); };
   const [busy, setBusy] = useState<{ type: ReportKind; mode: 'preview' | 'pdf' } | null>(null);
   const [local, setLocal] = useState<ReportPreviewData | null>(null);
-  const [recent, setRecent] = useState<SavedReport[]>(() => listSavedReports().slice(0, 3));
+  const [recent, setRecent] = useState<SavedReport[]>(() => listSavedReports().slice(0, 5));
   useEffect(() => {
-    const on = () => setRecent(listSavedReports().slice(0, 3));
+    const on = () => setRecent(listSavedReports().slice(0, 5));
     window.addEventListener('qm:reports-changed', on);
     return () => window.removeEventListener('qm:reports-changed', on);
   }, []);
@@ -131,75 +130,93 @@ export default function ReportDownloadPanel({
     } catch (e) { toast.error(friendlyError(e)); } finally { toast.dismiss(tid); setBusy(null); }
   };
 
+  const [showSaved, setShowSaved] = useState(false);
+  const TILE: Record<ReportKind, { short: string; grad: string; ring: string; text: string }> = {
+    all: { short: 'Full', grad: 'from-indigo-500/20 to-indigo-500/5', ring: 'border-indigo-500/30', text: 'text-indigo-500' },
+    correct: { short: 'Correct', grad: 'from-emerald-500/20 to-emerald-500/5', ring: 'border-emerald-500/30', text: 'text-emerald-500' },
+    wrong: { short: 'Mistakes', grad: 'from-red-500/20 to-red-500/5', ring: 'border-red-500/30', text: 'text-red-500' },
+    skipped: { short: 'Skipped', grad: 'from-amber-500/20 to-amber-500/5', ring: 'border-amber-500/30', text: 'text-amber-500' },
+    notes: { short: 'Notes', grad: 'from-purple-500/20 to-purple-500/5', ring: 'border-purple-500/30', text: 'text-purple-500' },
+    exam: { short: 'Exam', grad: 'from-teal-500/20 to-teal-500/5', ring: 'border-teal-500/30', text: 'text-teal-500' },
+    revision: { short: 'Revise', grad: 'from-orange-500/20 to-orange-500/5', ring: 'border-orange-500/30', text: 'text-orange-500' },
+    custom: { short: 'Report', grad: 'from-slate-500/20 to-slate-500/5', ring: 'border-slate-500/30', text: 'text-slate-500' },
+  };
+
   return (
-    <section className="glass-card relative mb-4 overflow-hidden p-4 sm:p-5" aria-label="Reports">
+    <section className="glass-card relative mb-4 overflow-hidden p-4" aria-label="Reports">
       <div className="pointer-events-none absolute -left-10 -top-10 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
-      <div className="relative mb-3 flex items-start justify-between gap-3">
-        <div>
+      <div className="relative flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.12em] text-foreground/35">Reports &amp; downloads</p>
-          <h3 className="text-lg font-black text-foreground">Download your report</h3>
-          <p className="mt-0.5 text-[11px] text-foreground/50">Made on your device. Works offline. Saved to Downloads.</p>
+          <h3 className="text-lg font-black leading-tight text-foreground">Download your report</h3>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <RationaleControlsButton prefs={rationalePrefs} onChange={onRationalePrefsChange} reportHelper={reportHelper} onReportHelperChange={onReportHelperChange} />
-          <ReportOrderControls value={reportOrder} onChange={onOrderChange} />
-        </div>
+        <RationaleControlsButton prefs={rationalePrefs} onChange={onRationalePrefsChange} reportHelper={reportHelper} onReportHelperChange={onReportHelperChange} />
+      </div>
+      <p className="relative mt-0.5 whitespace-nowrap text-[11px] text-foreground/50" data-testid="reports-subtitle">Made on your device. Works offline. Saved to Downloads.</p>
+
+      {/* filters: one straight, swipeable capsule line */}
+      <div className="qmp-capsules relative mt-3" data-testid="report-filters">
+        <button type="button" className="qmp-capsule" aria-pressed={reportOrder === 'original'} onClick={() => onOrderChange('original')}>📖 Book order</button>
+        <button type="button" className="qmp-capsule" aria-pressed={reportOrder === 'attempt'} onClick={() => onOrderChange('attempt')}>🎯 Attempt order</button>
+        {DIFFS.map(d => (
+          <button key={d.v} type="button" className={`qmp-capsule ${d.v === 'all' ? '' : 'qmp-capsule--emoji'}`} aria-pressed={difficulty === d.v} aria-label={d.l} title={d.l} onClick={() => setDifficulty(d.v)}>
+            {d.v === 'all' ? 'All levels' : d.l.split(' ')[0]}
+          </button>
+        ))}
       </div>
 
-      {controlledDiffFilter === undefined && (
-        <div className="relative mb-3 flex gap-1.5 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Difficulty">
-          {DIFFS.map(d => (
-            <button key={d.v} type="button" onClick={() => setDifficulty(d.v)} aria-pressed={difficulty === d.v}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-bold active:scale-95 ${difficulty === d.v ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border bg-card/60 text-foreground/55'}`}>{d.l}</button>
-          ))}
-        </div>
-      )}
-
-      <div className="relative grid gap-2 sm:grid-cols-2" role="list">
+      {/* compact grid: two straight lines of squircle tiles */}
+      <div className="relative mt-3 grid grid-cols-4 gap-2" role="list" data-testid="report-grid">
         {CARDS.map(c => {
+          const t = TILE[c.type];
           const n = counts[c.type] ?? 0;
           const disabled = !!busy || filtered.length === 0;
           const isBusy = busy?.type === c.type;
           return (
-            <div key={c.type} role="listitem" className={`flex items-center gap-3 rounded-2xl border p-3 ${c.tone.split(' ').slice(1).join(' ')} bg-card/40`}>
-              <button type="button" onClick={() => void preview(c.type)} disabled={disabled} aria-label={`Preview ${c.label}`} className="flex min-w-0 flex-1 items-center gap-3 text-left active:scale-[0.99] disabled:opacity-50">
-                <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${c.tone}`}>
-                  {isBusy && busy?.mode === 'preview' ? <Loader2 className="h-5 w-5 animate-spin" /> : <c.Icon className="h-5 w-5" />}
-                </span>
-                <span className="min-w-0">
-                  <span className="flex items-center gap-1.5 text-sm font-black text-foreground">{c.label}{difficulty === 'all' && n > 0 && c.type !== 'revision' ? <span className="rounded-full bg-foreground/10 px-1.5 py-0.5 text-[9px] font-black text-foreground/55">{n}</span> : null}</span>
-                  <span className="block truncate text-[11px] text-foreground/50">{c.desc}</span>
-                </span>
+            <div key={c.type} role="listitem" className={`relative rounded-[22px] border bg-gradient-to-b ${t.grad} ${t.ring} shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]`}>
+              <button type="button" onClick={() => void preview(c.type)} disabled={disabled} aria-label={`Preview ${c.label}`} title={c.desc}
+                className="flex h-[84px] w-full flex-col items-center justify-center gap-1 rounded-[22px] px-1 pt-1 active:scale-95 disabled:opacity-45 transition-transform">
+                {isBusy && busy?.mode === 'preview' ? <Loader2 className={`h-5 w-5 animate-spin ${t.text}`} /> : <c.Icon className={`h-5 w-5 ${t.text}`} />}
+                <span className="text-[11px] font-black leading-none text-foreground">{t.short}</span>
+                <span className="h-3 text-[9px] font-bold leading-none text-foreground/45">{difficulty === 'all' && n > 0 && c.type !== 'revision' ? n : ''}</span>
               </button>
               <button type="button" onClick={() => void quickPdf(c.type)} disabled={disabled} aria-label={c.type === 'revision' ? `Open ${c.label}` : `Download ${c.label} as PDF`}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md shadow-primary/20 active:scale-90 disabled:opacity-40">
-                {isBusy && busy?.mode === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin" /> : c.type === 'revision' ? <Eye className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                style={{ minHeight: 0, minWidth: 0 }} className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md active:scale-90 disabled:opacity-40">
+                {isBusy && busy?.mode === 'pdf' ? <Loader2 className="h-3 w-3 animate-spin" /> : c.type === 'revision' ? <Eye className="h-3 w-3" /> : <Download className="h-3 w-3" />}
               </button>
             </div>
           );
         })}
+        <div role="listitem" className="relative rounded-[22px] border border-border bg-gradient-to-b from-foreground/[0.06] to-foreground/[0.02]">
+          <button type="button" onClick={() => setShowSaved(v => !v)} aria-pressed={showSaved} aria-label="Recently saved reports"
+            className="flex h-[84px] w-full flex-col items-center justify-center gap-1 rounded-[22px] px-1 pt-1 active:scale-95 transition-transform">
+            <FileText className="h-5 w-5 text-foreground/60" />
+            <span className="text-[11px] font-black leading-none text-foreground">Saved</span>
+            <span className="h-3 text-[9px] font-bold leading-none text-foreground/45">{recent.length || ''}</span>
+          </button>
+        </div>
       </div>
 
-      {recent.length > 0 && (
-        <div className="relative mt-4">
-          <p className="mb-1.5 text-[10px] font-black uppercase tracking-wider text-foreground/35">Recently saved</p>
-          <ul className="space-y-1.5">
-            {recent.map(r => (
-              <li key={r.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-card/50 px-3 py-2">
-                <FileText className="h-4 w-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1"><span className="block truncate text-[12px] font-bold text-foreground">{r.name}</span><span className="block text-[10px] text-foreground/40">{when(r.savedAt)} · {size(r.size)}{r.pages ? ` · ${r.pages} pages` : ''}</span></span>
-                {hasNativeReportSaver() && r.uri && (
-                  <>
-                    <button type="button" aria-label={`Open ${r.name}`} onClick={async () => { if (!(await openSavedReport(r))) toast.error('No app can open this file, or it was moved. Try Share.'); }} className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-bold active:scale-95">Open</button>
-                    <button type="button" aria-label={`Share ${r.name}`} onClick={() => void shareSavedReport(r)} className="grid h-7 w-7 place-items-center rounded-lg border border-border active:scale-95"><Share2 className="h-3.5 w-3.5" /></button>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+      {showSaved && (
+        <div className="relative mt-3">
+          {recent.length === 0 ? <p className="rounded-xl border border-border bg-card/50 px-3 py-3 text-center text-[12px] text-foreground/45">Reports you download appear here.</p> : (
+            <ul className="space-y-1.5">
+              {recent.map(r => (
+                <li key={r.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-card/50 px-3 py-2">
+                  <FileText className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1"><span className="block truncate text-[12px] font-bold text-foreground">{r.name}</span><span className="block text-[10px] text-foreground/40">{when(r.savedAt)} · {size(r.size)}{r.pages ? ` · ${r.pages} pages` : ''}</span></span>
+                  {hasNativeReportSaver() && r.uri && (
+                    <>
+                      <button type="button" aria-label={`Open ${r.name}`} onClick={async () => { if (!(await openSavedReport(r))) toast.error('No app can open this file, or it was moved. Try Share.'); }} className="rounded-lg border border-border px-2.5 py-1 text-[11px] font-bold active:scale-95">Open</button>
+                      <button type="button" aria-label={`Share ${r.name}`} onClick={() => void shareSavedReport(r)} className="grid h-7 w-7 place-items-center rounded-lg border border-border active:scale-95"><Share2 className="h-3.5 w-3.5" /></button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
-      <p className="relative mt-3 flex items-center gap-1 text-[10px] text-foreground/35"><ChevronRight className="h-3 w-3" /> Tap a card to preview it full screen; tap the button to download the PDF straight away.</p>
       {local && <ReportPreviewPage data={local} onBack={() => setLocal(null)} />}
     </section>
   );
