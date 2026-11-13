@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { useClock } from '../../hooks/useClock';
 
 interface Props {
   streak: number;
@@ -180,15 +181,10 @@ function DigitalClock({ h, m, s, ampm }: { h: number; m: number; s: number; ampm
 }
 
 export default function LiveClockWidget({ streak, todayCount, avgScore }: Props) {
-  const [now, setNow] = useState(new Date());
+  const now = useClock();
   const [isAnalog, setIsAnalog] = usePersistedState('clock_analog', false);
   const [quoteIdx, setQuoteIdx] = useState(() => Math.floor(Math.random() * QUOTES.length));
   const [flipping, setFlipping] = useState(false);
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const h = now.getHours();
   const m = now.getMinutes();

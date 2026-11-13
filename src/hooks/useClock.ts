@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 
 /* ── Shared singleton clock ──────────────────────────────────────────
-   One setInterval(1 s) drives all subscribers.
-   On visibility-change (tab refocus / app resume) we tick immediately
-   so countdowns and dates recover from sleep / background.            */
+   One setInterval(1 s) drives all subscribers. The Android WebView keeps
+   timers alive while the app is in the background (they are throttled but
+   still cost wake-ups), so the interval is stopped when the app is hidden
+   and restarted - with an immediate tick - when it comes back.
+   Countdowns and dates therefore recover correctly from sleep/resume.   */
 
 let listeners: Set<(d: Date) => void> = new Set();
 let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -27,9 +29,14 @@ function stopClock() {
   }
 }
 
-// Immediately re-sync when the tab becomes visible again
+// Stop the timer while hidden; re-sync and resume on return.
 function handleVisibility() {
-  if (document.visibilityState === 'visible') tick();
+  if (document.visibilityState === 'visible') {
+    tick();
+    if (listeners.size > 0) startClock();
+  } else {
+    stopClock();
+  }
 }
 
 export function useClock(): Date {
@@ -40,7 +47,8 @@ export function useClock(): Date {
     listeners.add(listener);
 
     if (listeners.size === 1) {
-      startClock();
+      // Do not keep a timer alive for an app that is already in the background.
+      if (document.visibilityState !== 'hidden') startClock();
       document.addEventListener('visibilitychange', handleVisibility);
     }
 

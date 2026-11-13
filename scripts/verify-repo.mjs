@@ -230,6 +230,11 @@ if (exists('.github/workflows/ci.yml')) {
   const heroClock = read('src/components/dashboard/HeroClock.tsx');
   check('the analog clock no longer runs a requestAnimationFrame loop', !/\brequestAnimationFrame\(/.test(heroClock), 'the 30 fps clock loop is back');
   check('the analog clock stops when off screen', heroClock.includes('IntersectionObserver'), 'clock keeps ticking off screen');
+  // One timer for the whole app instead of one per live widget (each was a 1 s wake-up, forever).
+  const clockUsers = ['src/components/dashboard/LiveExamCountdown.tsx', 'src/components/dashboard/LiveClockWidget.tsx', 'src/components/stats/AnalyticsTrends.tsx'];
+  const ownTimers = clockUsers.filter(f => /setInterval\(/.test(read(f)));
+  check('live widgets share the single app clock', ownTimers.length === 0 && clockUsers.every(f => read(f).includes('useClock')), ownTimers.join(', ') || 'a widget runs its own 1 s timer');
+  check('the shared clock sleeps while the app is hidden', read('src/hooks/useClock.ts').includes('stopClock();') && read('src/hooks/useClock.ts').includes("visibilityState !== 'hidden'"), 'the clock keeps ticking in the background');
 
   const sec = read('src/platform/cloud/sections.ts');
   check('drafts sync between devices', sec.includes("key: 'qmp_drafts_v1'"), 'drafts are device-only again');
