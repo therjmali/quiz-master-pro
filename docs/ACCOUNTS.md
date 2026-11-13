@@ -39,6 +39,21 @@ password the user chose, and nothing is uploaded.
 - Comparison is constant-time over the derived bytes.
 - One account per device. Deleting it is the only way to change the e-mail.
 
+## If someone says "it will not let me in"
+
+1. *Settings → Cloud* shows the account on this device (e-mail, since when). If it is empty, no
+   account was ever created on that phone — the data is still there, and *Create account* works.
+2. *Settings → Accessibility → Diagnostics* prints an **Account** line: `none` / `ok` /
+   `session-orphan` / `unreadable`, with the e-mail and the PBKDF2 round count (never the password).
+   - `session-orphan` — a saved session points at an account that no longer exists; signing in again
+     recreates the session. Clearing the app's storage also fixes it.
+   - `unreadable` — the stored record is damaged (or storage is blocked); delete the account and
+     create it again. Quizzes are not touched.
+3. Five wrong passwords start a 60-second cool-down; the message counts it down, so waiting always
+   works and the account is never permanently locked.
+4. Anything typed into the form clears the previous message, so a stale error can never sit under a
+   corrected entry.
+
 ## Turning on real cross-device sync
 
 Set the two repository variables described in [CLOUD_SETUP.md](CLOUD_SETUP.md) and rebuild. The same
@@ -54,4 +69,5 @@ device-account code is never reached.
 | `src/platform/cloud/accountView.ts` | Maps the store to the `{ signedIn, name, email, source }` every screen reads |
 | `src/components/cloud/SignInWindow.tsx` | The sign-in / create-account window, including the password reveal |
 | `src/components/profile/settings/sectionsCloud.tsx` | Settings → Cloud: profile, password change, account actions |
+| `src/hooks/useClock.ts` | The single 1-second clock every live widget shares (sleeps while the app is hidden) |
 | `tests/localAccount.test.ts`, `tests/accountStore.test.ts` | The rules above, asserted |
