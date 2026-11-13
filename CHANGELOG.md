@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.1] - 2026-11-13
+
+Follow-up to 3.1.0, published the same day: everything that still assumed a working cloud is gone from
+the offline build, and the app no longer keeps a timer per widget.
+
+### Fixed
+- **A dead "wrong password" message could outlive the entry that caused it.** Typing in the e-mail,
+  password or name field now clears the last failure and re-arms the form, so a corrected password is
+  never judged by the previous attempt.
+- **The form could look permanently broken.** The submit button is now disabled only while a check is
+  running or when the device genuinely cannot hash a password — and in that case the form says why
+  instead of sitting there greyed out.
+- **An account created before 3.1.0 is upgraded in place.** A stored record without the newer version
+  field is accepted as a valid device account rather than read as "no account", so an existing user
+  cannot be locked out by the update.
+- **The offline build showed cloud-only furniture.** Settings → Cloud hides *Devices*, *Recovery*,
+  *Restore points*, the *Sync log* and the auto-sync switch; the Sync Center no longer offers the
+  *Devices* and *Recovery* tabs; the header chip reads as a signed-in account instead of "never
+  synced"; and the dashboard invitation asks you to protect the device rather than to sync it.
+
+### Changed
+- **One clock for the whole app.** The dashboard clock, the exam countdown and the analytics clock each
+  kept their own 1-second interval running; they now share a single timer that also **stops while the
+  app is in the background** and re-syncs on resume. Nothing on screen changes, but a phone with the app
+  open no longer wakes the CPU every second for timers nobody is looking at.
+- A signed-in account in Settings links straight to its section (name, password, sign out) instead of
+  leaving the user to hunt for it.
+- The diagnostics report gained a non-secret **account health** line (`none` / `ok` / `session-orphan` /
+  `unreadable`), and *docs/ACCOUNTS.md* now explains how to diagnose "it will not let me in" from the
+  app itself.
+
 ## [3.1.0] - 2026-11-13
 
 Signing in now works in the build that is installed, and the app no longer pays for effects the phone cannot afford.
