@@ -1,4 +1,5 @@
 import './setup';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { layoutMasterReport } from '../src/utils/reports/pdf/masterTemplate';
@@ -190,4 +191,12 @@ test('Word export stays on the classic page (Word cannot lay out the dashboard g
   assert.ok(!word.includes('class="summary"'), 'no dashboard markup in the Word file');
   assert.ok(!word.includes('grid-template-columns'), 'no CSS grid, which Word ignores');
   assert.ok(word.includes('@page'), 'print setup kept');
+});
+
+test('free-form documents keep the classic template; question reports use the dashboard', () => {
+  const src = readFileSync('src/utils/reports/exportReport.ts', 'utf8');
+  assert.ok(/exportLegacyHtml[\s\S]{0,600}template: 'classic'/.test(src), 'legacy HTML exports stay classic');
+  assert.ok(/exportMarkdownReport[\s\S]{0,900}template: 'classic'/.test(src), 'revision sheets / notes stay classic');
+  const fallbackStray = /prefs, columns: 1, answers: 'none', showUserAnswer: false };/.test(src);
+  assert.equal(fallbackStray, false, 'every single-column fallback states its template explicitly');
 });

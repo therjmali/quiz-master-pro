@@ -47,17 +47,21 @@ export function announceSaved(r: SavedReport, open?: (r: SavedReport) => void, s
 export async function exportMarkdownReport(markdown: string, format: ExportFormat, o: { title: string; filename: string; meta?: string[]; kind?: ReportKind }): Promise<void> {
   const { buildMarkdownDoc } = await import('./pdf/model');
   const doc = buildMarkdownDoc(o.kind ?? 'revision', o.title, markdown, o.meta ?? [new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })]);
-  const style: ReportStyle = { ...DEFAULT_STYLE, ...loadReportPrefs(), columns: 1, answers: 'none', showUserAnswer: false };
+  // study material reads best as a document; question reports use the dashboard template
+  const style: ReportStyle = { ...DEFAULT_STYLE, ...loadReportPrefs(), columns: 1, answers: 'none', showUserAnswer: false, template: 'classic' };
   const tid = toast.loading(format === 'pdf' ? 'Building PDF…' : 'Saving…');
   try { const saved = await exportReportDoc(doc, style, format, { filename: o.filename }); announceSaved(saved, openLater, shareLater); }
   catch (e) { toast.error(friendlyError(e)); }
   finally { toast.dismiss(tid); }
 }
 
-/** Legacy HTML-based screens (bookmarks, revision notes, results): same offline save path. */
+/**
+ * Legacy HTML-based screens (bookmark exam papers, revision notes): same offline save path.
+ * These keep the classic document look on purpose — the screen handed over a laid-out paper, not questions.
+ */
 export async function exportLegacyHtml(html: string, format: ExportFormat, filename: string, title: string, kind: ReportKind = 'custom'): Promise<void> {
   const prefs = loadReportPrefs();
-  const style: ReportStyle = { ...DEFAULT_STYLE, ...prefs, columns: 1, answers: 'none', showUserAnswer: false };
+  const style: ReportStyle = { ...DEFAULT_STYLE, ...prefs, columns: 1, answers: 'none', showUserAnswer: false, template: 'classic' };
   try {
     if (format === 'pdf') {
       const doc: ReportDoc = { kind, title, meta: [new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })], blocks: htmlToBlocks(html) };
