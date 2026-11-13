@@ -139,14 +139,14 @@ function masthead(doc: ReportDoc, style: ReportStyle, set: FontSet, pageW: numbe
   ops.push(box(x0, M.t, w, h * 0.55, { fill: T.purple0, r: 11, opacity: 0.85 }));
   ops.push(box(x0, M.t, w * 0.46, h, { fill: T.purple2, r: 11, opacity: 0.30 }));
 
-  // trophy in a soft plate
-  const tx = x0 + 18, ty = M.t + 21;
-  ops.push(box(tx - 5, ty - 5, 25, 25, { fill: 'rgba(255,255,255,0.12)', stroke: 'rgba(255,255,255,0.18)', sw: 0.5, r: 7 }));
-  ops.push(box(tx + 2, ty, 11, 9.2, { fill: T.gold, r: 2.4 }));
-  ops.push(box(tx + 6, ty + 9.2, 3, 3.2, { fill: T.gold }));
-  ops.push(box(tx + 3.4, ty + 12.4, 8.2, 2, { fill: T.gold, r: 1 }));
-  ops.push(dot(tx - 0.4, ty + 3.6, 2.4, { stroke: T.gold, sw: 1 }));
-  ops.push(dot(tx + 15.4, ty + 3.6, 2.4, { stroke: T.gold, sw: 1 }));
+  // trophy in a soft plate: handles, bowl, stem and foot, all drawn as shapes
+  const tx = x0 + 18, ty = M.t + 20;
+  ops.push(box(tx - 6, ty - 6, 26, 26, { fill: 'rgba(255,255,255,0.12)', stroke: 'rgba(255,255,255,0.16)', sw: 0.5, r: 8 }));
+  ops.push(dot(tx - 1.2, ty + 3.4, 2.9, { stroke: T.gold, sw: 1.2 }));   // left handle
+  ops.push(dot(tx + 15.2, ty + 3.4, 2.9, { stroke: T.gold, sw: 1.2 }));  // right handle
+  ops.push(box(tx + 1.6, ty + 0.4, 10.8, 8.6, { fill: T.gold, r: 2.2 })); // bowl
+  ops.push(box(tx + 6.1, ty + 9, 2.8, 3.4, { fill: T.gold }));            // stem
+  ops.push(box(tx + 3.4, ty + 12.2, 8.2, 2.1, { fill: T.gold, r: 1.05 })); // foot
 
   const bx = tx + 28;
   const kindLabel = doc.kind === 'exam' ? 'EXAM PAPER' : doc.kind === 'revision' ? 'REVISION SHEET' : doc.kind === 'notes' ? 'STUDY NOTES' : 'MASTER REPORT';
