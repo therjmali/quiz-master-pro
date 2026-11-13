@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import SearchInput from '../shared/SearchInput';
+import Overlay from '../ui/Overlay';
 import { Search, X, Trash2, BookOpen, Dumbbell, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from 'zitejs/auth';
@@ -223,20 +224,16 @@ export function SessionToolbarButton({ history, value, onChange }: {
 export function ToolbarSheet({ open, onClose, title, children }: {
   open: boolean; onClose: () => void; title: string; children: ReactNode;
 }) {
-  if (!open) return null;
-  return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative bg-card border border-border rounded-t-3xl sm:rounded-2xl w-full sm:max-w-xs max-h-[70vh] overflow-y-auto p-4 pb-8 sm:pb-4 animate-slide-up"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="w-10 h-1 rounded-full bg-foreground/15 mx-auto mb-3 sm:hidden" />
-        <p className="text-[11px] font-black text-muted-foreground uppercase tracking-widest mb-3">{title}</p>
-        <div className="space-y-1">{children}</div>
+  return (
+    <Overlay open={open} onClose={onClose} kind="sheet" layer="sheet" className="sm:max-w-xs" labelledBy="toolbar-sheet-title" hideClose>
+      <div className="qmp-panel-header">
+        <p id="toolbar-sheet-title" className="text-[11px] font-black uppercase tracking-widest text-muted-foreground">{title}</p>
+        <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+          <X className="h-4 w-4" />
+        </button>
       </div>
-    </div>,
-    document.body,
+      <div className="qmp-panel-body space-y-1 p-4">{children}</div>
+    </Overlay>
   );
 }
 

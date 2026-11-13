@@ -203,6 +203,44 @@ if (exists('.github/workflows/ci.yml')) {
   check('Settings has the Reports & downloads section', read('src/components/profile/settings/settingsSearch.ts').includes("reports:"), 'missing');
   check('status card is in Settings, not on the Progress screen', read('src/components/settings/SettingsScreen.tsx').includes('<StatusStrip') && !read('src/components/profile/ProgressScreen.tsx').includes('<StatusStrip'), 'moved back');
   check('dialogs sit above full-screen panels (Sync Center)', !/\bz-50\b/.test(read('packages/components/ui/dialog.tsx')) && !/\bz-50\b/.test(read('packages/components/ui/alert-dialog.tsx')), 'z-50 dialogs would hide behind the Sync Center');
+  // ── accounts must work in the build we actually ship (no Supabase project in the APK) ──
+  const authStore = read('src/platform/cloud/authStore.ts');
+  check('the account store has an on-device path, not only Supabase',
+    authStore.includes("from '../account/localAccount'") && authStore.includes('signInOnDevice') && authStore.includes('signUpOnDevice'),
+    'sign-in would be dead again in a build without SUPABASE_URL');
+  check('signing in never leaves the user without a reason',
+    authStore.includes('function friendlyAuthError') && authStore.includes("code === 'not_configured'"),
+    'a missing cloud must produce a human message');
+  const localAccount = read('src/platform/account/localAccount.ts');
+  check('device passwords are hashed with PBKDF2, never stored in clear text',
+    localAccount.includes("name: 'PBKDF2'") && localAccount.includes('deriveBits') && localAccount.includes('randomSalt'),
+    'password storage is not hashed');
+  check('device passwords use a slow iteration count', /PBKDF2_ITERATIONS = 2\d{2}_\d{3}\b/.test(localAccount), 'iteration count too low');
+  const signInWindow = read('src/components/cloud/SignInWindow.tsx');
+  check('the sign-in window always renders the form (no dead panel)',
+    !signInWindow.includes('Cloud sign-in is not configured') && signInWindow.includes('handleSubmit') && signInWindow.includes('showPassword'),
+    'the form is hidden again when cloud is unconfigured');
+  check('the password field has a reveal control', signInWindow.includes("aria-label={showPassword ? 'Hide password' : 'Show password'}"), 'no reveal button');
+  // A stale "wrong password" under a corrected entry is the classic reason people give up.
+  check('typing in the form clears the last failure',
+    signInWindow.includes('const edited = () =>') && (signInWindow.match(/edited\(\);/g) || []).length >= 3 && signInWindow.includes('clearAuthMessages()'),
+    'an old error can outlive the entry that caused it');
+  check('the sign-in button is only disabled while busy or without WebCrypto', signInWindow.includes('disabled={auth.busy || !deviceSupported}'), 'the form can be permanently dead again');
+  const cloudSection = read('src/components/profile/settings/sectionsCloud.tsx');
+  check('Settings shows the account form even without a cloud project', !/isCloudConfigured\(\) \? <CloudBody \/> : <NotConfigured \/>/.test(cloudSection), 'the form is replaced by a warning again');
+  // ── performance budget + crash evidence ──
+  check('one adaptive performance budget replaces blanket glass', exists('src/platform/perfMode.ts') && read('src/index.css').includes('.qmp-perf-low'), 'perf mode missing');
+  check('the performance budget is applied before the first paint', read('src/main.tsx').includes('applyPerfMode()'), 'perf mode is not applied at boot');
+  check('crash/lag evidence is recorded on the device', read('src/main.tsx').includes('installDiagnostics()') && exists('src/platform/diagnostics.ts'), 'diagnostics not installed');
+  const heroClock = read('src/components/dashboard/HeroClock.tsx');
+  check('the analog clock no longer runs a requestAnimationFrame loop', !/\brequestAnimationFrame\(/.test(heroClock), 'the 30 fps clock loop is back');
+  check('the analog clock stops when off screen', heroClock.includes('IntersectionObserver'), 'clock keeps ticking off screen');
+  // One timer for the whole app instead of one per live widget (each was a 1 s wake-up, forever).
+  const clockUsers = ['src/components/dashboard/LiveExamCountdown.tsx', 'src/components/dashboard/LiveClockWidget.tsx', 'src/components/stats/AnalyticsTrends.tsx'];
+  const ownTimers = clockUsers.filter(f => /setInterval\(/.test(read(f)));
+  check('live widgets share the single app clock', ownTimers.length === 0 && clockUsers.every(f => read(f).includes('useClock')), ownTimers.join(', ') || 'a widget runs its own 1 s timer');
+  check('the shared clock sleeps while the app is hidden', read('src/hooks/useClock.ts').includes('stopClock();') && read('src/hooks/useClock.ts').includes("visibilityState !== 'hidden'"), 'the clock keeps ticking in the background');
+
   const sec = read('src/platform/cloud/sections.ts');
   check('drafts sync between devices', sec.includes("key: 'qmp_drafts_v1'"), 'drafts are device-only again');
   check('full quiz details sync (qd: shards) so other devices and backups can open every quiz', sec.includes('buildDetailShards') && sec.includes('DETAIL_PREFIX'), 'details are not synced');
@@ -217,6 +255,21 @@ if (exists('.github/workflows/ci.yml')) {
   check('no Google Fonts requests in src/', gFontsInSrc.length === 0, gFontsInSrc.join(', '));
   const compPrint = ui.filter(x => /^src\/components\//.test(x.f) && /\bwindow\.print\s*\(/.test(x.t)).map(x => x.f);
   check('no window.print() in React components (use exportSmartReport)', compPrint.length === 0, compPrint.join(', '));
+  // ── one overlay architecture ──
+  const overlayUsers = ui.filter(x => /\bOverlay\b|MobilePopover/.test(x.t)).length;
+  check('overlays go through the shared Overlay/ portal component', overlayUsers >= 20, `only ${overlayUsers} files use it`);
+  const adHoc = ui.filter(x => /\bz-\[(?!\s*(var\(--qmp-z|calc\(var\(--qmp-z))/.test(x.t)).map(x => x.f);
+  check('no ad-hoc z-index values in app code (one named scale, --qmp-z-*)', adHoc.length === 0, adHoc.join(', '));
+  check('overlay layers are defined once, in index.css', /--qmp-z-nav:\s*100/.test(read('src/index.css')) && /--qmp-z-toast:\s*900/.test(read('src/index.css')), 'z scale missing');
+  check('overlay layers stay in the documented order (nav < sheet < menu < panel < dialog < blocking < toast)',
+    ['nav: 100', 'sheet: 400', 'menu: 450', 'panel: 500', 'dialog: 600', 'blocking: 800', 'toast: 900'].every(v => {
+      const [k, n] = v.split(': ');
+      return new RegExp(`--qmp-z-${k}:\\s*${n}`).test(read('src/index.css'));
+    }), 'layer order changed');
+  const strayPrint = ui.filter(x => /document\.body\.style\.overflow/.test(x.t) && !/overlayStack\.ts$/.test(x.f)).map(x => x.f);
+  check('scroll locking is refcounted in overlayStack only', strayPrint.length === 0, strayPrint.join(', '));
+  check('hardware back is handled by one chain', read('src/platform/backButton.ts').includes('export function handleBack') && read('src/main.tsx').includes('initBackButton'), 'back chain missing');
+  check('the master report template exists and is dispatched', read('src/utils/reports/pdf/generate.ts').includes('layoutMasterReport') && read('src/utils/reports/pdf/types.ts').includes("template: 'master'"), 'master template not wired');
   check('MainActivity captures widget deep-link intents', act.includes('captureWidgetIntent') && act.includes('consumePendingWidgetAction'), 'missing widget intent bridge');
 }
 

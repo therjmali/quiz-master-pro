@@ -1,8 +1,9 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { Cloud, CloudOff, RefreshCw, LogOut, Smartphone, History, ShieldCheck, Copy, Check, UserRound, KeyRound, Laptop, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Cloud, CloudOff, RefreshCw, LogOut, Smartphone, History, ShieldCheck, Copy, Check, UserRound, KeyRound, Laptop, Trash2, AlertTriangle, Loader2, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import SCHEMA_SQL from '../../../../supabase/quiz_schema.sql?raw';
 import { isCloudConfigured } from '../../../platform/cloud/config';
+import { deviceAccountInfo, lastEmail } from '../../../platform/account/localAccount';
 import {
   useCloudAuth, signIn, signUp, signOut, requestPasswordReset, changePassword, updateDisplayName, clearAuthMessages,
   listDevices, removeDevice, renameThisDevice, deleteCloudData, deleteAccount, MIN_PASSWORD_LENGTH, type CloudDevice,
@@ -30,20 +31,25 @@ export const CloudSection = memo(function CloudSection({ open, onToggle }: Secti
   return (
     <SettingsSection id="cloud" icon={<Cloud className="w-4 h-4" />} open={open} onToggle={onToggle}>
       <div id="setting-cloudAccount" data-setting-id="cloudAccount" className="scroll-mt-28 rounded-lg">
-        {isCloudConfigured() ? <CloudBody /> : <NotConfigured />}
+        <CloudBody />
       </div>
     </SettingsSection>
   );
 });
 
+/**
+ * Shown above the account form when this build has no Supabase project (the APK). The form still
+ * works: the account is created and checked on the device, so nobody is left with a dead sign-in.
+ */
 export function NotConfigured() {
   return (
     <div className="pt-3 space-y-2">
       <Card tone="info">
         <p className="text-sm font-bold text-foreground flex items-center gap-2"><CloudOff className="w-4 h-4" /> Cloud sync is not set up in this build</p>
         <p className="text-[12px] text-foreground/60 mt-1.5 leading-relaxed">
-          Everything still works fully offline on this device, and automatic backups protect your data. To sync across devices, the app owner connects a free Supabase project once
-          (see <b>docs/CLOUD_SETUP.md</b> in the repository) and rebuilds.
+          Your account below is created and checked <b>on this device</b>, so signing in works with no network.
+          Syncing between devices needs a free Supabase project: the app owner connects it once
+          (see <b>docs/CLOUD_SETUP.md</b>) and rebuilds. Everything is already saved offline either way.
         </p>
       </Card>
     </div>
@@ -52,18 +58,23 @@ export function NotConfigured() {
 
 function CloudBody() {
   const auth = useCloudAuth();
-  if (auth.status === 'loading') return <div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-foreground/40" /></div>;
-  return auth.status === 'signed-in' ? <SignedIn /> : <AuthForm />;
+  const notice = isCloudConfigured() ? null : <NotConfigured />;
+  if (auth.status === 'loading') {
+    return <>{notice}<div className="py-8 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-foreground/40" /></div></>;
+  }
+  return <>{notice}{auth.status === 'signed-in' ? <SignedIn /> : <AuthForm />}</>;
 }
 
 /* ───────────────────────── sign in / create account ───────────────────────── */
 
 export function AuthForm({ initialMode = 'signin' }: { initialMode?: 'signin' | 'signup' }) {
   const auth = useCloudAuth();
+  const configured = isCloudConfigured();
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(() => deviceAccountInfo()?.email || lastEmail());
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [keep, setKeep] = useState(auth.keepSignedIn);
 
   useEffect(() => { clearAuthMessages(); }, [mode]);
@@ -77,9 +88,11 @@ export function AuthForm({ initialMode = 'signin' }: { initialMode?: 'signin' | 
   return (
     <div className="pt-3 space-y-3">
       <Card tone="info">
-        <p className="text-sm font-bold text-foreground">Use Quiz Master on every device</p>
+        <p className="text-sm font-bold text-foreground">{configured ? 'Use Quiz Master on every device' : 'Protect this device with a password'}</p>
         <p className="text-[12px] text-foreground/60 mt-1 leading-relaxed">
-          Sign in to keep your history, library, bookmarks and settings in sync across your phone and computer. You can keep using the app as a guest - nothing is lost either way.
+          {configured
+            ? 'Sign in to keep your history, library, bookmarks and settings in sync across your phone and computer. You can keep using the app as a guest - nothing is lost either way.'
+            : 'Create an account once: it is stored on this phone with a hashed password, so signing in works offline. Guest mode still works and nothing is lost either way.'}
         </p>
       </Card>
 
@@ -94,8 +107,31 @@ export function AuthForm({ initialMode = 'signin' }: { initialMode?: 'signin' | 
         {mode === 'signup' && <TextField label="Your name" value={name} onChange={setName} autoComplete="name" placeholder="e.g. Asha" />}
         <TextField label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" placeholder="you@example.com" />
         {mode !== 'reset' && (
-          <TextField label={mode === 'signup' ? `Password (min ${MIN_PASSWORD_LENGTH} characters)` : 'Password'} type="password" value={password} onChange={setPassword}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
+          <label className="block">
+            <span className="block text-[11px] font-bold text-foreground/55 mb-1">{mode === 'signup' ? `Password (min ${MIN_PASSWORD_LENGTH} characters)` : 'Password'}</span>
+            <span className="relative block">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint="go"
+                className="w-full min-h-10 bg-foreground/[0.04] border border-border rounded-xl pl-3 pr-12 text-sm text-foreground placeholder:text-foreground/30 focus:outline-none focus:border-primary/50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(v => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                className="absolute right-1 top-1/2 -translate-y-1/2 flex h-9 w-10 items-center justify-center rounded-lg text-foreground/45 hover:text-foreground hover:bg-foreground/[0.06] active:scale-95 transition"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </span>
+          </label>
         )}
         {mode !== 'reset' && (
           <label className="flex items-center gap-2 text-[12px] text-foreground/60 select-none">
@@ -112,7 +148,7 @@ export function AuthForm({ initialMode = 'signin' }: { initialMode?: 'signin' | 
         {mode === 'reset'
           ? <button type="button" className="font-bold text-primary hover:underline" onClick={() => setMode('signin')}>Back to sign in</button>
           : <button type="button" className="font-bold text-primary hover:underline" onClick={() => setMode('reset')}>Forgot password?</button>}
-        <span className="text-foreground/40">One account works across RJ apps</span>
+        <span className="text-foreground/40">{configured ? 'One account works across RJ apps' : 'This account stays on this device'}</span>
       </div>
     </div>
   );
@@ -139,6 +175,16 @@ function SignedIn() {
 
       <div className="space-y-2">
         <SubHeading>Sync</SubHeading>
+        {!isCloudConfigured() && (
+          <Card tone="info">
+            <p className="text-sm font-bold text-foreground flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-primary" /> Account active on this device</p>
+            <p className="text-[12px] text-foreground/60 mt-1 leading-relaxed">
+              Your quizzes, library, bookmarks, notes and settings are saved here and protected by your password.
+              Sync to other devices needs a Supabase project in the build — nothing is missing while you study offline.
+            </p>
+          </Card>
+        )}
+        {isCloudConfigured() && (
         <Card>
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
@@ -155,24 +201,27 @@ function SignedIn() {
           </div>
           {sync.error && sync.phase !== 'not-set-up' && <p role="alert" className="text-[12px] font-semibold text-destructive mt-2">{sync.error}</p>}
         </Card>
+        )}
 
-        {sync.phase === 'not-set-up' && <SetupCard />}
-        {sync.phase === 'needs-choice' && sync.needsChoice && <ChoiceCard />}
+        {isCloudConfigured() && sync.phase === 'not-set-up' && <SetupCard />}
+        {isCloudConfigured() && sync.phase === 'needs-choice' && sync.needsChoice && <ChoiceCard />}
 
-        <SettingRow id="autoSync" title="Automatic sync" hint="Upload changes a few seconds after you make them, and check for updates while the app is open"
-          control={<Toggle checked={sync.autoSync} onChange={setAutoSync} label="Automatic sync" />} />
+        {isCloudConfigured() && (
+          <SettingRow id="autoSync" title="Automatic sync" hint="Upload changes a few seconds after you make them, and check for updates while the app is open"
+            control={<Toggle checked={sync.autoSync} onChange={setAutoSync} label="Automatic sync" />} />
+        )}
       </div>
 
-      <WhatSyncs />
-      <Devices />
-      <RestorePoints />
-      <SyncLog />
+      {isCloudConfigured() && <WhatSyncs />}
+      {isCloudConfigured() && <Devices />}
+      {isCloudConfigured() && <RestorePoints />}
+      {isCloudConfigured() && <SyncLog />}
 
       <div className="space-y-2">
         <SubHeading>Account</SubHeading>
         <div className="flex flex-wrap gap-2">
           <Btn icon={<LogOut className="w-3.5 h-3.5" />} busy={busy === 'out'} onClick={() => void run('out', async () => { await signOut('local'); toast.success('Signed out - your data stays on this device'); })}>Sign out</Btn>
-          <Btn busy={busy === 'others'} onClick={() => void run('others', async () => { await signOut('others'); })}>Sign out other devices</Btn>
+          {isCloudConfigured() && <Btn busy={busy === 'others'} onClick={() => void run('others', async () => { await signOut('others'); })}>Sign out other devices</Btn>}
         </div>
         <p className="text-[11px] text-foreground/40">Signed in as {user.email}. Signing out never deletes anything on this device.</p>
       </div>
@@ -189,6 +238,8 @@ function ProfileCard() {
   const [name, setName] = useState(user.name);
   const [pwOpen, setPwOpen] = useState(false);
   const [pw, setPw] = useState('');
+  const [pwCurrent, setPwCurrent] = useState('');
+  const needsCurrent = !isCloudConfigured();
 
   return (
     <Card>
@@ -211,9 +262,15 @@ function ProfileCard() {
         </div>
       )}
       {pwOpen && (
-        <div className="flex gap-2 mt-2.5 items-end">
-          <div className="flex-1"><TextField label={`New password (min ${MIN_PASSWORD_LENGTH})`} type="password" value={pw} onChange={setPw} autoComplete="new-password" /></div>
-          <Btn tone="primary" busy={auth.busy} onClick={() => void changePassword(pw).then(ok => { if (ok) { setPw(''); setPwOpen(false); toast.success('Password updated'); } })}>Update</Btn>
+        <div className="space-y-2 mt-2.5">
+          {/* An on-device account has no server to re-authenticate us, so the current password is required. */}
+          {needsCurrent && <TextField label="Current password" type="password" value={pwCurrent} onChange={setPwCurrent} autoComplete="current-password" />}
+          <div className="flex gap-2 items-end">
+            <div className="flex-1"><TextField label={`New password (min ${MIN_PASSWORD_LENGTH})`} type="password" value={pw} onChange={setPw} autoComplete="new-password" /></div>
+            <Btn tone="primary" busy={auth.busy} disabled={!pw || (needsCurrent && !pwCurrent)} onClick={() => void changePassword(pw, needsCurrent ? pwCurrent : undefined).then(ok => {
+              if (ok) { setPw(''); setPwCurrent(''); setPwOpen(false); toast.success('Password updated'); }
+            })}>Update</Btn>
+          </div>
         </div>
       )}
       {auth.error && <p role="alert" className="text-[12px] font-semibold text-destructive mt-2">{auth.error}</p>}

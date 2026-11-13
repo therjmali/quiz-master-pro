@@ -1,5 +1,6 @@
 /** The same ReportDoc as plain text and as Word-friendly HTML, so every format follows the same settings. */
 import { parseInline } from './markdown';
+import { docToMasterHtml } from './masterHtml';
 import type { ReportDoc, ReportItem, ReportStyle } from './types';
 
 const L = (i: number) => String.fromCharCode(65 + (i % 26));
@@ -39,6 +40,13 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
 }
 
 export function docToHtml(doc: ReportDoc, style: ReportStyle): string {
+  // The web-page export is the same premium dashboard as the PDF, so the file matches what was previewed.
+  if ((style.template ?? 'master') === 'master') return docToMasterHtml(doc, style);
+  return docToClassicHtml(doc, style);
+}
+
+/** The plain, classic HTML page. Word shares it: Word understands simple block layout, not the dashboard grid. */
+function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
   const css = `body{font-family:Inter,Arial,'Segoe UI',sans-serif;color:#1f2937;font-size:11pt;line-height:1.5;margin:0}
 .wrap{max-width:780px;margin:0 auto;padding:24px 20px}h1{font-size:20pt;margin:0 0 4px;color:#111827}.meta{color:#6b7280;font-size:9pt;margin-bottom:14px}
 .chips span{display:inline-block;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;padding:4px 10px;margin:0 6px 6px 0;font-size:9pt}
@@ -81,7 +89,8 @@ export function docToHtml(doc: ReportDoc, style: ReportStyle): string {
 
 /** Word opens HTML saved as .doc; this adds the Office namespaces and page setup. */
 export function docToWordHtml(doc: ReportDoc, style: ReportStyle): string {
-  const html = docToHtml(doc, style);
+  // Always the classic page: Word cannot lay out flexbox/grid, so the dashboard would open as a jumble.
+  const html = docToClassicHtml(doc, style);
   return html.replace('<html>', "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>")
     .replace('</style>', '@page{size:A4;margin:.75in}</style>');
 }

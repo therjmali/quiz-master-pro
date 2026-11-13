@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronUp, ChevronRight, ArrowUpDown } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { usePersistedState } from '../../hooks/usePersistedState';
+import { useClock } from '../../hooks/useClock';
 import { QuizResult } from '../../types/quiz';
 import TimeFilterPills from '../shared/TimeFilterPills';
 import { calculateStreak, formatTime } from '../../utils/scoring';
@@ -140,8 +141,8 @@ function fmtDMY(s: string) {
 //  Live Clock
 // ═══════════════════════════════════════════
 function LiveClock() {
-  const [time, setTime] = useState(new Date());
-  useEffect(() => { const t = setInterval(() => setTime(new Date()), 1000); return () => clearInterval(t); }, []);
+  // Shared clock: the app runs a single 1 s interval for all of these.
+  const time = useClock();
   const h = time.getHours() % 12 || 12;
   const m = String(time.getMinutes()).padStart(2, '0');
   const s = String(time.getSeconds()).padStart(2, '0');

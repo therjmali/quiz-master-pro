@@ -4,6 +4,93 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.1] - 2026-11-13
+
+Follow-up to 3.1.0, published the same day: everything that still assumed a working cloud is gone from
+the offline build, and the app no longer keeps a timer per widget.
+
+### Fixed
+- **A dead "wrong password" message could outlive the entry that caused it.** Typing in the e-mail,
+  password or name field now clears the last failure and re-arms the form, so a corrected password is
+  never judged by the previous attempt.
+- **The form could look permanently broken.** The submit button is now disabled only while a check is
+  running or when the device genuinely cannot hash a password — and in that case the form says why
+  instead of sitting there greyed out.
+- **An account created before 3.1.0 is upgraded in place.** A stored record without the newer version
+  field is accepted as a valid device account rather than read as "no account", so an existing user
+  cannot be locked out by the update.
+- **The offline build showed cloud-only furniture.** Settings → Cloud hides *Devices*, *Recovery*,
+  *Restore points*, the *Sync log* and the auto-sync switch; the Sync Center no longer offers the
+  *Devices* and *Recovery* tabs; the header chip reads as a signed-in account instead of "never
+  synced"; and the dashboard invitation asks you to protect the device rather than to sync it.
+
+### Changed
+- **One clock for the whole app.** The dashboard clock, the exam countdown and the analytics clock each
+  kept their own 1-second interval running; they now share a single timer that also **stops while the
+  app is in the background** and re-syncs on resume. Nothing on screen changes, but a phone with the app
+  open no longer wakes the CPU every second for timers nobody is looking at.
+- A signed-in account in Settings links straight to its section (name, password, sign out) instead of
+  leaving the user to hunt for it.
+- The diagnostics report gained a non-secret **account health** line (`none` / `ok` / `session-orphan` /
+  `unreadable`), and *docs/ACCOUNTS.md* now explains how to diagnose "it will not let me in" from the
+  app itself.
+
+## [3.1.0] - 2026-11-13
+
+Signing in now works in the build that is installed, and the app no longer pays for effects the phone cannot afford.
+
+### Fixed
+- **Sign-in could never succeed on the APK.** The released app ships without a Supabase project (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are not set in CI), so `isCloudConfigured()` was false: the sign-in window replaced the form with a "not configured" notice, *Create account* and *Sign in* threw `CloudConfigError` behind the scenes, and Settings → Cloud hid the form entirely. Every user who typed an e-mail and password got nothing back. The account layer is now dual-mode: with a Supabase project it is the cloud account as before; without one, the account is created and verified **on the device** — e-mail, display name and a PBKDF2-SHA256 password hash (210 000 rounds, random 16-byte salt). Nothing is sent anywhere, and it works in airplane mode.
+- **Wrong passwords, unknown e-mails and lock-outs now explain themselves.** The form shows the exact reason ("Wrong email or password. 4 attempts left.", "No account exists on this device yet — create one first", a timed cool-down after five wrong attempts), instead of failing silently. Both wrong-email and wrong-password cases give the same wording, so the form never reveals whether an account exists.
+- **Password reset is honest.** On a device account there is no mail server, so *Forgot password?* says exactly that instead of pretending a link was sent.
+- **Cloud failures of the "not configured" kind were invisible** (`friendlyAuthError` had no case for `CloudConfigError`, so the raw message was dropped in some paths). A missing project now reads as "the account is kept on this device instead".
+- **Settings → Cloud hid the account form** when there was no cloud project, leaving a dead warning. The form is always present, with a clear note about what syncs (nothing, in this build) and what is protected.
+- **Sign-out was unreachable** in Settings → Account for anyone without a Supabase project (`hasBackend()` gated the whole block). Account, sign-out, rename and *Change password* now work in both builds; a device account asks for the current password before changing it.
+
+### Fixed (performance)
+- **The analog dashboard clock re-rendered 30 times a second forever** — a `requestAnimationFrame` loop that kept painting the second hand even after the card scrolled off screen (Chrome and the Android WebView keep rAF running for off-screen elements). It is now one 1 s tick, stopped by an `IntersectionObserver` when the card leaves the viewport and by `visibilitychange` when the app is backgrounded.
+- **Every exam countdown card kept a 1 s timer alive** whether or not it was on screen. Timers now stop off-screen, so a dashboard with several exam posters no longer wakes the CPU dozens of times a minute.
+- **A 60 Hz motion sensor listener ran all the time** for shake-to-undo. It is sampled at 10 Hz — the gesture needs two shakes over ~0.5 s, so nothing is lost.
+- **Frosted glass everywhere, on every phone.** Backdrop blur forces the WebView to re-composite the layer behind every blurred surface on every frame; on a 4-core phone that is the difference between a smooth list and a stutter. A single performance budget (`src/platform/perfMode.ts`) now decides before the first paint: full glass on capable devices, a light mode without blur on low-end ones (cores ≤ 4, ≤ 2 GB RAM, data-saver or reduced-motion). After the first screen is up, the app measures real frames and drops to light mode if the device cannot hold 45 fps. *Settings → Accessibility → Smoothness* lets the user pick Auto / Full / Light.
+
+### Changed
+- **The password field has a proper reveal control** — a 44 px tap target (was a 16 px icon) that keeps the caret and keyboard in place, wired with `aria-pressed`, so a mistyped password can be checked instead of retyped. The e-mail is prefilled with the account stored on this device, and the keyboard is focused on the field that still needs an answer.
+- **Anything you type clears the last failure**, so a stale "wrong password" can never sit under a corrected entry.
+- **An account saved by an earlier build (before 3.1.0) is upgraded in place**, not treated as corrupt — nobody can be locked out of an account they already had.
+- **The offline build no longer shows cloud-only furniture**: Settings → Cloud hides the *Devices*, *Recovery*, *Restore points* and *Sync log* panels and the auto-sync switch, the header chip reads as a signed-in account instead of "never synced", Sync Center drops the *Devices*/*Recovery* tabs, and the dashboard invitation asks you to protect the device rather than to sync it.
+- The diagnostics report also carries a non-secret **account health** verdict (no account / healthy / saved session pointing at a deleted account / damaged record), which is the fastest way to diagnose a "it will not let me in" report.
+
+### Added
+- **Diagnostics, on the device** (*Settings → Accessibility → Diagnostics*): app health (version, rendering mode, cores, RAM, storage used, network) plus the last problems the app recorded — window errors, unhandled rejections, render crashes and high-memory warnings — with *Copy report* for a support message. Bounded to 40 entries, never includes quiz content, never uploaded.
+- **`tests/localAccount.test.ts`, `tests/accountStore.test.ts`, `tests/performance.test.ts`** — password hashing, lock-outs, session persistence across restarts, the exact reasons a sign-in fails, the performance-budget rules and the diagnostics log.
+- 12 new `verify:repo` guards so the account path, the password reveal control, the blur budget and the clock fix cannot silently regress.
+
+## [3.0.0] - 2026-11-13
+
+Every popup in the app is now rendered in one place, on one z-index scale, so nothing can hide behind the tab bar, be clipped by a translucent card or ignore the back button — and reports are rebuilt as a premium, print-ready dashboard with a real page engine behind it.
+
+### Fixed
+- **Popups opened inside the card they were launched from.** Sync Center → *Rename device*, the Generate Quiz shuffle sheet and the Download Report rationale sheet were rendered inline inside a glass card whose `backdrop-filter` and `transform` make it the containing block for `position: fixed`. The overlay was therefore sized to that card — off-screen, clipped and impossible to close. Every overlay now portals to `document.body` (one `Overlay` component, `MobilePopover` built on it), so a popup is always full-screen regardless of where its trigger lives.
+- **Sheets rendering underneath the bottom navigation.** Hand-picked z-indexes (50, 60, 200, 300 … 1300) overlapped the tab bar at `z-100`, so a sheet could open *behind* it. Replaced with a single named scale — nav `100` < sheet `400` < menu `450` < panel `500` < dialog `600` < blocking `800` < toast `900` — applied through `--qmp-z-*` variables, including the shared Radix primitives. A popup that opens from another popup is stacked relative to its parent instead of guessing.
+- **Dialogs taller than the screen** (Alert Dialogs in Generate Quiz, report rationale, question editing at 90 % zoom or in landscape) had no maximum height, so their buttons fell off-screen. Dialog surfaces now cap at `90vh` on a scroll-capable track, and every dialog footer is a sticky bar so the buttons stay visible; the alert dialog footer also stacks full-width on phones.
+- **Page scrolling unlocked under an open popup.** Each overlay used to save and restore `document.body.style.overflow` itself, so closing one popup (or the second of two) re-enabled scrolling while another was still open. One refcounted lock now owns it, together with a refcounted "screen busy" lock for blocking overlays.
+- **Android back button closed the app instead of the popup.** There was no back-button handler at all. A single chain now closes the top-most popup (newest first) and only leaves the screen — or the app — when nothing is open.
+- **`PromptTool`'s floating trigger** used `z-[100]`, landing on top of the tab bar; it now sits one step above the nav. `AISourceControls` used `z-[60]` inside a `relative` card; it is a normal flow-level dropdown again.
+- **Long content silently truncated in reports.** Text that exceeded an element's line budget was cut without a marker. Cards now grow, options/explanations wrap in full, and anything genuinely cut is shown with an ellipsis.
+
+### Added
+- **New "Master" report template (v3)** — the premium dashboard, on screen and in the exported PDF from the same layout engine, so the preview is exactly what prints:
+  deep-purple gradient masthead with trophy, brand line, title, metadata and a verdict badge with a bar chart; a six-card statistics bar (Shown · Correct · Wrong · Skipped · Accuracy · Score); question cards in two balanced columns tinted by result (green `#f0fdf4`/`#bbf7d0`, red `#fef2f2`/`#fecaca`, amber `#fffbeb`/`#fde68a`) with numbered badges, status pills and a purple `#f5f3ff` explanation box headed `Ans.N.: (B) …`; a `Quiz Summary` card closing the last column; and a footer with the report name, `Page N of M` and the brand.
+- **Self-contained HTML report** using the same design — one file, inlined CSS, inline SVG icons, Inter with a system fallback, `max-width:1000px` column, 16 px grid, 12 px radii and print rules. No scripts, fonts or network requests, so it opens offline and exports to PDF from any browser.
+- **Options adapt per card**: short options sit two-up, long options get the full card width, so nothing is squeezed or stretched.
+- **Answer-key and markdown modes** (revision sheets, notes, legacy HTML) render as full-width cards on the same design.
+- **`circle` and `opacity` page operations**, drawn identically by the SVG preview and the pdf-lib writer, so status dots and the chart motifs print exactly as previewed.
+- **`scripts/audit-report.ts`** and **`tests/masterTemplate.test.ts` / `tests/reportTemplateWiring.test.ts`** — layout invariants (nothing outside the margins, no overlapping cards, no text overflowing its card, footers and page numbers, every question present), template dispatch, and the design tokens, so the report cannot silently regress.
+
+### Changed
+- Reports default to the new template; **exam papers keep the classic two-column paper look** (`template: 'classic'`), and the choice is available per report.
+- The web-page export now produces the same dashboard as the PDF instead of a separate lightweight HTML page.
+
 ## [2.10.0] - 2026-11-13
 
 Every AI feature now runs directly on your device with your own key, cloud sync and quota bugs are fixed, exports and Trash preserve full question details on synced devices, Android home-screen widgets show real data and open the right screen, and offline/APK builds are leaner and stricter.

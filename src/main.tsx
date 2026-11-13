@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import '@fontsource/plus-jakarta-sans/latin-400.css';
 import '@fontsource/plus-jakarta-sans/latin-500.css';
@@ -20,6 +20,9 @@ import './fonts.css';
 import './index.css';
 import './liquid-glass.css';
 import { initPlatform } from './platform/runtime';
+import { applyPerfMode, watchFrameRate } from './platform/perfMode';
+import { installDiagnostics, recordError } from './platform/diagnostics';
+import { initBackButton } from './platform/backButton';
 import { initNativeInsets } from './platform/insets';
 import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
@@ -38,6 +41,11 @@ function reloadApp() {
 
 function RuntimeErrorFallback(props: { error: Error }) {
   const allowAiFix = window.__ziteAllowAiFix === true;
+  // Keep the reason on the device: this is the only place a user-facing crash can be recorded.
+  // In an effect, not during render, so a re-render never duplicates the entry.
+  useEffect(() => {
+    recordError({ kind: 'react', message: `${props.error?.name ?? 'Error'}: ${props.error?.message ?? 'unknown'}` });
+  }, [props.error]);
 
   return (
     <div className="fixed inset-0 grid place-items-center">
@@ -87,8 +95,17 @@ if (typeof localStorage !== 'undefined' && localStorage.getItem(ZOOM_KEY) === nu
   } catch {}
 }
 
+// Decide the glass/motion budget before the first paint, so a low-end phone never pays for it at all.
+applyPerfMode();
+// Record failures from the very first frame (the crash a user reports is often the one at boot).
+installDiagnostics();
+// After the first screen is up, confirm the guess with real frames: if the device cannot hold 45 fps,
+// drop to light mode for the rest of the session (never overrides an explicit Full/Light choice).
+watchFrameRate();
+
 initPlatform();
 initNativeInsets();
+initBackButton();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

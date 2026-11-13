@@ -1,33 +1,30 @@
 /**
  * Who is signed in, as one simple answer for every screen.
  *
- * The app's account is the Supabase one (cloud sync). The legacy hosted-backend session
- * (`zitejs/auth`) can still exist in non-standalone builds, so it counts as a fallback - but the
- * Supabase account always wins when both are present.
+ * The account is the cloud one (Supabase) when this build has a Supabase project, and the on-device
+ * account (platform/account/localAccount.ts) when it does not - which is the Android APK. The legacy
+ * hosted-backend session (`zitejs/auth`) can still exist in editor builds, so it counts as a last
+ * resort. Order: account (cloud or device) → legacy → guest.
+ *
+ * The mapping itself lives in `accountView.ts` (no React, no auth client) so it is unit-tested.
  */
 import { useAuth } from 'zitejs/auth';
 import { useCloudAuth } from './authStore';
+import { viewFromAuth, type AccountView } from './accountView';
 import { accountName } from './accountName';
 
-export interface AccountView {
-  /** Auth is still being checked (never true when cloud is not configured). */
-  loading: boolean;
-  signedIn: boolean;
-  /** First name or e-mail prefix; '' when signed out. */
-  name: string;
-  email: string;
-  source: 'cloud' | 'legacy' | null;
-}
+export type { AccountView };
+export { viewFromAuth };
 
 export function useAccount(): AccountView {
   const cloud = useCloudAuth();
+  const view = viewFromAuth(cloud);
+  // Only reach for the legacy session when there is no account at all (it needs a backend URL).
   const legacy = useAuth();
-  if (cloud.status === 'signed-in' && cloud.user) {
-    return { loading: false, signedIn: true, name: accountName(cloud.user.name, cloud.user.email), email: cloud.user.email, source: 'cloud' };
-  }
+  if (view.signedIn) return view;
   if (legacy.user) {
     const u = legacy.user as { firstName?: string; email?: string };
     return { loading: false, signedIn: true, name: accountName(u.firstName, u.email), email: u.email ?? '', source: 'legacy' };
   }
-  return { loading: cloud.configured && cloud.status === 'loading', signedIn: false, name: '', email: '', source: null };
+  return view;
 }

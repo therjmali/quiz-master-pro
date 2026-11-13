@@ -100,7 +100,7 @@ function FloatingPopup({ state, onDismiss }: { state: ProgressState; onDismiss: 
       <div
         ref={popupRef}
         style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
-        className="fixed z-[300] select-none"
+        className="fixed z-[calc(var(--qmp-z-sheet)-5)] select-none"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -129,7 +129,7 @@ function FloatingPopup({ state, onDismiss }: { state: ProgressState; onDismiss: 
     <div
       ref={popupRef}
       style={{ left: pos.x, top: pos.y, touchAction: 'none' }}
-      className="fixed z-[300] select-none"
+      className="fixed z-[calc(var(--qmp-z-sheet)-5)] select-none"
     >
       <div className={`rounded-2xl shadow-2xl border-2 p-3 min-w-[200px] max-w-[260px] backdrop-blur-xl transition-all ${
         state.completed ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-card/95 border-primary/20'

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuizQuestion } from '../../types/quiz';
+import Overlay from '../ui/Overlay';
 import { verifyQuestion } from 'zitejs/api';
 import { saveDispute, DisputeRecord } from '../../utils/disputes';
 
@@ -53,14 +54,13 @@ export default function DisputeModal({ question, onClose, onFixed }: Props) {
   const verdictIcon = result?.verdict === 'confirmed' ? '✅' : result?.verdict === 'disputed' ? '⚠️' : '❌';
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-10 p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative glass-card rounded-3xl p-6 max-w-lg w-full animate-fade-in">
+    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-lg" label="Dispute question">
+      <div className="qmp-panel-body p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-black text-foreground flex items-center gap-2">
+          <h2 className="flex items-center gap-2 text-base font-black text-foreground">
             <Shield className="w-4 h-4 text-primary" /> Dispute Question
           </h2>
-          <button onClick={onClose} className="text-foreground/30 hover:text-foreground/60"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline"><X className="h-4 w-4" /></button>
         </div>
 
         <div className="bg-card/60 border border-border rounded-xl p-3 mb-4">
@@ -121,6 +121,6 @@ export default function DisputeModal({ question, onClose, onFixed }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </Overlay>
   );
 }

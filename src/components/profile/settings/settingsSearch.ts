@@ -52,6 +52,8 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'fontSize', section: 'appearance', title: 'Text size', hint: 'Make text smaller or larger across the app', keywords: ['font', 'readability', 'large text'] },
   { id: 'glass', section: 'appearance', title: 'Glass blur intensity', hint: 'How strongly frosted-glass cards blur what is behind them', keywords: ['blur', 'transparency', 'frosted', 'effects', 'performance'] },
   // Accessibility
+  { id: 'performance', section: 'accessibility', title: 'Smoothness', hint: 'Full glass or a lighter mode for slower phones', keywords: ['lag', 'slow', 'stutter', 'fps', 'performance', 'battery', 'blur', 'glass', 'fast', 'smooth', 'freeze', 'hang'] },
+  { id: 'diagnostics', section: 'accessibility', title: 'Diagnostics', hint: 'Device facts and the last problems the app hit', keywords: ['crash', 'crashed', 'error', 'log', 'report', 'bug', 'diagnose', 'support', 'memory', 'storage', 'why', 'lag'] },
   { id: 'zoom', section: 'accessibility', title: 'Zoom', hint: 'Make everything in the app smaller or larger', keywords: ['zoom in', 'zoom out', 'magnify', 'scale', 'bigger', 'smaller', 'large text', 'readability', 'accessibility', 'size', 'display', 'ctrl'] },
   // Quiz & Study
   { id: 'goals', section: 'quiz', title: 'Study targets', hint: 'Daily and weekly quiz and question goals', keywords: ['goal', 'target', 'streak', 'daily', 'weekly'] },

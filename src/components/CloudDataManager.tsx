@@ -452,7 +452,7 @@ export default function CloudDataManager({ open, onClose, onSync, isLoggedIn }: 
       />
 
       <AlertDialog open={!!clearTarget} onOpenChange={v => !v && setClearTarget(null)}>
-        <AlertDialogContent className="bg-card border-border rounded-2xl mx-4 top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Clear {clearTarget?.label}?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">

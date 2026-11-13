@@ -1,19 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { getUpcomingExams, ExamDate } from '../../utils/examDates';
+import { useClock } from '../../hooks/useClock';
 
 interface Props {
   onOpenExams?: () => void;
 }
 
 export default function LiveExamCountdown({ onOpenExams }: Props) {
-  const [now, setNow] = useState(Date.now());
+  // The shared 1 s clock: one timer for every countdown on screen instead of one per card.
+  const now = useClock().getTime();
   const exams = useMemo(() => getUpcomingExams(5), [now]);
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   const closest = useMemo(() => {
     const list = exams

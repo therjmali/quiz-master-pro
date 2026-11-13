@@ -3350,3 +3350,317 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + var(--qmp-inset-
 }
 .qmp-capsule--emoji { padding: 0 0.75rem; font-size: 1.05rem; }
 @media (prefers-reduced-motion: reduce) { .qmp-capsules { scroll-behavior: auto; } .qmp-capsule { transition: none; } }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   OVERLAY SYSTEM — one scale, one geometry, every popup
+   ═══════════════════════════════════════════════════════════════════════════════
+   Popups are portalled to <body> (see src/components/ui/Overlay.tsx) so no glass
+   card / backdrop-filter ancestor can clip them. Layers below are the only
+   z-index values overlays use; nothing else in the app may sit above `sheet`.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --qmp-z-nav: 100;          /* bottom navigation, floating docks */
+  --qmp-z-sheet: 400;        /* settings popovers, pickers, sheets */
+  --qmp-z-menu: 450;         /* fly-out menus above a sheet */
+  --qmp-z-dialog: 600;       /* confirmations & alerts — always above a sheet */
+  --qmp-z-panel: 500;        /* full-screen panels: report preview, AI chat, Sync Center */
+  --qmp-z-blocking: 800;     /* progress blockers, mandatory choices */
+  --qmp-z-toast: 900;        /* toasts — above everything */
+  /* Room reserved for the zoomed page so the panel never lands off-screen. */
+  --qmp-overlay-pad-top: max(16px, var(--qmp-inset-top));
+  --qmp-overlay-pad-bottom: max(16px, var(--qmp-inset-bottom));
+  --qmp-overlay-max-h: calc(var(--qmp-app-h) - var(--qmp-overlay-pad-top) - var(--qmp-overlay-pad-bottom));
+}
+
+html.qmp-scroll-locked,
+html.qmp-scroll-locked body { overscroll-behavior: none; }
+
+.qmp-layer-sheet    { z-index: var(--qmp-z-sheet); }
+.qmp-layer-menu     { z-index: var(--qmp-z-menu); }
+.qmp-layer-dialog   { z-index: var(--qmp-z-dialog); }
+.qmp-layer-panel    { z-index: var(--qmp-z-panel); }
+.qmp-layer-blocking { z-index: var(--qmp-z-blocking); }
+
+/* ── The overlay: full viewport, never scrolls itself, never clipped ── */
+.qmp-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  overscroll-behavior: contain;
+  -webkit-tap-highlight-color: transparent;
+}
+.qmp-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 18, 0.62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  animation: qmpBackdropIn 0.18s ease-out both;
+}
+
+/* ── The panel: a real card that always fits the screen ── */
+.qmp-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 24px 70px -12px rgba(0, 0, 0, 0.55), 0 0 0 1px hsl(var(--border) / 0.6);
+  outline: none;
+  animation: qmpPanelIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.qmp-panel-static { animation: none; }
+
+/* close button (top-right, always reachable, never behind content) */
+.qmp-panel-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--destructive) / 0.25);
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+.qmp-panel-close:hover { background: hsl(var(--destructive) / 0.22); }
+.qmp-panel-close:active { transform: scale(0.92); }
+.qmp-panel-close-inline {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  border: 1px solid hsl(var(--destructive) / 0.25);
+  background: hsl(var(--destructive) / 0.12);
+  color: hsl(var(--destructive));
+  transition: background-color 0.15s ease, transform 0.12s ease;
+}
+.qmp-panel-close-inline:hover { background: hsl(var(--destructive) / 0.22); }
+.qmp-panel-close-inline:active { transform: scale(0.92); }
+
+.qmp-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 14px 14px 12px 16px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+.qmp-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.qmp-panel-footer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-bottom: max(12px, var(--qmp-inset-bottom));
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+}
+
+/* ── kind: center — a dialog that shrinks to content and always fits ── */
+.qmp-overlay-center {
+  align-items: center;
+  justify-content: center;
+  padding: var(--qmp-overlay-pad-top) 14px var(--qmp-overlay-pad-bottom);
+}
+.qmp-panel-center {
+  width: 100%;
+  max-width: 30rem;              /* ~480px */
+  max-height: var(--qmp-overlay-max-h);
+  border-radius: 22px;
+}
+
+/* ── kind: sheet — bottom sheet on phones, centred card on tablets ── */
+.qmp-overlay-sheet {
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+.qmp-panel-sheet {
+  width: 100%;
+  max-width: 34rem;
+  max-height: min(88%, var(--qmp-overlay-max-h));
+  border-radius: 24px 24px 0 0;
+  border-bottom: none;
+  padding-bottom: var(--qmp-inset-bottom);
+  animation: qmpSheetIn 0.26s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (min-width: 768px) {
+  .qmp-overlay-sheet {
+    align-items: center;
+    padding: var(--qmp-overlay-pad-top) 16px var(--qmp-overlay-pad-bottom);
+  }
+  .qmp-panel-sheet {
+    max-height: var(--qmp-overlay-max-h);
+    border-radius: 22px;
+    border-bottom: 1px solid hsl(var(--border));
+    padding-bottom: 0;
+    animation: qmpPanelIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* ── kind: right — side panel (notifications, filters) ── */
+.qmp-overlay-right {
+  justify-content: flex-end;
+  padding-top: var(--qmp-overlay-pad-top);
+  padding-bottom: var(--qmp-overlay-pad-bottom);
+}
+.qmp-panel-right {
+  width: min(420px, 92vw);
+  height: 100%;
+  max-height: var(--qmp-overlay-max-h);
+  border-radius: 18px 0 0 18px;
+  animation: qmpRightIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── kind: full — real full-screen surface, inset-safe ── */
+.qmp-overlay-full { align-items: stretch; }
+.qmp-panel-full {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  border-radius: 0;
+  border: none;
+  background: hsl(var(--background));
+  animation: qmpFadeIn 0.18s ease-out both;
+}
+
+@keyframes qmpBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qmpFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qmpPanelIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes qmpSheetIn {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes qmpRightIn {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qmp-overlay-backdrop, .qmp-panel, .qmp-panel-sheet, .qmp-panel-right { animation: none; }
+}
+
+/* ── Landscape phones: sheets must scroll, never overflow the short viewport ── */
+@media (max-height: 520px) {
+  .qmp-overlay-sheet { align-items: flex-end; padding: 0; }
+  .qmp-panel-sheet { max-height: calc(var(--qmp-app-h) - 8px); border-radius: 18px 18px 0 0; }
+  .qmp-overlay-center { align-items: center; padding: 8px 12px; }
+  .qmp-panel-center { max-height: calc(var(--qmp-app-h) - 16px); border-radius: 18px; }
+}
+
+/* ── Radix dialogs (AlertDialog) join the same scale and the same fit rules ── */
+[data-radix-popper-content-wrapper] { z-index: var(--qmp-z-menu) !important; }
+[role="alertdialog"] {
+  z-index: var(--qmp-z-dialog);
+  max-height: var(--qmp-overlay-max-h, 90vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* Dialogs that scroll their own paragraphs still keep BOTH footer buttons on screen (short phones, landscape,
+   large zoom). Sticky footer inside the dialog's own scroll box. */
+[role="alertdialog"] .qmp-dialog-actions,
+[role="dialog"] .qmp-dialog-actions {
+  position: sticky;
+  bottom: -1px;
+  margin-top: 4px;
+  padding-top: 10px;
+  padding-bottom: 2px;
+  background: linear-gradient(to top, hsl(var(--background)) 70%, hsl(var(--background) / 0.92));
+}
+[role="alertdialog"] ~ * { /* nothing */ }
+
+/* Toasts always float above overlays. */
+[data-sonner-toaster] { z-index: var(--qmp-z-toast) !important; }
+
+/* Keep the page still while a popup is open so the background never scrolls under a sheet. */
+html.qmp-scroll-locked body { touch-action: none; }
+html.qmp-scroll-locked .qmp-panel-body,
+html.qmp-scroll-locked [role="alertdialog"] { touch-action: pan-y; }
+
+/* Dialogs opened from inside the quiz card must not be positioned relative to it — `qmp-dialog-track`
+   centres them in the viewport (Radix portals to <body>, so this always wins). */
+.qmp-dialog-track {
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PERFORMANCE BUDGET — device-adaptive glass
+   ═══════════════════════════════════════════════════════════════════════════════
+   Backdrop blur is the most expensive thing this UI does: every blurred surface
+   forces the WebView to re-composite the layer behind it, every frame. On a phone
+   with 4 cores or 2 GB RAM that is the difference between a smooth list and a
+   stutter (and, on some devices, a WebView crash under memory pressure).
+
+   `platform/perfMode.ts` puts one class on <html> at startup, before first paint:
+
+     .qmp-perf-low   - no backdrop blur anywhere, decorative animation frozen.
+                       Surfaces keep their tint and border, so the design language
+                       is unchanged; only the GPU cost disappears.
+     .qmp-perf-high  - full glass, full motion (desktop and modern phones).
+
+   This is deliberately the LAST rule block in the file so it wins without
+   !important where it can, and it is one place to tune - not a scatter of
+   per-component media queries.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.qmp-perf-low .glass-card,
+.qmp-perf-low .glass-liquid,
+.qmp-perf-low .glass-nav,
+.qmp-perf-low .glass-header,
+.qmp-perf-low [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Without the blur the tint must carry the surface: make the panels solid enough to read on. */
+.qmp-perf-low .glass-card { background-color: hsl(var(--card) / 0.94); }
+.qmp-perf-low .glass-liquid { background: linear-gradient(165deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%); }
+.qmp-perf-low .glass-header { background-color: hsl(var(--background) / 0.97); }
+.qmp-perf-low .glass-nav { background-color: hsl(var(--card) / 0.97); }
+
+/* Decorative-only motion: infinite loops cost a repaint every frame, forever. */
+.qmp-perf-low .qmp-decorative-motion,
+.qmp-perf-low .animate-pulse,
+.qmp-perf-low .animate-ping,
+.qmp-perf-low .animate-bounce,
+.qmp-perf-low .animate-pulse-red {
+  animation: none !important;
+}
+
+/* Large soft shadows are cheap to store but expensive to raster while scrolling a long list. */
+.qmp-perf-low .glass-card,
+.qmp-perf-low .glass-liquid {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+/* The blurred gradient orbs in the hero backgrounds are the same story on a per-frame basis. */
+.qmp-perf-low .qmp-blur-orb { filter: none !important; opacity: 0.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qmp-perf-low *,
+  .qmp-perf-low *::before,
+  .qmp-perf-low *::after { scroll-behavior: auto !important; }
+}

@@ -29,7 +29,7 @@ import {
   type CloudDevice, changePassword, deleteAccount, listDevices,
   removeDevice, renameThisDevice, signOut, useCloudAuth,
 } from '../../platform/cloud/authStore';
-import { getCloudEndpoint } from '../../platform/cloud/config';
+import { getCloudEndpoint, isCloudConfigured } from '../../platform/cloud/config';
 import { getDeviceIdentity, renameDevice } from '../../platform/cloud/device';
 import {
   clearConflicts, fetchRevisions, pullCloudOverDevice, pushDeviceOverCloud,
@@ -42,6 +42,8 @@ import { useAccount } from '../../platform/cloud/useAccount';
 import CloudDataManager from '../CloudDataManager';
 import GlowCard from '../shared/GlowCard';
 import { getHistorySync } from '../../utils/historyStore';
+import { openSignIn } from '../../platform/cloud/signInWindow';
+import { OverlayLayer } from '../ui/Overlay';
 
 interface Props {
   open: boolean;
@@ -364,7 +366,8 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
   if (!cloud.user) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[100] bg-background overflow-y-auto">
+      <OverlayLayer layer="panel">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 overflow-y-auto bg-background" style={{ zIndex: 'var(--qmp-z-panel)' }}>
         <div className="sticky top-0 z-10 glass-header border-b border-border/20" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }}>
           <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-3xl mx-auto">
             <button onClick={onClose} aria-label="Back" className="w-8 h-8 rounded-xl bg-muted/20 flex items-center justify-center hover:bg-muted/30 transition-colors">
@@ -375,46 +378,52 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
         </div>
         <div className="max-w-md mx-auto px-5 py-16 text-center space-y-4">
           <span className="text-5xl">☁️</span>
-          <h2 className="text-xl font-black text-foreground">You are working offline</h2>
+          <h2 className="text-xl font-black text-foreground">{isCloudConfigured() ? 'You are working offline' : 'Your account lives on this phone'}</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            All quizzes, bookmarks, notes, and progress are saved safely on this device. Sign in to seamlessly sync your
-            question solving across your phone, tablet, and laptop.
+            {isCloudConfigured()
+              ? 'All quizzes, bookmarks, notes, and progress are saved safely on this device. Sign in to seamlessly sync your question solving across your phone, tablet, and laptop.'
+              : 'All quizzes, bookmarks, notes and progress are saved safely on this device. Create your account here to protect it behind your own password — no e-mail, no server, no waiting.'}
           </p>
           <Button
             className="w-full h-11 rounded-xl font-bold"
             onClick={() => {
               onClose();
               if (onTriggerAuth) onTriggerAuth('signup');
-              else window.dispatchEvent(new CustomEvent('qm:open-auth', { detail: { mode: 'signup' } }));
+              else openSignIn('signup');
             }}
           >
-            Create a free account
+            {isCloudConfigured() ? 'Create a free account' : 'Create your account'}
           </Button>
           <button
             onClick={() => {
               onClose();
               if (onTriggerAuth) onTriggerAuth('signin');
-              else window.dispatchEvent(new CustomEvent('qm:open-auth', { detail: { mode: 'signin' } }));
+              else openSignIn('signin');
             }}
             className="w-full h-10 rounded-xl border border-border/30 bg-card/30 text-xs font-semibold text-foreground hover:bg-card/60 transition-colors"
           >
             I already have an account
           </button>
           <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-            Sync Endpoint: <span className="font-mono text-muted-foreground">{getCloudEndpoint() || 'Default Server'}</span>
+            {isCloudConfigured()
+              ? <>Sync Endpoint: <span className="font-mono text-muted-foreground">{getCloudEndpoint()}</span></>
+              : <>Storage: <span className="font-mono text-muted-foreground">this device (no server in this build)</span></>}
           </p>
         </div>
       </motion.div>
+      </OverlayLayer>
     );
   }
 
   return (
+    <OverlayLayer layer="panel">
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-      className="fixed inset-0 z-[100] bg-background overflow-y-auto"
+      className="fixed inset-0 overflow-y-auto bg-background"
+      style={{ zIndex: 'var(--qmp-z-panel)' }}
     >
       {/* Header */}
       <div className="sticky top-0 z-10 glass-header border-b border-border/20" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }}>
@@ -449,7 +458,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
         {/* Tabs */}
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-2 flex gap-1 overflow-x-auto scrollbar-none">
-          {TABS.map(t => {
+          {TABS.filter(t => isCloudConfigured() || t.id === 'overview' || t.id === 'device-data').map(t => {
             const active = tab === t.id;
             return (
               <button
@@ -493,8 +502,9 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
                   </div>
                   <button
                     onClick={handleSyncNow}
-                    disabled={busy !== null}
-                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm"
+                    disabled={busy !== null || !isCloudConfigured()}
+                    title={isCloudConfigured() ? 'Upload and pull changes now' : 'Cloud sync needs a server address — this build keeps the account on the device'}
+                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm disabled:opacity-40 disabled:active:scale-100"
                   >
                     {busy === 'sync' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                     <span>Sync Now</span>
@@ -778,7 +788,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
       {/* Rename device Dialog */}
       <AlertDialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl">
+        <AlertDialogContent className="qmp-dialog-track bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle>Rename this device</AlertDialogTitle>
             <AlertDialogDescription>The label other devices see in their device list.</AlertDialogDescription>
@@ -793,7 +803,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
       {/* Change password Dialog */}
       <AlertDialog open={passwordOpen} onOpenChange={setPasswordOpen}>
-        <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl">
+        <AlertDialogContent className="qmp-dialog-track bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle>Change your password</AlertDialogTitle>
             <AlertDialogDescription>Your other devices will be signed out and will need the new password.</AlertDialogDescription>
@@ -815,7 +825,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
       {/* Confirmations */}
       <AlertDialog open={!!confirm} onOpenChange={() => { setConfirm(null); setPassword(''); }}>
-        <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl">
+        <AlertDialogContent className="qmp-dialog-track bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirm?.kind === 'pull-cloud' && 'Replace this device with cloud copy?'}
@@ -850,6 +860,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
         </AlertDialogContent>
       </AlertDialog>
     </motion.div>
+    </OverlayLayer>
   );
 }
 

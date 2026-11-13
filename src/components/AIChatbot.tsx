@@ -5,6 +5,7 @@ import { X, Send, Sparkles, Trash2, Loader2, Bot, User, ArrowLeft, LogIn } from 
 import { chatGuest } from 'zitejs/api';
 import { getHistorySync } from '../utils/historyStore';
 import { Markdown } from '@project/components/markdown';
+import { OverlayLayer } from './ui/Overlay';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -235,7 +236,8 @@ ${questionContext.questionType ? `Topic: ${questionContext.questionType}` : ''}
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-background animate-fade-in">
+    <OverlayLayer layer="panel">
+    <div className="fixed inset-0 flex flex-col bg-background animate-fade-in" style={{ zIndex: 'var(--qmp-z-panel)' }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-xl flex-shrink-0">
         <button
@@ -411,5 +413,6 @@ ${questionContext.questionType ? `Topic: ${questionContext.questionType}` : ''}
         </div>
       </div>
     </div>
+    </OverlayLayer>
   );
 }

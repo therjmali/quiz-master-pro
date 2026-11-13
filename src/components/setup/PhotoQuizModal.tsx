@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import Overlay from '../ui/Overlay';
 import { Camera, Upload, X, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuizQuestion } from '../../types/quiz';
@@ -60,14 +61,9 @@ export default function PhotoQuizModal({ open, onClose, onImport }: Props) {
   const handleClear = () => { setPreview(null); setImageData(null); };
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-12 sm:pt-16 p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative glass-card rounded-3xl p-6 max-w-md w-full animate-fade-in">
-        <button onClick={onClose} className="absolute top-4 right-4 text-foreground/30 hover:text-foreground/70 transition-colors">
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-3 mb-5">
+    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-md" label="Quick quiz from photo">
+      <div className="qmp-panel-body p-5 sm:p-6">
+        <div className="mb-5 flex items-center gap-3 pr-10">
           <div className="w-10 h-10 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
             <Camera className="w-5 h-5 text-primary" />
           </div>
@@ -127,6 +123,6 @@ export default function PhotoQuizModal({ open, onClose, onImport }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </Overlay>
   );
 }

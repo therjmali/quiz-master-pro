@@ -1,5 +1,5 @@
-import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import Overlay from './ui/Overlay';
 
 interface SubjectOption {
   name: string;
@@ -15,25 +15,19 @@ interface Props {
 }
 
 export default function SubjectFilterPopup({ subjects, value, onChange, onClose }: Props) {
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-start pt-16 sm:pt-24 justify-center"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div
-        className="relative bg-card border border-border rounded-3xl p-5 w-full max-w-sm max-h-[70vh] overflow-y-auto shadow-2xl animate-fade-in mx-4"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-black text-foreground">Filter by Subject</h3>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-foreground/5 flex items-center justify-center hover:bg-foreground/10 transition-all"
-          >
-            <X className="w-4 h-4 text-foreground/50" />
-          </button>
-        </div>
+  return (
+    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-sm" labelledBy="subject-filter-title" hideClose>
+      <div className="qmp-panel-header">
+        <h3 id="subject-filter-title" className="text-sm font-black text-foreground">Filter by Subject</h3>
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="qmp-panel-close-inline"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      <div className="qmp-panel-body p-5">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { onChange('all'); onClose(); }}
@@ -68,7 +62,6 @@ export default function SubjectFilterPopup({ subjects, value, onChange, onClose 
           </button>
         )}
       </div>
-    </div>,
-    document.body
+    </Overlay>
   );
 }

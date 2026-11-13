@@ -51,7 +51,7 @@ export default function AISourceControls({ prefs, onChange }: Props) {
   const anyActive = qMode !== 'off' || rMode !== 'off';
 
   return (
-    <div ref={containerRef} className="relative z-[60]">
+    <div ref={containerRef} className="relative z-10">
       {/* ── Blue Trigger ── */}
       <button onClick={() => setOpen(o => !o)} aria-haspopup="true" aria-expanded={open}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all select-none ${

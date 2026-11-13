@@ -22,3 +22,6 @@ Thumbs.db
 __zite__*
 test-results/
 playwright-report/
+
+# generated report samples (scripts/render-sample-report.ts)
+artifacts/

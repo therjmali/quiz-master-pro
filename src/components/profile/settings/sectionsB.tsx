@@ -1,11 +1,15 @@
 import { memo, useState } from 'react';
-import { useAuth, loginWithRedirect, logout } from 'zitejs/auth';
+import { useAuth } from 'zitejs/auth';
 import { sendWeeklyReport } from 'zitejs/api';
 import {
   Sparkles, KeyRound, LayoutTemplate, Database, Trophy, BookOpenText, Trash2, Bell, Hand, UserRound, Settings2,
   LogIn, LogOut, Loader2, Send, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAccount } from '../../../platform/cloud/useAccount';
+import { signOut, useCloudAuth } from '../../../platform/cloud/authStore';
+import { openSignIn } from '../../../platform/cloud/signInWindow';
+import { triggerOpenSettings } from '../../cloud/CloudGate';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -23,8 +27,8 @@ import BackupSection from '../BackupSection';
 import GestureShortcutsPanel from '../../GestureShortcutsPanel';
 import { SettingsSection, SettingRow, SubHeading, Toggle, LinkRow } from './controls';
 import { AiProvidersPanel } from './sectionsPlatform';
+import { Pill } from './platformUi';
 import { hasBackend } from '../../../platform/ai/caller';
-import { useAccount } from '../../../platform/cloud/useAccount';
 import type { SectionProps } from './sectionsA';
 
 export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'awards' | 'notes';
@@ -194,7 +198,9 @@ const DEFAULT_BACKUP: BackupPrefs = { autoDriveBackup: true, allowDriveRestore: 
 const loadBackup = (): BackupPrefs => { try { return { ...DEFAULT_BACKUP, ...JSON.parse(localStorage.getItem('qmp_backup_prefs') || '{}') }; } catch { return DEFAULT_BACKUP; } };
 
 export const AccountSection = memo(function AccountSection({ open, onToggle, markDirty }: SectionProps & { markDirty: Dirty }) {
-  const { user } = useAuth();
+  // The real account: cloud when this build has a Supabase project, otherwise the one on this device.
+  const account = useAccount();
+  const cloud = useCloudAuth();
   const { profile, update } = useProfileStore();
   const [name, setName] = useState(profile.displayName);
   const [backup, setBackup] = useState<BackupPrefs>(loadBackup);
@@ -209,35 +215,53 @@ export const AccountSection = memo(function AccountSection({ open, onToggle, mar
   return (
     <SettingsSection id="account" icon={<UserRound className="w-4 h-4" />} open={open} onToggle={onToggle}
       onReset={() => { setPref({ ...DEFAULT_BACKUP }); toast.success('Sync preferences reset — your profile was kept'); }}>
-      {hasBackend() && (
-        <>
-          <SubHeading>Account</SubHeading>
-          <SettingRow id="signIn" title="Account" hint={user ? `Signed in as ${user.email}` : 'Guest mode — sign in to sync and back up your data'} inline={false}
-            control={user ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button type="button" className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 text-destructive text-sm font-bold hover:bg-destructive/10 transition-colors">
-                    <LogOut className="w-4 h-4" /> Sign out
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Sign out?</AlertDialogTitle>
-                    <AlertDialogDescription>You can sign back in anytime to access your synced data.</AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => { clearHistoryCache(); logout(); }} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Sign out</AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : (
-              <button type="button" onClick={() => loginWithRedirect()} className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold">
-                <LogIn className="w-4 h-4" /> Sign in
-              </button>
-            )} />
-        </>
-      )}
+      <SubHeading>Account</SubHeading>
+      <SettingRow id="signIn" title="Account"
+        hint={account.signedIn
+          ? `Signed in as ${account.email}${account.source === 'device' ? ' · on this device' : ''}`
+          : 'Guest mode — create an account to protect this device, or sign in to sync'}
+        inline={false}
+        control={account.signedIn ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2.5 rounded-xl border border-border bg-foreground/[0.03] p-2.5">
+              <span className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 text-primary font-black flex items-center justify-center shrink-0">
+                {(account.name || account.email || 'U').slice(0, 1).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12px] font-black text-foreground truncate">{account.name || 'Quiz Master Scholar'}</span>
+                <span className="block text-[11px] text-foreground/50 truncate">{account.email}</span>
+              </span>
+              <Pill tone="good">{account.source === 'device' ? 'This device' : 'Synced'}</Pill>
+            </div>
+            {/* The account lives in Settings -> Cloud (name, password, sign out, delete). Never make
+                the user hunt for it: jump straight to that section. */}
+            <button type="button" onClick={() => triggerOpenSettings('cloud')}
+              className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground/[0.03] text-foreground/70 text-xs font-bold hover:bg-foreground/[0.06] transition-colors">
+              <KeyRound className="w-3.5 h-3.5" /> Manage account · name, password
+            </button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button type="button" className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 text-destructive text-sm font-bold hover:bg-destructive/10 transition-colors">
+                  <LogOut className="w-4 h-4" /> Sign out
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Sign out?</AlertDialogTitle>
+                  <AlertDialogDescription>You can sign back in anytime. Nothing on this device is deleted, and your account stays here.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { clearHistoryCache(); void signOut('local'); toast.success('Signed out'); }} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Sign out</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        ) : (
+          <button type="button" onClick={() => openSignIn('signin')} className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground text-sm font-bold">
+            <LogIn className="w-4 h-4" /> {cloud.deviceEmail ? 'Sign in' : 'Create account or sign in'}
+          </button>
+        )} />
       <SubHeading>Profile</SubHeading>
       <SettingRow id="displayName" title="Display name" hint="The name shown on your dashboard and reports (max 24 characters)" inline={false}
         control={

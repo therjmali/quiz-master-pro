@@ -6,6 +6,7 @@ import { generateRevisionSheet } from 'zitejs/api';
 import { exportMarkdownReport } from '../../utils/reports/exportReport';
 import { Markdown } from '@project/components/markdown';
 import GenerationProgressOverlay from '../GenerationProgressOverlay';
+import Overlay from '../ui/Overlay';
 
 interface Props {
   result: QuizResult;
@@ -88,13 +89,9 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
   return (
     <>
     <GenerationProgressOverlay visible={loading} label="Generating Revision Sheet" sublabel={`Analyzing ${wrongCount} wrong answer${wrongCount !== 1 ? 's' : ''}`} />
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-start justify-center sm:pt-8 p-0 sm:p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-
-      <div className="relative bg-card border border-border rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[92vh] sm:max-h-[85vh] flex flex-col animate-fade-in shadow-2xl overflow-hidden">
-
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-2xl" label="Revision sheet">
         {/* ── Sticky Header ── */}
-        <div className="flex-shrink-0 border-b border-border bg-card/95 backdrop-blur-lg px-5 pt-5 pb-4">
+        <div className="flex-shrink-0 border-b border-border bg-card px-5 pb-4 pt-5">
           {/* Top bar */}
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-black text-foreground flex items-center gap-2">
@@ -120,8 +117,8 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
                   </button>
                 </>
               )}
-              <button onClick={onClose} className="text-foreground/30 hover:text-foreground/60 transition-colors p-1.5 rounded-xl hover:bg-foreground/5">
-                <X className="w-5 h-5" />
+              <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -157,7 +154,7 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
         </div>
 
         {/* ── Scrollable Content ── */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 revision-scroll">
+        <div className="qmp-panel-body revision-scroll px-5 py-5">
           {loading ? (
             <div className="flex flex-col items-center gap-4 py-16">
               <div className="relative">
@@ -193,9 +190,8 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
         </div>
 
         {/* ── Bottom fade + safe area ── */}
-        <div className="flex-shrink-0 h-6 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-      </div>
-    </div>
+        <div className="pointer-events-none h-6 flex-shrink-0 bg-gradient-to-t from-card to-transparent" />
+    </Overlay>
     </>
   );
 }

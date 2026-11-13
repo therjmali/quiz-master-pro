@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Overlay from '../ui/Overlay';
 import { X, Copy, Check } from 'lucide-react';
 import { MCQ_SAMPLE, MCQ_RULES } from '../../utils/quizParser';
 
@@ -129,13 +130,10 @@ export default function FormatGuideModal({ open, onClose }: Props) {
   const currentSection = SECTIONS.find(s => s.id === activeSection) || SECTIONS[0];
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div
-        className="w-full max-w-lg bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[88vh] overflow-hidden animate-slide-up flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Quiz format guide">
+      <div className="flex min-h-0 flex-col">
         {/* Header */}
-        <div className="px-5 pt-5 pb-3 border-b border-border/50 flex items-center justify-between flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-border/50 px-5 pb-3 pt-5">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
               <span className="text-base">📋</span>
@@ -145,8 +143,8 @@ export default function FormatGuideModal({ open, onClose }: Props) {
               <p className="text-[10px] text-foreground/40 font-bold">How to create quizzes like a pro</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-foreground/5 border border-border flex items-center justify-center hover:bg-foreground/10 transition-all active:scale-90">
-            <X className="w-4 h-4 text-foreground/50" />
+          <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -169,7 +167,7 @@ export default function FormatGuideModal({ open, onClose }: Props) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 thin-scrollbar">
+        <div className="qmp-panel-body thin-scrollbar px-5 py-4">
           <div className="animate-fade-in" key={activeSection}>
             <h4 className="text-xs font-black text-foreground/60 uppercase tracking-widest mb-3 flex items-center gap-2">
               <span className="text-base">{currentSection.emoji}</span>
@@ -197,6 +195,6 @@ export default function FormatGuideModal({ open, onClose }: Props) {
           )}
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

@@ -92,7 +92,7 @@ export default function FolderPickerSheet({
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm mx-4 max-h-[75vh] overflow-hidden flex flex-col p-0 top-[10%] translate-y-0">
+      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm max-h-[75vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border flex-shrink-0">
           <DialogTitle className="text-foreground font-bold flex items-center gap-2">
             <FolderPlus className="w-5 h-5 text-primary" /> Add to Folder

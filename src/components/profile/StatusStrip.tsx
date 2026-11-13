@@ -52,9 +52,16 @@ export default function StatusStrip({ onJump }: { onJump?: (section: string) => 
   const ic = 'w-4 h-4';
 
   // ── Cloud ──
-  const C = 'Cloud';
+  const C = 'Account';
   if (cloud.status !== 'signed-in') {
-    tiles.push({ id: 'cloud', tone: 'info', icon: <UserRound className={ic} />, label: C, title: 'Guest mode', detail: 'Saved on this device', section: 'cloud' });
+    tiles.push({
+      id: 'cloud', tone: cloud.deviceEmail ? 'warn' : 'info', icon: <UserRound className={ic} />, label: C,
+      title: cloud.deviceEmail ? 'Signed out' : 'Guest mode',
+      detail: cloud.deviceEmail ? 'Tap to sign back in' : (cloud.configured ? 'Saved on this device' : 'Create an account'), section: 'cloud',
+    });
+  } else if (!cloud.configured) {
+    // An on-device account: nothing to sync, nothing wrong - say so instead of "never synced".
+    tiles.push({ id: 'cloud', tone: 'good', icon: <ShieldCheck className={ic} />, label: C, title: 'Account active', detail: 'Protected on this device', section: 'cloud' });
   } else if (sync.phase === 'syncing') {
     tiles.push({ id: 'cloud', tone: 'busy', icon: <Loader2 className={`${ic} animate-spin`} />, label: C, title: 'Syncing…', detail: 'Updating your devices', section: 'cloud', pulse: true });
   } else if (sync.phase === 'error') {

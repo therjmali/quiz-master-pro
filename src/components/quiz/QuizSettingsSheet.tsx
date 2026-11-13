@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Overlay, { OverlayFooter } from '../ui/Overlay';
 import { X, Settings2, ChevronDown, Target, Clock, Zap, Gauge, ZoomIn } from 'lucide-react';
 import { QuizSettings } from '../../types/quiz';
 import SettingsPanel from '../setup/SettingsPanel';
@@ -55,27 +56,23 @@ export default function QuizSettingsSheet({ settings, open, onClose, onApply }: 
   const set = (patch: Partial<QuizSettings>) => setDraft(d => ({ ...d, ...patch }));
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-12 sm:pt-16 p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-3xl animate-fade-in glass-card rounded-2xl overflow-hidden max-h-[85vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
-              <Settings2 className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-black text-foreground">Edit Quiz Settings</h3>
-              <p className="text-[10px] text-foreground/35 font-medium">Tap a section to expand · changes apply on resume</p>
-            </div>
+    <Overlay open={open} onClose={onClose} kind="center" layer="sheet" className="max-w-3xl" labelledBy="quiz-settings-title" hideClose>
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl border border-primary/25 bg-primary/15">
+            <Settings2 className="h-4 w-4 text-primary" />
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 flex items-center justify-center transition-colors">
-            <X className="w-4 h-4 text-destructive" />
-          </button>
+          <div className="min-w-0">
+            <h3 id="quiz-settings-title" className="truncate text-sm font-black text-foreground">Edit Quiz Settings</h3>
+            <p className="truncate text-[10px] font-medium text-foreground/35">Tap a section to expand · changes apply on resume</p>
+          </div>
         </div>
+        <button onClick={onClose} className="qmp-panel-close-inline" aria-label="Close">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
 
-        {/* Content — collapsible accordion sections */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 thin-scrollbar space-y-2.5">
+      <div className="qmp-panel-body thin-scrollbar space-y-2.5 px-5 py-4">
           <SettingsPanel settings={draft} onChange={setDraft} collapsible />
 
           {/* ── Zoom Section ── */}
@@ -126,10 +123,10 @@ export default function QuizSettingsSheet({ settings, open, onClose, onApply }: 
               </div>
             </div>
           </Section>
-        </div>
+      </div>
 
-        {/* Footer */}
-        <div className="px-5 py-4 border-t border-white/[0.06] flex gap-2">
+      <OverlayFooter>
+        <div className="flex w-full gap-2">
           <button onClick={onClose}
             className="flex-1 py-3 rounded-xl border border-border bg-foreground/5 text-foreground/50 text-sm font-bold transition-all hover:bg-foreground/10">
             Cancel
@@ -139,7 +136,7 @@ export default function QuizSettingsSheet({ settings, open, onClose, onApply }: 
             ✓ Apply & Resume
           </button>
         </div>
-      </div>
-    </div>
+      </OverlayFooter>
+    </Overlay>
   );
 }

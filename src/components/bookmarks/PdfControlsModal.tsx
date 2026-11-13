@@ -170,7 +170,7 @@ export default function PdfControlsModal({ open, onClose, bookmarks, title, onOp
   if (onOpenReportPreview) {
     if (items.length === 0) {
       return (
-        <div className="fixed inset-0 z-[110] bg-background flex items-center justify-center">
+        <div className="fixed inset-0 flex items-center justify-center bg-background" style={{ zIndex: "var(--qmp-z-panel)" }}>
           <div className="text-center p-8">
             <span className="text-4xl mb-4 block">📄</span>
             <p className="text-foreground/50 font-bold">No bookmarks to preview</p>
@@ -180,7 +180,7 @@ export default function PdfControlsModal({ open, onClose, bookmarks, title, onOp
       );
     }
     return (
-      <div className="fixed inset-0 z-[110] bg-background flex items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-background" style={{ zIndex: "var(--qmp-z-panel)" }}>
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
           <p className="text-sm font-bold text-foreground/40">Building Exam Paper…</p>
@@ -192,7 +192,7 @@ export default function PdfControlsModal({ open, onClose, bookmarks, title, onOp
   // Fallback: use SmartPreviewModal when no full-page preview callback
   if (items.length === 0) {
     return (
-      <div className="fixed inset-0 z-[110] bg-background flex items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-background" style={{ zIndex: "var(--qmp-z-panel)" }}>
         <div className="text-center p-8">
           <span className="text-4xl mb-4 block">📄</span>
           <p className="text-foreground/50 font-bold">No bookmarks to preview</p>
@@ -204,7 +204,7 @@ export default function PdfControlsModal({ open, onClose, bookmarks, title, onOp
 
   if (!previewHtml) {
     return (
-      <div className="fixed inset-0 z-[110] bg-background flex items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-background" style={{ zIndex: "var(--qmp-z-panel)" }}>
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-primary/50" />
           <p className="text-sm font-bold text-foreground/40">Building Exam Paper…</p>

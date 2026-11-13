@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Overlay from '../ui/Overlay';
 import { X, Save, RotateCcw, Plus, Trash2, GripVertical, Check } from 'lucide-react';
 import { QuizQuestion } from '../../types/quiz';
 
@@ -25,20 +26,6 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
     const onResize = () => setViewportH(vv.height);
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
-  }, []);
-
-  // Escape closes the editor (keyboard / hardware-keyboard tablets)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); onClose(); } };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
-
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
   }, []);
 
   const handleOptionChange = (idx: number, value: string) => {
@@ -86,26 +73,18 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
   const dynamicHeight = viewportH ? `${viewportH}px` : '100dvh';
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in"
-      onClick={onClose}
-      style={{ height: dynamicHeight }}
-    >
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="sm:max-w-lg" label={`Edit question ${questionIndex + 1}`} hideClose>
       <div
-        onClick={e => e.stopPropagation()}
-        className="w-full sm:max-w-lg bg-card border border-border/50
-          rounded-t-3xl sm:rounded-2xl shadow-2xl
-          flex flex-col
-          max-h-[100%] sm:max-h-[85vh]"
+        className="flex min-h-0 w-full flex-col"
         style={{ maxHeight: viewportH ? `${viewportH}px` : undefined }}
       >
         {/* ── Drag handle (mobile) ── */}
-        <div className="sm:hidden flex justify-center pt-2.5 pb-0">
-          <div className="w-10 h-1 rounded-full bg-foreground/15" />
+        <div className="flex justify-center pt-2.5 pb-0 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-foreground/15" />
         </div>
 
         {/* ── Header ── */}
-        <div className="flex-shrink-0 px-5 py-3.5 sm:py-4 flex items-center justify-between border-b border-border/40">
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-border/40 px-5 py-3.5 sm:py-4">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
               <span className="text-lg leading-none">✏️</span>
@@ -117,14 +96,15 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
           </div>
           <button
             onClick={onClose}
-            className="w-9 h-9 rounded-xl bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground/40 hover:text-foreground/70 transition-colors active:scale-95"
+            aria-label="Close"
+            className="qmp-panel-close-inline"
           >
-            <X className="w-4.5 h-4.5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* ── Scrollable body ── */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 space-y-5">
+        <div ref={scrollRef} className="qmp-panel-body space-y-5 px-5 py-4">
 
           {/* Question text */}
           <div className={shakeField === 'question' ? 'animate-shake' : ''}>
@@ -249,7 +229,7 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
 
         {/* ── Footer ── */}
         <div
-          className="flex-shrink-0 border-t border-border/40 px-5 py-3.5 flex items-center gap-2.5"
+          className="flex flex-shrink-0 items-center gap-2.5 border-t border-border/40 px-5 py-3.5"
           style={{ paddingBottom: 'max(0.875rem, var(--qmp-inset-bottom))' }}
         >
           <button
@@ -272,6 +252,6 @@ export default function QuestionEditModal({ question, questionIndex, onSave, onC
           </button>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

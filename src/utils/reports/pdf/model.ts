@@ -38,7 +38,9 @@ export function reportFilename(kind: ReportKind, results: QuizResult[], ext: str
 export function styleFor(kind: ReportKind, base: Partial<ReportStyle> = {}, examInline = false): ReportStyle {
   const s: ReportStyle = { ...DEFAULT_STYLE, ...base };
   const answers: AnswerMode = kind === 'exam' ? (examInline ? 'inline' : 'key') : 'inline';
-  return { ...s, answers, showUserAnswer: kind === 'all' || kind === 'wrong' ? s.showUserAnswer : false };
+  // An exam paper keeps the classic two-column paper look; every other report gets the premium dashboard.
+  const template = base.template ?? (kind === 'exam' ? 'classic' : 'master');
+  return { ...s, template, answers, showUserAnswer: kind === 'all' || kind === 'wrong' ? s.showUserAnswer : false };
 }
 
 const correctOf = (q: QuizQuestion): string[] => (q.correctAnswers && q.correctAnswers.length ? q.correctAnswers : [q.correctAnswer]).filter(Boolean);
@@ -78,6 +80,11 @@ export function buildQuestionDoc(results: QuizResult[], o: BuildOptions): Report
   const now = o.now ?? new Date();
   const base = o.scope === 'quiz' ? (results[0]?.quizTitle || 'Quiz') : 'Profile Analysis';
   const subjects = Array.from(new Set(results.map(r => r.subject).filter(Boolean)));
+  // Book/unit identity for the report header ("TG 344 - 373", "Book order"): used by the master template.
+  const titles = Array.from(new Set(results.map(r => (r.quizTitle || '').trim()).filter(Boolean)));
+  const correct = all.filter(i => i.status === 'correct').length;
+  const wrong = all.filter(i => i.status === 'wrong').length;
+  const total = all.length;
   const meta = [
     now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     subjects.length ? subjects.slice(0, 3).join(', ') : '',
@@ -86,7 +93,22 @@ export function buildQuestionDoc(results: QuizResult[], o: BuildOptions): Report
     o.order === 'original' ? 'Book order' : 'Attempt order',
     summary.timeSec ? `${Math.floor(summary.timeSec / 60)} min ${summary.timeSec % 60}s` : '',
   ].filter(Boolean);
-  return { kind: o.kind, title: `${KIND_TITLES[o.kind]} — ${base}`, subtitle: undefined, meta, summary, items };
+  const docSummary: ReportSummary = {
+    ...summary,
+    shown: total,
+    maxScore: total > 0 ? Math.round((correct / total) * 100) : 0,
+    scope: o.scope,
+    subjects: subjects.filter((x): x is string => Boolean(x)),
+    quizzesDetail: results.map(r => ({
+      title: (r.quizTitle || 'Quiz').trim(),
+      subject: r.subject || '',
+      percentage: Number.isFinite(r.percentage) ? Math.round(r.percentage) : 0,
+      questions: r.totalQuestions || 0,
+      timestamp: r.timestamp,
+    })),
+    bookRange: titles.length === 1 ? titles[0] : undefined,
+  };
+  return { kind: o.kind, title: `${KIND_TITLES[o.kind]} — ${base}`, subtitle: undefined, meta, summary: docSummary, items };
 }
 
 /** Revision sheet / generic markdown document. */

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import Overlay from '../ui/Overlay';
 import { X, Pencil, Check, Flame, Target, Calendar, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { usePersistedState } from '../../hooks/usePersistedState';
@@ -171,9 +172,9 @@ export default function StreakTargetsModal({ history, onClose }: Props) {
   const maxCount = Math.max(...last30.map(d => d.count), 1);
 
   return (
-    <div className="fixed inset-0 z-[190] flex flex-col bg-background/95 backdrop-blur-xl animate-fade-in">
+    <Overlay open onClose={onClose} kind="full" layer="panel" hideClose label="Streak and targets">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-5 py-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-red-500/20 border border-orange-500/25 flex items-center justify-center">
             <Flame className="w-5 h-5 text-orange-400" />
@@ -183,13 +184,13 @@ export default function StreakTargetsModal({ history, onClose }: Props) {
             <p className="text-[10px] text-foreground/35 font-bold">Track your daily consistency</p>
           </div>
         </div>
-        <button onClick={onClose} className="w-9 h-9 rounded-xl bg-foreground/5 border border-border flex items-center justify-center text-foreground/40 hover:text-foreground transition-colors active:scale-90">
-          <X className="w-4 h-4" />
+        <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+          <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+      <div className="qmp-panel-body space-y-5 px-5 py-5">
         {/* Current Streak Hero */}
         <div className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-red-500/5 to-transparent p-6">
           <div className="absolute top-4 right-4 text-5xl opacity-10">🔥</div>
@@ -339,7 +340,7 @@ export default function StreakTargetsModal({ history, onClose }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </Overlay>
   );
 }
 
