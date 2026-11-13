@@ -34,7 +34,7 @@ export default function OfflineIndicator() {
 
   return (
     <div
-      className="pointer-events-none fixed left-1/2 z-[300] -translate-x-1/2 animate-fade-in"
+      className="pointer-events-none fixed left-1/2 z-[calc(var(--qmp-z-toast)-10)] -translate-x-1/2 animate-fade-in"
       style={{ top: 'calc(var(--qmp-inset-top) + 8px)' }}
       role="status"
       aria-live="polite"

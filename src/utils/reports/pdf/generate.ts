@@ -1,4 +1,5 @@
 import { layoutReport } from './layout';
+import { layoutMasterReport } from './masterTemplate';
 import { createReportFonts, type FontSource, type ReportFonts } from './reportFonts';
 import { writePdf } from './pdfWriter';
 import type { LaidOutReport, ReportDoc, ReportStyle } from './types';
@@ -10,10 +11,15 @@ function textsOf(doc: ReportDoc): string[] {
   return t;
 }
 
+/** Picks the layouter for a style: the premium dashboard ("master", the default) or the classic exam paper. */
+export function layoutFor(doc: ReportDoc, style: ReportStyle, set: import('./fontSet').FontSet): LaidOutReport {
+  return (style.template === 'classic' ? layoutReport : layoutMasterReport)(doc, style, set);
+}
+
 /** Lays the document out (used by the on-screen preview AND the exporter, so both are identical). */
 export async function prepareReport(doc: ReportDoc, style: ReportStyle, source: FontSource): Promise<{ report: LaidOutReport; fonts: ReportFonts }> {
   const fonts = await createReportFonts(textsOf(doc), source);
-  return { report: layoutReport(doc, style, fonts.set), fonts };
+  return { report: layoutFor(doc, style, fonts.set), fonts };
 }
 
 export async function generatePdf(doc: ReportDoc, style: ReportStyle, source: FontSource): Promise<{ bytes: Uint8Array; pages: number }> {

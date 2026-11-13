@@ -188,7 +188,7 @@ export default function TrashTab({ onHistoryChanged }: Props) {
     <>
       {/* Empty Trash confirm */}
       <AlertDialog open={showEmptyConfirm} onOpenChange={setShowEmptyConfirm}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Empty Trash?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -208,7 +208,7 @@ export default function TrashTab({ onHistoryChanged }: Props) {
 
       {/* Individual cloud delete confirm */}
       <AlertDialog open={!!deleteConfirmId} onOpenChange={open => !open && setDeleteConfirmId(null)}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Permanently Delete?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -229,7 +229,7 @@ export default function TrashTab({ onHistoryChanged }: Props) {
 
       {/* Individual local quiz delete confirm */}
       <AlertDialog open={!!localDeleteKey} onOpenChange={open => !open && setLocalDeleteKey(null)}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Permanently Delete?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -250,7 +250,7 @@ export default function TrashTab({ onHistoryChanged }: Props) {
 
       {/* Organizer item delete confirm */}
       <AlertDialog open={!!orgDeleteId} onOpenChange={open => !open && setOrgDeleteId(null)}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Permanently Delete?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { loadQuizQuestions } from '../../utils/ensureQuestions';
 import { resolveLinkedResult, computeLinkBackfill } from '../../utils/historyLink';
 import AiRationaleText from '../AiRationaleText';
+import Overlay from '../ui/Overlay';
 import { usePersistedState, usePersistedMap } from '../../hooks/usePersistedState';
 import {
   Search, Trash2, Copy, Scissors, ClipboardPaste, X,
@@ -120,24 +121,24 @@ function CtxMenu({ x, y, items, title, onClose }: {
   );
 
   const content = isSheet ? (
-    <div className="fixed inset-0 z-[1300] flex flex-col justify-end bg-black/45 animate-fade-in">
-      <div ref={ref}
-        className="bg-card border-t border-border rounded-t-3xl shadow-2xl overflow-y-auto overscroll-contain"
-        style={{ maxHeight: '78dvh', paddingBottom: 'max(var(--qmp-inset-bottom), 12px)' }}>
-        <div className="sticky top-0 bg-card z-10 pt-2.5 pb-1">
-          <div className="w-10 h-1 rounded-full bg-foreground/15 mx-auto mb-2" />
-          {title && <p className="px-4 pb-1.5 text-[11px] font-black text-foreground/40 uppercase tracking-widest truncate">{title}</p>}
+    <Overlay open onClose={onClose} kind="sheet" layer="menu" hideClose label={title || 'Actions'}>
+      <div ref={ref} className="qmp-panel-body" style={{ paddingBottom: 'max(var(--qmp-inset-bottom), 12px)' }}>
+        <div className="sticky top-0 z-10 bg-card pt-2.5 pb-1">
+          <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-foreground/15" />
+          {title && <p className="truncate px-4 pb-1.5 text-[11px] font-black uppercase tracking-widest text-foreground/40">{title}</p>}
         </div>
         {list}
       </div>
-    </div>
+    </Overlay>
   ) : (
     <div ref={ref}
-      className="fixed z-[1300] bg-card border border-border rounded-2xl shadow-2xl shadow-black/20 py-2 min-w-[220px] overflow-y-auto overscroll-contain animate-fade-in"
+      className="fixed bg-card border border-border rounded-2xl shadow-2xl shadow-black/20 py-2 min-w-[220px] overflow-y-auto overscroll-contain animate-fade-in"
+      role="menu"
       style={{
         left: pos?.left ?? x,
         top: pos?.top ?? y,
         maxHeight: pos?.maxH,
+        zIndex: 'var(--qmp-z-menu)',
         visibility: pos ? 'visible' : 'hidden',
       }}>
       {list}
@@ -696,7 +697,7 @@ function MoveToDialog({ open, root, nodeIds, onMove, onClose }: {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm mx-4 top-[12%] translate-y-0">
+      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm">
         <DialogHeader><DialogTitle className="text-foreground font-bold">Move to…</DialogTitle></DialogHeader>
         <div className="space-y-1 max-h-60 overflow-y-auto py-2">
           {browsing !== ROOT_ID && (
@@ -789,7 +790,7 @@ function AddQuizSheet({ open, onClose, quizzes, onAdd, existingNames, existingQu
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md mx-4 max-h-[80vh] overflow-hidden flex flex-col p-0 top-[8%] translate-y-0">
+      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-foreground font-bold text-left">Add Quiz to Folder</DialogTitle>
@@ -943,7 +944,7 @@ function BookmarkPreviewModal({ node, onClose, onRemove, onPractice, onUpdateNot
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
-      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md mx-4 max-h-[80vh] overflow-y-auto p-0 top-[8%] translate-y-0">
+      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md max-h-[85vh] overflow-y-auto p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
           <DialogTitle className="text-foreground font-bold text-left flex items-center gap-2">
             <span className="text-lg">🔖</span> Bookmarked Question
@@ -1371,7 +1372,7 @@ export default function FileManager({ onPractice, onViewResult, history = [], on
 
       {/* Dialogs */}
       <Dialog open={!!createDialogType} onOpenChange={v => !v && setCreateDialogType(null)}>
-        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm mx-auto top-[12%] translate-y-0">
+        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-foreground font-bold">New Folder</DialogTitle>
           </DialogHeader>
@@ -1387,7 +1388,7 @@ export default function FileManager({ onPractice, onViewResult, history = [], on
       </Dialog>
 
       <Dialog open={!!renameTarget} onOpenChange={v => { if (!v) { setRenameTarget(null); setEditSubject(''); setEditNotes(''); setEditDate(''); setEditTime(''); } }}>
-        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm mx-4 top-[12%] translate-y-0">
+        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm">
           <DialogHeader><DialogTitle className="text-foreground font-bold">Edit Details</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div>
@@ -1426,7 +1427,7 @@ export default function FileManager({ onPractice, onViewResult, history = [], on
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
-        <AlertDialogContent className="bg-card border-border rounded-2xl mx-4 top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Move to Trash?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">

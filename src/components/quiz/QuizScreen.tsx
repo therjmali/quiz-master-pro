@@ -472,7 +472,7 @@ export default function QuizScreen({
     <>
       {/* Exit Dialog */}
       <AlertDialog open={showExitDialog} onOpenChange={(open) => { setShowExitDialog(open); if (!open) doResume(); }}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="qmp-dialog-track bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold text-lg">Leave this quiz?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -488,7 +488,7 @@ export default function QuizScreen({
 
       {/* Submit Confirmation Dialog */}
       <AlertDialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="qmp-dialog-track bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold text-lg">Submit All Answers?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">

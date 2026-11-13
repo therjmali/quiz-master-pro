@@ -19,7 +19,7 @@ export default function GenerationProgressOverlay({ visible, label = 'Generating
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center pointer-events-none animate-fade-in">
+    <div className="fixed inset-0 z-[var(--qmp-z-blocking)] flex items-center justify-center pointer-events-none animate-fade-in">
       <div className="pointer-events-auto bg-card/80 backdrop-blur-2xl border border-border/60 rounded-3xl px-8 py-6 shadow-2xl shadow-black/30 flex flex-col items-center gap-3 min-w-[200px]">
         <div className="relative">
           <div className="w-14 h-14 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center">

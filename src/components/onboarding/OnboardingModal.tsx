@@ -76,7 +76,7 @@ export default function OnboardingModal({ onComplete }: Props) {
   const isLast = step === totalSteps - 1;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+    <div className="fixed inset-0 flex items-center justify-center p-4" style={{ zIndex: 'var(--qmp-z-sheet)' }}>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0 bg-background/80 backdrop-blur-xl"
@@ -88,7 +88,7 @@ export default function OnboardingModal({ onComplete }: Props) {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="relative w-full max-w-md glass-card overflow-hidden"
+        className="relative max-h-[calc(var(--qmp-app-h)-32px)] w-full max-w-md overflow-y-auto overscroll-contain rounded-[1.5rem] border border-border bg-card glass-card"
       >
         <div className={`absolute inset-0 bg-gradient-to-br ${current.gradient} pointer-events-none rounded-[1.5rem]`} />
         <div className="absolute top-0 right-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />

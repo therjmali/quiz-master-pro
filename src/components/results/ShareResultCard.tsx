@@ -3,6 +3,7 @@ import { Share2, Download, Image, X, Loader2, Copy, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { QuizResult } from '../../types/quiz';
 import { formatTime } from '../../utils/scoring';
+import Overlay from '../ui/Overlay';
 
 interface Props {
   result: QuizResult;
@@ -385,11 +386,10 @@ export default function ShareResultCard({ result, onClose }: Props) {
   }, [result]);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-start justify-center pt-8 sm:pt-12 p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative glass-card rounded-3xl p-5 sm:p-6 max-w-md w-full animate-fade-in max-h-[90vh] overflow-y-auto thin-scrollbar">
+    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-md" label="Share results">
+      <div className="qmp-panel-body thin-scrollbar p-5 sm:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
               <Share2 className="w-4 h-4 text-primary" />
@@ -399,8 +399,8 @@ export default function ShareResultCard({ result, onClose }: Props) {
               <p className="text-[10px] text-foreground/40">Generate a beautiful results card</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-xl bg-foreground/5 border border-border flex items-center justify-center text-foreground/40 hover:text-foreground/70 transition-all">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+            <X className="h-4 w-4" />
           </button>
         </div>
 
@@ -460,6 +460,6 @@ export default function ShareResultCard({ result, onClose }: Props) {
           </>
         )}
       </div>
-    </div>
+    </Overlay>
   );
 }

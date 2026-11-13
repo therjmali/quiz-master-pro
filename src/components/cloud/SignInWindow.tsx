@@ -122,13 +122,16 @@ export default function SignInWindow() {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-[calc(100%-1.5rem)] sm:w-[94vw] max-h-[92vh] overflow-y-auto rounded-3xl border border-white/10 bg-background/95 p-0 backdrop-blur-2xl shadow-2xl">
+      <DialogContent
+        className="max-w-4xl w-[calc(100%-1.25rem)] sm:w-[94vw] max-h-[min(92dvh,calc(var(--qmp-app-h)-24px))] overflow-y-auto overscroll-contain rounded-3xl border border-white/10 bg-background/95 p-0 shadow-2xl"
+        aria-describedby={undefined}
+      >
         <div className="relative p-5 sm:p-8 md:p-10 lg:p-12">
           {/* Close button */}
           <button
             type="button"
             onClick={() => onOpenChange(false)}
-            className="absolute right-4 top-4 z-50 flex h-8 w-8 items-center justify-center rounded-full bg-foreground/[0.06] text-foreground/50 hover:bg-foreground/[0.12] hover:text-foreground transition-all"
+            className="absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-destructive/25 bg-destructive/10 text-destructive hover:bg-destructive/20 transition-all"
             aria-label="Close"
           >
             <X className="h-4 w-4" />

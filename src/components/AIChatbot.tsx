@@ -235,7 +235,7 @@ ${questionContext.questionType ? `Topic: ${questionContext.questionType}` : ''}
   };
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-background animate-fade-in">
+    <div className="fixed inset-0 flex flex-col bg-background animate-fade-in" style={{ zIndex: 'var(--qmp-z-panel)' }}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/80 backdrop-blur-xl flex-shrink-0">
         <button

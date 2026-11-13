@@ -13,6 +13,9 @@ import PullToRefresh from './components/PullToRefresh';
 import GestureShortcutsPanel from './components/GestureShortcutsPanel';
 import { hapticHeavy, hapticTap } from './utils/haptics';
 import { useSwipeNavigation } from './hooks/useSwipeNavigation';
+import { useOverlayCount } from './lib/overlayStack';
+import { useScreenLocked } from './lib/screenLock';
+import { registerBackHandler } from './platform/backButton';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -670,6 +673,20 @@ function AppScreens({
     }
   }, [restoreScrollPosition, setScreen, navStack, navigate]);
 
+  // Hardware back: close panels and popups first, then walk the app's own screen stack, then leave the app.
+  useEffect(() => {
+    return registerBackHandler(() => {
+      if (syncCenterOpen) { setSyncCenterOpen(false); return true; }
+      if (notifCenterOpen) { setNotifCenterOpen(false); return true; }
+      if (widgetModalOpen) { setWidgetModalOpen(false); return true; }
+      if (chatbotState.open) { setChatbotState({ open: false }); return true; }
+      if (screenRef.current === 'report-preview') { handleCloseReportPreview(); return true; }
+      if (screenRef.current !== 'dashboard') { goBackFromScreen(); return true; }
+      return false;
+    });
+  }, [syncCenterOpen, notifCenterOpen, widgetModalOpen, chatbotState.open, handleCloseReportPreview, goBackFromScreen]);
+
+
   const handleReportHelperChange = useCallback((mode: AIPrefs['reportHelper']) => { setAiPrefs(prev => ({ ...prev, reportHelper: mode })); }, [setAiPrefs]);
 
   const handleUpdateQuizMeta = useCallback((title: string, subject: string, newTimestamp?: number) => {
@@ -723,19 +740,23 @@ function AppScreens({
     toast(`🔁 ${title}: ${m.length} question${m.length !== 1 ? 's' : ''}…`);
   }, [currentResult, history, startPracticeFromResult, setScreen, setSettings]);
 
+  // Popups own the screen while they are open: swipe-navigation and shortcuts stay out of the way.
+  const overlayCount = useOverlayCount();
+  const screenLocked = useScreenLocked();
   // ── Keyboard ──
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (overlayCount > 0) return;                 // a popup is open: it handles Escape itself
       if (e.key === 'Escape' && screenRef.current === 'report-preview') handleCloseReportPreview();
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleCloseReportPreview]);
+  }, [handleCloseReportPreview, overlayCount]);
 
   // ── Swipe ──
-  const swipeEnabled = SWIPEABLE_SCREENS.includes(screen);
+  const swipeEnabled = SWIPEABLE_SCREENS.includes(screen) && overlayCount === 0 && !screenLocked;
   useSwipeNavigation(swipeRef, {
     onSwipeLeft: useCallback(() => { const idx = SWIPEABLE_SCREENS.indexOf(screenRef.current); if (idx < 0) return; const next = SWIPEABLE_SCREENS[(idx + 1) % SWIPEABLE_SCREENS.length]; hapticTap(); navigateTo(next); toast(`${TAB_LABELS[next]} →`, { duration: 1200 }); }, [navigateTo]),
     onSwipeRight: useCallback(() => { const idx = SWIPEABLE_SCREENS.indexOf(screenRef.current); if (idx < 0) return; const prev = SWIPEABLE_SCREENS[(idx - 1 + SWIPEABLE_SCREENS.length) % SWIPEABLE_SCREENS.length]; hapticTap(); navigateTo(prev); toast(`← ${TAB_LABELS[prev]}`, { duration: 1200 }); }, [navigateTo]),

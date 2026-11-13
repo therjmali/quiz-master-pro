@@ -1,9 +1,11 @@
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { loadQuizQuestions } from '../../utils/ensureQuestions';
 import { usePersistedState } from '../../hooks/usePersistedState';
-import { Trash2, RotateCcw, BookOpen, Pin, PinOff, ChevronRight, ChevronLeft, Pencil, FolderOpen, History, Plus, Home, FolderPlus, Share2, RotateCw, List, LayoutGrid, Download, Upload, SlidersHorizontal, Tag } from 'lucide-react';
+import { Trash2, RotateCcw, BookOpen, Pin, PinOff, ChevronRight, ChevronLeft, Pencil, FolderOpen, History, Plus, Home, FolderPlus, Share2, RotateCw, List, LayoutGrid, Download, Upload, SlidersHorizontal, Tag, X } from 'lucide-react';
 import { hapticTap, hapticHeavy } from '../../utils/haptics';
 import SummaryStatsStrip from './SummaryStatsStrip';
+import Overlay from '../ui/Overlay';
 import { SessionMode, filterBySession, getSessionLabel } from '../SessionSelector';
 import {
   SearchField, Toolbar, ToolbarButton, ToolbarDivider, TrashToolbarButton, SessionToolbarButton, ChipsBar, Chip, TB_ICON,
@@ -246,12 +248,13 @@ function LibraryCardBody({ result, idx, isPinned, onView, onDelete, onPractice, 
       </div>
 
       {/* Long-press context menu */}
-      {contextMenu && (
+      {contextMenu && createPortal(
         <>
-          <div className="fixed inset-0 z-[100]" onClick={() => setContextMenu(null)} />
+          <div className="fixed inset-0" style={{ zIndex: 'calc(var(--qmp-z-menu) - 1)' }} onClick={() => setContextMenu(null)} />
           <div
-            className="fixed z-[101] w-56 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
-            style={{ left: Math.min(contextMenu.x, window.innerWidth - 240), top: Math.min(contextMenu.y - 40, window.innerHeight - 260) }}
+            className="fixed w-56 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl animate-fade-in"
+            role="menu"
+            style={{ zIndex: 'var(--qmp-z-menu)', left: Math.min(contextMenu.x, window.innerWidth - 240), top: Math.min(Math.max(contextMenu.y - 40, 8), window.innerHeight - 260) }}
           >
             <div className="p-2 space-y-0.5">
               <button onClick={() => { setContextMenu(null); onView(); }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold text-foreground/70 hover:bg-muted transition-all">
@@ -281,7 +284,8 @@ function LibraryCardBody({ result, idx, isPinned, onView, onDelete, onPractice, 
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
@@ -467,7 +471,7 @@ function FolderPickerSheet({ open, onClose, quiz, onDone }: {
 
   return (
     <Dialog open={open} onOpenChange={v => !v && handleClose()}>
-      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md mx-4 max-h-[75vh] overflow-hidden flex flex-col p-0 top-[8%] translate-y-0">
+      <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md max-h-[85vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-5 pt-5 pb-3 border-b border-border flex-shrink-0">
           <DialogTitle className="text-foreground font-bold text-left">Add to Folder</DialogTitle>
         </DialogHeader>
@@ -810,7 +814,7 @@ export default function LibraryScreen({ history, onViewResult, onDeleteHistory, 
     <>
       {/* Delete confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl top-[12%] translate-y-0">
+        <AlertDialogContent className="bg-card border-border rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground font-bold">Delete Quiz?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
@@ -826,7 +830,7 @@ export default function LibraryScreen({ history, onViewResult, onDeleteHistory, 
 
       {/* Edit quiz dialog */}
       <Dialog open={!!editTarget} onOpenChange={v => !v && setEditTarget(null)}>
-        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm mx-4 top-[12%] translate-y-0">
+        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-sm">
           <DialogHeader><DialogTitle className="text-foreground font-bold">Edit Quiz Details</DialogTitle></DialogHeader>
           <div className="space-y-3 py-2">
             <div>
@@ -883,11 +887,12 @@ export default function LibraryScreen({ history, onViewResult, onDeleteHistory, 
       )}
 
       {/* Folder Filter Popup */}
-      {folderPopupOpen && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center" onClick={() => setFolderPopupOpen(false)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-card border border-border rounded-t-3xl sm:rounded-2xl w-full sm:max-w-xs max-h-[55vh] overflow-y-auto p-4 pb-8 sm:pb-4 animate-slide-up" onClick={e => e.stopPropagation()}>
-            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">📁 Filter by Folder</p>
+      <Overlay open={folderPopupOpen} onClose={() => setFolderPopupOpen(false)} kind="sheet" layer="sheet" className="sm:max-w-xs" labelledBy="folder-filter-title" hideClose>
+          <div className="qmp-panel-header">
+            <p id="folder-filter-title" className="text-xs font-black uppercase tracking-widest text-muted-foreground">📁 Filter by Folder</p>
+            <button onClick={() => setFolderPopupOpen(false)} aria-label="Close" className="qmp-panel-close-inline"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="qmp-panel-body max-h-[55vh] p-4">
             <button
               onClick={() => { setFolderFilter('all'); setFolderPopupOpen(false); }}
               className={`w-full text-left text-xs font-bold px-3 py-2.5 rounded-xl mb-1 transition-all ${effectiveFolderFilter === 'all' ? 'bg-primary/15 text-primary border border-primary/30' : 'text-foreground/50 hover:bg-foreground/5'}`}
@@ -902,12 +907,11 @@ export default function LibraryScreen({ history, onViewResult, onDeleteHistory, 
               </button>
             ))}
           </div>
-        </div>
-      )}
+      </Overlay>
 
       {/* Filter Dialog */}
       <Dialog open={showFilterSheet} onOpenChange={setShowFilterSheet}>
-        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md mx-4 max-h-[80vh] overflow-y-auto p-0 top-[8%] translate-y-0">
+        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md max-h-[85vh] overflow-y-auto p-0">
           <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
             <DialogTitle className="text-foreground font-bold text-left">Filter & Sort</DialogTitle>
           </DialogHeader>

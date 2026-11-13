@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
+import Overlay from '../ui/Overlay';
 import { X, ChevronDown, Calculator, Check, RotateCcw, Settings, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ScoreResult } from '../../types/quiz';
@@ -105,11 +106,8 @@ export default function LifetimeNegMarkingPanel({
   const zone = getZoneColor(simResult.percentage);
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-      <div
-        className="w-full max-w-lg bg-card border-t border-x border-border rounded-t-3xl shadow-2xl max-h-[85vh] overflow-y-auto animate-slide-up"
-        onClick={e => e.stopPropagation()}
-      >
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Lifetime negative marking">
+      <div className="qmp-panel-body">
         {/* Header */}
         <div className="sticky top-0 bg-card/95 backdrop-blur-md z-10 px-5 pt-5 pb-3 border-b border-border/50">
           <div className="flex items-center justify-between">
@@ -430,7 +428,7 @@ export default function LifetimeNegMarkingPanel({
           </div>
         </div>
       </div>
-    </div>
+    </Overlay>
   );
 }
 

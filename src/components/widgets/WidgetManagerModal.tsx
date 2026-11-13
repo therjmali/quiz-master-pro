@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Overlay from '../ui/Overlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Smartphone, Plus, Check, Clock, LayoutGrid, ChevronRight, HelpCircle, BookOpen, Calendar, ArrowRight, Zap } from 'lucide-react';
 import { toast } from 'sonner';
@@ -109,25 +110,15 @@ export default function WidgetManagerModal({
   const progressPct = Math.min(100, Math.round((todayQuestions / (targetQuestions || 50)) * 100));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 40, scale: 0.95 }}
-        className="w-full sm:max-w-xl max-h-[92vh] overflow-y-auto rounded-t-[28px] sm:rounded-3xl border border-white/15 bg-card/95 backdrop-blur-2xl shadow-2xl p-5 sm:p-6 space-y-4"
-        style={{
-          background: 'radial-gradient(120% 120% at 50% 0%, hsl(var(--card) / 0.98), hsl(var(--card) / 0.92))',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)',
-        }}
-      >
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="sm:max-w-xl" labelledBy="widgets-title" hideClose>
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-border/15">
+        <div className="flex items-center justify-between gap-3 border-b border-border/15 px-5 pb-3 pt-5 sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="w-10 h-10 rounded-2xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shadow-sm">
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-foreground tracking-tight flex items-center gap-1.5">
+              <h2 id="widgets-title" className="text-base sm:text-lg font-black text-foreground tracking-tight flex items-center gap-1.5">
                 Android Home Screen Widgets
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary uppercase">v2.2</span>
               </h2>
@@ -136,12 +127,14 @@ export default function WidgetManagerModal({
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-muted/30 hover:bg-muted/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close"
+            className="qmp-panel-close-inline"
           >
             ✕
           </button>
         </div>
 
+        <div className="qmp-panel-body space-y-4 px-5 py-4 sm:px-6">
         {/* 4 Widget Category Selector Tabs */}
         <div className="grid grid-cols-4 gap-1.5 p-1 rounded-2xl bg-muted/25 border border-border/15 text-[11px] font-bold">
           <button
@@ -483,7 +476,7 @@ export default function WidgetManagerModal({
             )}
           </AnimatePresence>
         </div>
-      </motion.div>
-    </div>
+        </div>
+    </Overlay>
   );
 }

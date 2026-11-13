@@ -42,6 +42,7 @@ import { useAccount } from '../../platform/cloud/useAccount';
 import CloudDataManager from '../CloudDataManager';
 import GlowCard from '../shared/GlowCard';
 import { getHistorySync } from '../../utils/historyStore';
+import { OverlayLayer } from '../ui/Overlay';
 
 interface Props {
   open: boolean;
@@ -364,7 +365,8 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
   if (!cloud.user) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[100] bg-background overflow-y-auto">
+      <OverlayLayer layer="panel">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 overflow-y-auto bg-background" style={{ zIndex: 'var(--qmp-z-panel)' }}>
         <div className="sticky top-0 z-10 glass-header border-b border-border/20" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }}>
           <div className="flex items-center gap-3 px-4 sm:px-6 h-14 max-w-3xl mx-auto">
             <button onClick={onClose} aria-label="Back" className="w-8 h-8 rounded-xl bg-muted/20 flex items-center justify-center hover:bg-muted/30 transition-colors">
@@ -405,16 +407,19 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
           </p>
         </div>
       </motion.div>
+      </OverlayLayer>
     );
   }
 
   return (
+    <OverlayLayer layer="panel">
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
-      className="fixed inset-0 z-[100] bg-background overflow-y-auto"
+      className="fixed inset-0 overflow-y-auto bg-background"
+      style={{ zIndex: 'var(--qmp-z-panel)' }}
     >
       {/* Header */}
       <div className="sticky top-0 z-10 glass-header border-b border-border/20" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }}>
@@ -778,7 +783,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
       {/* Rename device Dialog */}
       <AlertDialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl">
+        <AlertDialogContent className="qmp-dialog-track bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle>Rename this device</AlertDialogTitle>
             <AlertDialogDescription>The label other devices see in their device list.</AlertDialogDescription>
@@ -793,7 +798,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
       {/* Change password Dialog */}
       <AlertDialog open={passwordOpen} onOpenChange={setPasswordOpen}>
-        <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl">
+        <AlertDialogContent className="qmp-dialog-track bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle>Change your password</AlertDialogTitle>
             <AlertDialogDescription>Your other devices will be signed out and will need the new password.</AlertDialogDescription>
@@ -815,7 +820,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
       {/* Confirmations */}
       <AlertDialog open={!!confirm} onOpenChange={() => { setConfirm(null); setPassword(''); }}>
-        <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl">
+        <AlertDialogContent className="qmp-dialog-track bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle>
               {confirm?.kind === 'pull-cloud' && 'Replace this device with cloud copy?'}
@@ -850,6 +855,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
         </AlertDialogContent>
       </AlertDialog>
     </motion.div>
+    </OverlayLayer>
   );
 }
 

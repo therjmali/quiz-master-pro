@@ -7,6 +7,7 @@
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Wand2, X, Send, Loader2, Copy, CheckCheck } from 'lucide-react';
+import Overlay from './ui/Overlay';
 import { toast } from 'sonner';
 
 const PROMPT_TEMPLATES = [
@@ -31,13 +32,6 @@ export default function PromptTool() {
   // Focus textarea on open
   useEffect(() => {
     if (open) setTimeout(() => textareaRef.current?.focus(), 200);
-  }, [open]);
-
-  // Prevent body scroll when modal open on mobile
-  useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
   }, [open]);
 
   const handleSubmit = async () => {
@@ -84,7 +78,8 @@ export default function PromptTool() {
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed z-[100] flex items-center justify-center bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-90 bottom-[calc(var(--bottom-nav-h)+var(--qmp-inset-bottom)+16px)] left-4 w-12 h-12 rounded-full md:bottom-6 md:left-6 md:w-auto md:h-auto md:rounded-2xl md:px-4 md:py-3"
+          className="fixed flex items-center justify-center bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/50 transition-all active:scale-90 bottom-[calc(var(--bottom-nav-h)+var(--qmp-inset-bottom)+16px)] left-4 w-12 h-12 rounded-full md:bottom-6 md:left-6 md:w-auto md:h-auto md:rounded-2xl md:px-4 md:py-3"
+          style={{ zIndex: 'calc(var(--qmp-z-nav) + 1)' }}
           title="Quick Actions"
         >
           <Wand2 className="w-5 h-5 md:w-4 md:h-4 flex-shrink-0" />
@@ -93,15 +88,9 @@ export default function PromptTool() {
       )}
 
       {/* ── Modal ── */}
-      {open && (
-        <div className="fixed inset-0 z-[250] flex items-start justify-center pt-12 sm:pt-16 p-4">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
-
-          {/* Modal Content — centered */}
-          <div className="relative w-full bg-card border border-border rounded-2xl shadow-2xl max-h-[85vh] max-w-lg flex flex-col overflow-hidden animate-fade-in">
+      <Overlay open={open} onClose={close} kind="center" layer="sheet" className="max-w-lg" label="Quick actions">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
+            <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center">
                   <Wand2 className="w-4 h-4 text-primary" />
@@ -111,14 +100,13 @@ export default function PromptTool() {
                   <p className="text-[10px] text-foreground/40">Templates & tools</p>
                 </div>
               </div>
-              <button onClick={close}
-                className="w-8 h-8 rounded-xl bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 flex items-center justify-center transition-colors">
-                <X className="w-4 h-4 text-destructive" />
+              <button onClick={close} aria-label="Close" className="qmp-panel-close-inline">
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Body — scrollable */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="qmp-panel-body space-y-3 p-4">
               {/* Templates */}
               <div>
                 <p className="text-[9px] font-black uppercase tracking-widest text-foreground/30 mb-2">Quick Templates</p>
@@ -170,9 +158,7 @@ export default function PromptTool() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+      </Overlay>
     </>
   );
 }

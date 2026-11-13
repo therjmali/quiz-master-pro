@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.0.0] - 2026-11-13
+
+Every popup in the app is now rendered in one place, on one z-index scale, so nothing can hide behind the tab bar, be clipped by a translucent card or ignore the back button — and reports are rebuilt as a premium, print-ready dashboard with a real page engine behind it.
+
+### Fixed
+- **Popups opened inside the card they were launched from.** Sync Center → *Rename device*, the Generate Quiz shuffle sheet and the Download Report rationale sheet were rendered inline inside a glass card whose `backdrop-filter` and `transform` make it the containing block for `position: fixed`. The overlay was therefore sized to that card — off-screen, clipped and impossible to close. Every overlay now portals to `document.body` (one `Overlay` component, `MobilePopover` built on it), so a popup is always full-screen regardless of where its trigger lives.
+- **Sheets rendering underneath the bottom navigation.** Hand-picked z-indexes (50, 60, 200, 300 … 1300) overlapped the tab bar at `z-100`, so a sheet could open *behind* it. Replaced with a single named scale — nav `100` < sheet `400` < menu `450` < panel `500` < dialog `600` < blocking `800` < toast `900` — applied through `--qmp-z-*` variables, including the shared Radix primitives. A popup that opens from another popup is stacked relative to its parent instead of guessing.
+- **Dialogs taller than the screen** (Alert Dialogs in Generate Quiz, report rationale, question editing at 90 % zoom or in landscape) had no maximum height, so their buttons fell off-screen. Dialog surfaces now cap at `90vh` on a scroll-capable track, and every dialog footer is a sticky bar so the buttons stay visible; the alert dialog footer also stacks full-width on phones.
+- **Page scrolling unlocked under an open popup.** Each overlay used to save and restore `document.body.style.overflow` itself, so closing one popup (or the second of two) re-enabled scrolling while another was still open. One refcounted lock now owns it, together with a refcounted "screen busy" lock for blocking overlays.
+- **Android back button closed the app instead of the popup.** There was no back-button handler at all. A single chain now closes the top-most popup (newest first) and only leaves the screen — or the app — when nothing is open.
+- **`PromptTool`'s floating trigger** used `z-[100]`, landing on top of the tab bar; it now sits one step above the nav. `AISourceControls` used `z-[60]` inside a `relative` card; it is a normal flow-level dropdown again.
+- **Long content silently truncated in reports.** Text that exceeded an element's line budget was cut without a marker. Cards now grow, options/explanations wrap in full, and anything genuinely cut is shown with an ellipsis.
+
+### Added
+- **New "Master" report template (v3)** — the premium dashboard, on screen and in the exported PDF from the same layout engine, so the preview is exactly what prints:
+  deep-purple gradient masthead with trophy, brand line, title, metadata and a verdict badge with a bar chart; a six-card statistics bar (Shown · Correct · Wrong · Skipped · Accuracy · Score); question cards in two balanced columns tinted by result (green `#f0fdf4`/`#bbf7d0`, red `#fef2f2`/`#fecaca`, amber `#fffbeb`/`#fde68a`) with numbered badges, status pills and a purple `#f5f3ff` explanation box headed `Ans.N.: (B) …`; a `Quiz Summary` card closing the last column; and a footer with the report name, `Page N of M` and the brand.
+- **Self-contained HTML report** using the same design — one file, inlined CSS, inline SVG icons, Inter with a system fallback, `max-width:1000px` column, 16 px grid, 12 px radii and print rules. No scripts, fonts or network requests, so it opens offline and exports to PDF from any browser.
+- **Options adapt per card**: short options sit two-up, long options get the full card width, so nothing is squeezed or stretched.
+- **Answer-key and markdown modes** (revision sheets, notes, legacy HTML) render as full-width cards on the same design.
+- **`circle` and `opacity` page operations**, drawn identically by the SVG preview and the pdf-lib writer, so status dots and the chart motifs print exactly as previewed.
+- **`scripts/audit-report.ts`** and **`tests/masterTemplate.test.ts` / `tests/reportTemplateWiring.test.ts`** — layout invariants (nothing outside the margins, no overlapping cards, no text overflowing its card, footers and page numbers, every question present), template dispatch, and the design tokens, so the report cannot silently regress.
+
+### Changed
+- Reports default to the new template; **exam papers keep the classic two-column paper look** (`template: 'classic'`), and the choice is available per report.
+- The web-page export now produces the same dashboard as the PDF instead of a separate lightweight HTML page.
+
 ## [2.10.0] - 2026-11-13
 
 Every AI feature now runs directly on your device with your own key, cloud sync and quota bugs are fixed, exports and Trash preserve full question details on synced devices, Android home-screen widgets show real data and open the right screen, and offline/APK builds are leaner and stricter.

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import Overlay from './ui/Overlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Bell, Plus, Trash2, Clock, ListChecks, CheckCircle2,
@@ -198,32 +199,32 @@ export default function NotificationCenter({
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-[80] bg-background/60 backdrop-blur-md"
-          />
-
-          {/* Slide-over Panel */}
-          <motion.div
-            initial={{ opacity: 0, x: 340 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 340 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="fixed right-0 top-0 bottom-0 z-[81] w-full max-w-[420px] flex flex-col overflow-hidden border-l border-border/15 bg-card/95 backdrop-blur-2xl shadow-2xl"
+          <Overlay
+            open={open}
+            onClose={onClose}
+            kind="right"
+            layer="panel"
+            hideClose
+            noAnimation
+            className="max-w-[420px] border-l border-border/15 bg-card/95 !backdrop-blur-2xl"
+            labelledBy="command-center-title"
           >
+            <motion.div
+              initial={{ opacity: 0, x: 40 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 320 }}
+              className="flex h-full min-h-0 flex-col"
+            >
             {/* Header */}
-            <div className="shrink-0 px-5 pt-5 pb-3 border-b border-border/10">
+            <div className="shrink-0 border-b border-border/10 px-5 pb-3 pt-5">
+            
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 flex items-center justify-center text-primary shadow-sm">
                     <Bell className="w-4.5 h-4.5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-black text-foreground leading-tight tracking-tight">Command Center</h2>
+                    <h2 id="command-center-title" className="text-sm font-black text-foreground leading-tight tracking-tight">Command Center</h2>
                     <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
                       {todoStats.pending > 0 ? `${todoStats.pending} pending tasks` : '✨ All tasks complete!'}
                       {smartAlerts.length > 0 && ` · ${smartAlerts.length} smart alerts`}
@@ -322,7 +323,7 @@ export default function NotificationCenter({
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 scrollbar-thin">
+            <div className="qmp-panel-body space-y-3 px-5 py-3">
               {/* Smart Alerts Section */}
               {smartAlerts.length > 0 && (mainTab === 'all' || mainTab === 'alerts') && (
                 <div className="space-y-2">
@@ -547,7 +548,7 @@ export default function NotificationCenter({
             </div>
 
             {/* Bottom Bar: Quick Add Task */}
-            <div className="shrink-0 p-4 border-t border-border/10 bg-card/60 flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 border-t border-border/10 bg-card/60 p-4 pb-[max(16px,var(--qmp-inset-bottom))]">
               <Button
                 onClick={() => setAddSheetOpen(true)}
                 className="w-full h-10 rounded-2xl font-black text-xs gap-1.5 shadow-md"
@@ -556,7 +557,7 @@ export default function NotificationCenter({
               </Button>
             </div>
           </motion.div>
-
+          </Overlay>
           {/* Add Task Modal Dialog */}
           <AlertDialog open={addSheetOpen} onOpenChange={setAddSheetOpen}>
             <AlertDialogContent className="glass-card bg-card/95 backdrop-blur-xl border border-white/15 rounded-3xl max-w-sm">

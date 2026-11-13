@@ -10,6 +10,7 @@ import { htmlToBlocks } from '../../utils/reports/pdf/markdown';
 import type { AnswerMode, LaidOutReport, ReportDoc, ReportKind, ReportStyle } from '../../utils/reports/pdf/types';
 import { announceSaved, exportReportDoc, friendlyError, openSavedReportToast, shareSavedReportToast, type ExportFormat } from '../../utils/reports/exportReport';
 import { useReportPrefs } from '../../utils/reports/reportPrefs';
+import { OverlayLayer } from '../ui/Overlay';
 import { shareSavedReport } from '../../platform/reportFiles';
 import type { ReportFonts } from '../../utils/reports/pdf/reportFonts';
 
@@ -148,7 +149,8 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
   const answerMode = built.status === 'ready' ? built.style.answers : (opts.answers ?? 'inline');
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground animate-fade-in" style={{ paddingTop: 'var(--qmp-inset-top, 0px)' }} data-screen="report-preview">
+    <OverlayLayer layer="panel">
+    <div className="fixed inset-0 flex flex-col bg-background text-foreground animate-fade-in" style={{ paddingTop: 'var(--qmp-inset-top, 0px)', zIndex: 'var(--qmp-z-panel)' }} data-screen="report-preview">
       {/* top bar */}
       <header className="flex items-center gap-2 border-b border-border bg-card/80 px-3 py-2.5 backdrop-blur-xl">
         <button type="button" onClick={onBack} aria-label="Back" className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-border bg-card text-foreground/70 active:scale-95"><ArrowLeft className="h-4 w-4" /></button>
@@ -256,7 +258,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
 
       {/* formats sheet */}
       {menu && (
-        <div className="absolute inset-0 z-10 flex items-end bg-black/50 backdrop-blur-sm" onClick={() => setMenu(false)} role="dialog" aria-modal="true" aria-label="Download or share">
+        <div className="fixed inset-0 flex items-end bg-black/50 backdrop-blur-sm" style={{ zIndex: 'calc(var(--qmp-z-panel) + 20)' }} onClick={() => setMenu(false)} role="dialog" aria-modal="true" aria-label="Download or share">
           <div className="w-full rounded-t-3xl border-t border-border bg-card p-4 pb-6" style={{ paddingBottom: 'calc(var(--qmp-inset-bottom, 0px) + 20px)' }} onClick={e => e.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-foreground/15" />
             <div className="mb-2 flex items-center justify-between"><h3 className="text-base font-black">Save or share</h3><button type="button" aria-label="Close" onClick={() => setMenu(false)} className="grid h-8 w-8 place-items-center rounded-full bg-foreground/5"><X className="h-4 w-4" /></button></div>
@@ -279,7 +281,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
       )}
 
       {busy && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-black/55 backdrop-blur-sm" role="status" aria-live="polite">
+        <div className="fixed inset-0 grid place-items-center bg-black/55 backdrop-blur-sm" style={{ zIndex: 'calc(var(--qmp-z-panel) + 30)' }} role="status" aria-live="polite">
           <div className="flex w-64 flex-col items-center gap-3 rounded-3xl border border-border bg-card p-6 shadow-2xl">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-center text-sm font-black">{busy}</p>
@@ -288,6 +290,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
         </div>
       )}
     </div>
+    </OverlayLayer>
   );
 }
 

@@ -20,6 +20,7 @@ import './fonts.css';
 import './index.css';
 import './liquid-glass.css';
 import { initPlatform } from './platform/runtime';
+import { initBackButton } from './platform/backButton';
 import { initNativeInsets } from './platform/insets';
 import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
@@ -89,6 +90,7 @@ if (typeof localStorage !== 'undefined' && localStorage.getItem(ZOOM_KEY) === nu
 
 initPlatform();
 initNativeInsets();
+initBackButton();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

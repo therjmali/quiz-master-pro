@@ -29,15 +29,23 @@ export async function writePdf(report: LaidOutReport, fonts: ReportFonts, info: 
         let x = op.x;
         for (const seg of segmentText(op.text, op.bold, set)) {
           const font = pdfFonts.get(seg.face.id)!;
-          page.drawText(seg.text, { x, y: H - op.y, size: op.size, font, color: color(op.color) });
+          page.drawText(seg.text, { x, y: H - op.y, size: op.size, font, color: color(op.color), opacity: op.opacity });
           x += seg.face.width(seg.text, op.size);
         }
       } else if (op.t === 'line') {
         page.drawLine({ start: { x: op.x1, y: H - op.y1 }, end: { x: op.x2, y: H - op.y2 }, thickness: op.w, color: color(op.color), dashArray: op.dash });
+      } else if (op.t === 'circle') {
+        page.drawCircle({
+          x: op.x, y: H - op.y, size: op.r,
+          color: op.fill ? color(op.fill) : undefined,
+          borderColor: op.stroke ? color(op.stroke) : undefined,
+          borderWidth: op.stroke ? (op.sw ?? 0) : 0,
+          ...(op.opacity !== undefined ? { opacity: op.opacity } : {}),
+        });
       } else if (op.r && op.r > 0) {
-        page.drawSvgPath(roundedRect(op.w, op.h, op.r), { x: op.x, y: H - op.y, color: op.fill ? color(op.fill) : undefined, borderColor: op.stroke ? color(op.stroke) : undefined, borderWidth: op.sw ?? 0 });
+        page.drawSvgPath(roundedRect(op.w, op.h, op.r), { x: op.x, y: H - op.y, color: op.fill ? color(op.fill) : undefined, borderColor: op.stroke ? color(op.stroke) : undefined, borderWidth: op.sw ?? 0, ...(op.opacity !== undefined ? { opacity: op.opacity } : {}) });
       } else {
-        page.drawRectangle({ x: op.x, y: H - op.y - op.h, width: op.w, height: op.h, color: op.fill ? color(op.fill) : undefined, borderColor: op.stroke ? color(op.stroke) : undefined, borderWidth: op.sw ?? 0 });
+        page.drawRectangle({ x: op.x, y: H - op.y - op.h, width: op.w, height: op.h, color: op.fill ? color(op.fill) : undefined, borderColor: op.stroke ? color(op.stroke) : undefined, borderWidth: op.sw ?? 0, ...(op.opacity !== undefined ? { opacity: op.opacity } : {}) });
       }
     };
     p.ops.forEach(draw);

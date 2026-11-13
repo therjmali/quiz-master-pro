@@ -23,13 +23,14 @@ export function ensureFontFaces(keys: string[]): Promise<void[]> {
 }
 
 function OpView({ op, set }: { op: Op; set: FontSet }) {
-  if (op.t === 'rect') return <rect x={op.x} y={op.y} width={op.w} height={op.h} rx={op.r} fill={op.fill ?? 'none'} stroke={op.stroke} strokeWidth={op.sw} />;
+  if (op.t === 'rect') return <rect x={op.x} y={op.y} width={op.w} height={op.h} rx={op.r} fill={op.fill ?? 'none'} fillOpacity={op.opacity} stroke={op.stroke} strokeWidth={op.sw} />;
   if (op.t === 'line') return <line x1={op.x1} y1={op.y1} x2={op.x2} y2={op.y2} stroke={op.color} strokeWidth={op.w} strokeDasharray={op.dash?.join(' ')} />;
+  if (op.t === 'circle') return <circle cx={op.x} cy={op.y} r={op.r} fill={op.fill ?? 'none'} fillOpacity={op.opacity} stroke={op.stroke} strokeWidth={op.sw} />;
   let x = op.x;
   return (
     <>
       {segmentText(op.text, op.bold, set).map((seg, i) => {
-        const el = <text key={i} x={x} y={op.y} fontSize={op.size} fill={op.color} style={{ fontFamily: `rjr-${seg.face.id}, Inter, sans-serif`, whiteSpace: 'pre' }}>{seg.text}</text>;
+        const el = <text key={i} x={x} y={op.y} fontSize={op.size} fill={op.color} fillOpacity={op.opacity} style={{ fontFamily: `rjr-${seg.face.id}, Inter, sans-serif`, whiteSpace: 'pre' }}>{seg.text}</text>;
         x += seg.face.width(seg.text, op.size);
         return el;
       })}
