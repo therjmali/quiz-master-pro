@@ -1,0 +1,305 @@
+R.J QUIZ - Full Report — Profile Analysis
+13 Nov 2026  |  Pharmacology  |  1 quiz  |  Book order  |  44 min 5s
+============================================================
+
+Questions: 30   Correct: 14   Wrong: 8   Skipped: 8   Accuracy: 64%   Score: 64%
+
+Q1. Which of the following statements about the mechanism of action is correct according to the standard text?
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.1. : (A) A short one
+  Your answer: (A) A short one - Correct
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q2. A 42-year-old patient presents with the classic triad. What is the most likely diagnosis?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.2. : (B) Second long option text
+  Your answer: (B) Second long option text - Correct
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q3. Name the single best investigation for confirming the diagnosis.
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.3. : (A) Alpha
+  Your answer: (B) Beta - Incorrect
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q4. Which drug is contraindicated in the second trimester?
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.4. : (B) Compete for the receptor site
+  Not attempted
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q5. The most common side effect of this class of drugs is best described as:
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.5. : (A) A short one
+  Your answer: (C) Third choice - Incorrect
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q6. What is the half-life of the active metabolite?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.6. : (B) Second long option text
+  Your answer: (B) Second long option text - Correct
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q7. Which of the following is NOT a recognised complication?
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.7. : (A) Alpha
+  Not attempted
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q8. Choose the correct sequence of the pathway.
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.8. : (B) Compete for the receptor site
+  Your answer: (C) Block the ion channel - Incorrect
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q9. The incidence in the general population is closest to:
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.9. : (A) A short one
+  Your answer: (A) A short one - Correct
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q10. Which statement about the prognosis is true?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.10. : (B) Second long option text
+  Your answer: (D) Fourth - Incorrect
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q11. Which of the following statements about the mechanism of action is correct according to the standard text?
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.11. : (A) Alpha
+  Not attempted
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q12. A 42-year-old patient presents with the classic triad. What is the most likely diagnosis?
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.12. : (B) Compete for the receptor site
+  Your answer: (B) Compete for the receptor site - Correct
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q13. Name the single best investigation for confirming the diagnosis.
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.13. : (A) A short one
+  Your answer: (D) Fourth here - Incorrect
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q14. Which drug is contraindicated in the second trimester?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.14. : (B) Second long option text
+  Not attempted
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q15. The most common side effect of this class of drugs is best described as:
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.15. : (A) Alpha
+  Your answer: (B) Beta - Incorrect
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q16. What is the half-life of the active metabolite?
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.16. : (B) Compete for the receptor site
+  Your answer: (B) Compete for the receptor site - Correct
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q17. Which of the following is NOT a recognised complication?
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.17. : (A) A short one
+  Your answer: (A) A short one - Correct
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q18. Choose the correct sequence of the pathway.
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.18. : (B) Second long option text
+  Not attempted
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q19. The incidence in the general population is closest to:
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.19. : (A) Alpha
+  Your answer: (A) Alpha - Correct
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q20. Which statement about the prognosis is true?
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.20. : (B) Compete for the receptor site
+  Your answer: (C) Block the ion channel - Incorrect
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q21. Which of the following statements about the mechanism of action is correct according to the standard text?
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.21. : (A) A short one
+  Not attempted
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q22. A 42-year-old patient presents with the classic triad. What is the most likely diagnosis?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.22. : (B) Second long option text
+  Your answer: (B) Second long option text - Correct
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q23. Name the single best investigation for confirming the diagnosis.
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.23. : (A) Alpha
+  Your answer: (C) Gamma - Incorrect
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q24. Which drug is contraindicated in the second trimester?
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.24. : (B) Compete for the receptor site
+  Your answer: (B) Compete for the receptor site - Correct
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q25. The most common side effect of this class of drugs is best described as:
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.25. : (A) A short one
+  Not attempted
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q26. What is the half-life of the active metabolite?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.26. : (B) Second long option text
+  Your answer: (B) Second long option text - Correct
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
+
+Q27. Which of the following is NOT a recognised complication?
+  (A) Alpha
+  (B) Beta
+  (C) Gamma
+  (D) Delta
+Ans.27. : (A) Alpha
+  Your answer: (A) Alpha - Correct
+  Explanation: Competitive antagonists shift the dose-response curve right without lowering the maximum response; non-competitive ones flatten it.
+----------------------------------------
+
+Q28. Choose the correct sequence of the pathway.
+  (A) Inhibit the enzyme irreversibly
+  (B) Compete for the receptor site
+  (C) Block the ion channel
+  (D) Reduce absorption
+Ans.28. : (B) Compete for the receptor site
+  Not attempted
+  Explanation: Remember the mnemonic used in the class: the first letter of each drug spells out the order of potency.
+----------------------------------------
+
+Q29. The incidence in the general population is closest to:
+  (A) A short one
+  (B) Another short
+  (C) Third choice
+  (D) Fourth here
+Ans.29. : (A) A short one
+  Your answer: (A) A short one - Correct
+  Explanation: This is a high-yield fact from TG 344. It has appeared in three previous exams, so learn the exact wording.
+----------------------------------------
+
+Q30. Which statement about the prognosis is true?
+  (A) A considerably longer option that wraps onto a second line to prove the layout copes
+  (B) Second long option text
+  (C) Third
+  (D) Fourth
+Ans.30. : (B) Second long option text
+  Your answer: (B) Second long option text - Correct
+  Explanation: Refer to the parent drug class: the mechanism is shared by every agent in the group, which is why the side-effect profile is so similar.
+----------------------------------------
