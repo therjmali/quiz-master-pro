@@ -458,7 +458,7 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
 
         {/* Tabs */}
         <div className="max-w-3xl mx-auto px-4 sm:px-6 pb-2 flex gap-1 overflow-x-auto scrollbar-none">
-          {TABS.map(t => {
+          {TABS.filter(t => isCloudConfigured() || t.id === 'overview' || t.id === 'device-data').map(t => {
             const active = tab === t.id;
             return (
               <button
