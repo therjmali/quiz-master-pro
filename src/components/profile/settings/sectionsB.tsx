@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { useAccount } from '../../../platform/cloud/useAccount';
 import { signOut, useCloudAuth } from '../../../platform/cloud/authStore';
 import { openSignIn } from '../../../platform/cloud/signInWindow';
+import { triggerOpenSettings } from '../../cloud/CloudGate';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -232,6 +233,12 @@ export const AccountSection = memo(function AccountSection({ open, onToggle, mar
               </span>
               <Pill tone="good">{account.source === 'device' ? 'This device' : 'Synced'}</Pill>
             </div>
+            {/* The account lives in Settings -> Cloud (name, password, sign out, delete). Never make
+                the user hunt for it: jump straight to that section. */}
+            <button type="button" onClick={() => triggerOpenSettings('cloud')}
+              className="w-full h-9 inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-foreground/[0.03] text-foreground/70 text-xs font-bold hover:bg-foreground/[0.06] transition-colors">
+              <KeyRound className="w-3.5 h-3.5" /> Manage account · name, password
+            </button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button type="button" className="w-full h-10 inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/30 text-destructive text-sm font-bold hover:bg-destructive/10 transition-colors">
