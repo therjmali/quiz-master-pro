@@ -109,6 +109,12 @@ test('diagnostics: errors are recorded, bounded and never include quiz content',
   assert.equal(diag.getErrorLog().length, 0);
 });
 
+test('diagnostics: a render loop cannot duplicate one failure', () => {
+  diag.clearErrorLog();
+  for (let i = 0; i < 20; i++) diag.recordError({ kind: 'react', message: 'TypeError: same crash' });
+  assert.equal(diag.getErrorLog().length, 1, 'the same failure inside one second is recorded once');
+});
+
 test('diagnostics: a giant message is clipped, and a report is short and readable', async () => {
   diag.clearErrorLog();
   diag.recordError({ kind: 'error', message: 'x'.repeat(5000) });

@@ -41,10 +41,16 @@ function writeLog(entries: ErrorEntry[]): void {
   try { localStorage.setItem(LOG_KEY, JSON.stringify(entries.slice(-MAX_ENTRIES))); } catch { /* storage full: drop */ }
 }
 
+let lastSignature = '';
+
 export function recordError(entry: Omit<ErrorEntry, 'at'>): ErrorEntry {
-  const full: ErrorEntry = { ...entry, at: Date.now(), message: clip(entry.message) };
-  const next = [...readLog(), full];
-  writeLog(next);
+  const at = Date.now();
+  const full: ErrorEntry = { ...entry, at, message: clip(entry.message) };
+  // React re-renders (and StrictMode) can report the same failure twice: keep one entry per second.
+  const signature = `${full.kind}|${full.message}|${Math.floor(at / 1000)}`;
+  if (signature === lastSignature) return full;
+  lastSignature = signature;
+  writeLog([...readLog(), full]);
   return full;
 }
 
