@@ -221,6 +221,11 @@ if (exists('.github/workflows/ci.yml')) {
     !signInWindow.includes('Cloud sign-in is not configured') && signInWindow.includes('handleSubmit') && signInWindow.includes('showPassword'),
     'the form is hidden again when cloud is unconfigured');
   check('the password field has a reveal control', signInWindow.includes("aria-label={showPassword ? 'Hide password' : 'Show password'}"), 'no reveal button');
+  // A stale "wrong password" under a corrected entry is the classic reason people give up.
+  check('typing in the form clears the last failure',
+    signInWindow.includes('const edited = () =>') && (signInWindow.match(/edited\(\);/g) || []).length >= 3 && signInWindow.includes('clearAuthMessages()'),
+    'an old error can outlive the entry that caused it');
+  check('the sign-in button is only disabled while busy or without WebCrypto', signInWindow.includes('disabled={auth.busy || !deviceSupported}'), 'the form can be permanently dead again');
   const cloudSection = read('src/components/profile/settings/sectionsCloud.tsx');
   check('Settings shows the account form even without a cloud project', !/isCloudConfigured\(\) \? <CloudBody \/> : <NotConfigured \/>/.test(cloudSection), 'the form is replaced by a warning again');
   // ── performance budget + crash evidence ──
