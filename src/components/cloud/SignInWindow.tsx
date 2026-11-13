@@ -123,6 +123,12 @@ export default function SignInWindow() {
     setOpen(next);
   }, []);
 
+  /** Any edit invalidates the last failure, so the message never contradicts what is on screen. */
+  const edited = () => {
+    setNotice(null);
+    if (getAuthState().error || getAuthState().notice) clearAuthMessages();
+  };
+
   const switchMode = (next: 'signin' | 'signup') => {
     setMode(next);
     setIsReset(false);
@@ -285,7 +291,7 @@ export default function SignInWindow() {
                         id="qm-account-name"
                         type="text"
                         value={name}
-                        onChange={e => setName(e.target.value)}
+                        onChange={e => { setName(e.target.value); edited(); }}
                         placeholder="Your full name"
                         autoComplete="name"
                         enterKeyHint="next"
@@ -304,7 +310,7 @@ export default function SignInWindow() {
                       ref={emailRef}
                       type="email"
                       value={email}
-                      onChange={e => { setEmail(e.target.value); setNotice(null); }}
+                      onChange={e => { setEmail(e.target.value); edited(); }}
                       placeholder="you@example.com"
                       autoComplete="email"
                       autoCapitalize="none"
@@ -329,7 +335,7 @@ export default function SignInWindow() {
                         ref={passwordRef}
                         type={showPassword ? 'text' : 'password'}
                         value={password}
-                        onChange={e => { setPassword(e.target.value); setNotice(null); }}
+                        onChange={e => { setPassword(e.target.value); edited(); }}
                         placeholder="Your password"
                         autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                         autoCapitalize="none"

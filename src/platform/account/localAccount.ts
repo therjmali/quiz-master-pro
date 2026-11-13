@@ -139,6 +139,9 @@ export function readStoredAccount(): StoredDeviceAccount | null {
     const raw = store.getItem(LOCAL_ACCOUNT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as StoredDeviceAccount;
+    // `v` was added in 3.1.0; a record written by an earlier build is a valid v1 shape, so upgrade it
+    // instead of locking the user out of the account they already created.
+    if (parsed && parsed.v === undefined) parsed.v = 1;
     if (!parsed || parsed.v !== 1) return null;
     if (!parsed.email || !parsed.salt || !parsed.hash || !Number.isFinite(parsed.iterations)) return null;
     return {
@@ -331,4 +334,26 @@ export function deviceAccountId(email: string): string {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return `device_${hash.toString(36)}`;
+}
+
+/**
+ * A one-line, non-secret verdict for the diagnostics report: does the account storage make sense?
+ * Catches the two failures that are impossible to debug from a user's description - a session
+ * pointing at an account that no longer exists, and an unreadable record.
+ */
+export function accountHealth(): { state: 'none' | 'ok' | 'session-orphan' | 'unreadable'; detail: string } {
+  let raw: string | null = null;
+  try { raw = safeStorage()?.getItem(LOCAL_ACCOUNT_KEY) ?? null; } catch { return { state: 'unreadable', detail: 'device storage is blocked' }; }
+  if (!raw) {
+    const session = readSession();
+    if (session) return { state: 'session-orphan', detail: `a saved session for ${session.email} exists but no account does` };
+    return { state: 'none', detail: 'no account on this device' };
+  }
+  const account = readStoredAccount();
+  if (!account) return { state: 'unreadable', detail: 'the stored account record is damaged' };
+  const session = readSession();
+  if (session && session.email !== account.email) {
+    return { state: 'session-orphan', detail: `a saved session for ${session.email} does not match ${account.email}` };
+  }
+  return { state: 'ok', detail: `${account.email} · hashed with ${account.iterations} PBKDF2 rounds` };
 }

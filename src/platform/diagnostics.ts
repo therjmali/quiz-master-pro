@@ -11,6 +11,8 @@
  */
 import { appVersion, isNative, platformName } from './native';
 import { currentMode } from './perfMode';
+import { accountHealth } from './account/localAccount';
+import { isCloudConfigured } from './cloud/config';
 
 export const LOG_KEY = 'qmp-error-log-v1';
 export const MAX_ENTRIES = 40;
@@ -95,6 +97,10 @@ export interface DiagnosticsReport {
   localKeys: number;
   errors: ErrorEntry[];
   displayMode: string;
+  /** 'cloud' when a Supabase project is compiled in, otherwise the on-device account. */
+  accountMode: 'cloud' | 'device';
+  /** Non-secret verdict on the saved account, for the support conversation. */
+  account: { state: 'none' | 'ok' | 'session-orphan' | 'unreadable'; detail: string };
 }
 
 export async function collectDiagnostics(): Promise<DiagnosticsReport> {
@@ -121,6 +127,8 @@ export async function collectDiagnostics(): Promise<DiagnosticsReport> {
     localKeys,
     errors: readLog(),
     displayMode: typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches ? 'standalone' : 'browser',
+    accountMode: isCloudConfigured() ? 'cloud' : 'device',
+    account: accountHealth(),
   };
 }
 
@@ -133,6 +141,7 @@ export function formatDiagnostics(report: DiagnosticsReport): string {
     `Platform: ${report.platform}${report.native ? ' (installed app)' : ''} · ${report.displayMode}`,
     `Device: ${report.screen} @${report.devicePixelRatio}x · ${report.cores ?? '?'} cores · ${report.deviceMemoryGb ?? '?'} GB RAM`,
     `Language: ${report.language} · Online: ${report.online ? 'yes' : 'no'}`,
+    `Account: ${report.accountMode === 'cloud' ? 'cloud sync' : 'on this device'} · ${report.account.state} (${report.account.detail})`,
     `Performance: ${report.perfMode === 'low' ? 'battery saver (blur off)' : 'full glass'}${report.prefersLowMotion ? ' · reduced motion' : ''}`,
     `Storage: ${mb(report.storage.usedBytes)} of ${mb(report.storage.quotaBytes)} used · localStorage ${mb(report.storage.localBytes)} in ${report.localKeys} keys`,
     `Engine: ${report.userAgent}`,

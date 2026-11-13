@@ -125,10 +125,13 @@ test('diagnostics: a giant message is clipped, and a report is short and readabl
   assert.ok(['android', 'ios', 'web'].includes(report.platform));
   assert.ok(['high', 'low'].includes(report.perfMode));
   assert.ok(report.storage.localBytes >= 0);
+  assert.ok(['cloud', 'device'].includes(report.accountMode));
+  assert.ok(['none', 'ok', 'session-orphan', 'unreadable'].includes(report.account.state));
 
   const text = diag.formatDiagnostics(report);
   assert.match(text, /^R\.J QUIZ diagnostics/);
   assert.match(text, /Performance:/);
+  assert.match(text, /Account: (cloud sync|on this device)/);
   assert.match(text, /Recent problems \(1/);
   assert.ok(text.length < 4000, 'short enough to paste into a message');
 });

@@ -6,7 +6,7 @@ import {
   LOCAL_ACCOUNT_KEY, DEVICE_SESSION_KEY, MAX_ATTEMPTS, MIN_PASSWORD_LENGTH, LOCKOUT_MS,
   changePassword, clearSession, createAccount, deleteAccount, deviceAccountId, deviceAccountInfo,
   deviceAccountSupported, isValidEmail, lastEmail, normalizeEmail, passwordProblem, readSession,
-  readStoredAccount, rememberEmail, renameAccount, startSession, verifyPassword,
+  readStoredAccount, rememberEmail, renameAccount, startSession, verifyPassword, accountHealth,
 } from '../src/platform/account/localAccount';
 
 // WebCrypto + atob/btoa exist in the browser the app runs in. Node 22 already provides `crypto`
@@ -198,4 +198,33 @@ test('the device account id is stable, opaque and email-only', () => {
 test('WebCrypto detection reports what the runtime can really do', () => {
   assert.equal(deviceAccountSupported(), true);
   assert.equal(typeof webcrypto.subtle.deriveBits, 'function');
+});
+
+test('a record written before 3.1.0 (no version field) still signs the user in', async () => {
+  await createAccount({ name: 'Rana', email: 'rana@example.com', password: 'studyhard1' });
+  const stored = readStoredAccount()!;
+  const { v: _drop, ...legacy } = stored;
+  localStorage.setItem(LOCAL_ACCOUNT_KEY, JSON.stringify(legacy));
+
+  const res = await verifyPassword('rana@example.com', 'studyhard1');
+  assert.equal(res.ok, true, 'an older account must not become unreachable');
+});
+
+test('account health names what is wrong, without exposing the password', async () => {
+  assert.deepEqual(accountHealth().state, 'none');
+
+  await createAccount({ name: 'Rana', email: 'rana@example.com', password: 'studyhard1' });
+  const healthy = accountHealth();
+  assert.equal(healthy.state, 'ok');
+  assert.match(healthy.detail, /rana@example\.com/);
+  assert.match(healthy.detail, /210000|210_000/);
+  assert.ok(!healthy.detail.includes('studyhard1'));
+
+  // A session left behind for an account that no longer exists.
+  startSession('ghost@example.com', true);
+  assert.equal(accountHealth().state, 'session-orphan');
+  assert.match(accountHealth().detail, /ghost@example\.com/);
+
+  localStorage.setItem(LOCAL_ACCOUNT_KEY, '{{{');
+  assert.equal(accountHealth().state, 'unreadable');
 });
