@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-11-13
+
+Signing in now works in the build that is installed, and the app no longer pays for effects the phone cannot afford.
+
+### Fixed
+- **Sign-in could never succeed on the APK.** The released app ships without a Supabase project (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are not set in CI), so `isCloudConfigured()` was false: the sign-in window replaced the form with a "not configured" notice, *Create account* and *Sign in* threw `CloudConfigError` behind the scenes, and Settings → Cloud hid the form entirely. Every user who typed an e-mail and password got nothing back. The account layer is now dual-mode: with a Supabase project it is the cloud account as before; without one, the account is created and verified **on the device** — e-mail, display name and a PBKDF2-SHA256 password hash (210 000 rounds, random 16-byte salt). Nothing is sent anywhere, and it works in airplane mode.
+- **Wrong passwords, unknown e-mails and lock-outs now explain themselves.** The form shows the exact reason ("Wrong email or password. 4 attempts left.", "No account exists on this device yet — create one first", a timed cool-down after five wrong attempts), instead of failing silently. Both wrong-email and wrong-password cases give the same wording, so the form never reveals whether an account exists.
+- **Password reset is honest.** On a device account there is no mail server, so *Forgot password?* says exactly that instead of pretending a link was sent.
+- **Cloud failures of the "not configured" kind were invisible** (`friendlyAuthError` had no case for `CloudConfigError`, so the raw message was dropped in some paths). A missing project now reads as "the account is kept on this device instead".
+- **Settings → Cloud hid the account form** when there was no cloud project, leaving a dead warning. The form is always present, with a clear note about what syncs (nothing, in this build) and what is protected.
+- **Sign-out was unreachable** in Settings → Account for anyone without a Supabase project (`hasBackend()` gated the whole block). Account, sign-out, rename and *Change password* now work in both builds; a device account asks for the current password before changing it.
+
+### Fixed (performance)
+- **The analog dashboard clock re-rendered 30 times a second forever** — a `requestAnimationFrame` loop that kept painting the second hand even after the card scrolled off screen (Chrome and the Android WebView keep rAF running for off-screen elements). It is now one 1 s tick, stopped by an `IntersectionObserver` when the card leaves the viewport and by `visibilitychange` when the app is backgrounded.
+- **Every exam countdown card kept a 1 s timer alive** whether or not it was on screen. Timers now stop off-screen, so a dashboard with several exam posters no longer wakes the CPU dozens of times a minute.
+- **A 60 Hz motion sensor listener ran all the time** for shake-to-undo. It is sampled at 10 Hz — the gesture needs two shakes over ~0.5 s, so nothing is lost.
+- **Frosted glass everywhere, on every phone.** Backdrop blur forces the WebView to re-composite the layer behind every blurred surface on every frame; on a 4-core phone that is the difference between a smooth list and a stutter. A single performance budget (`src/platform/perfMode.ts`) now decides before the first paint: full glass on capable devices, a light mode without blur on low-end ones (cores ≤ 4, ≤ 2 GB RAM, data-saver or reduced-motion). After the first screen is up, the app measures real frames and drops to light mode if the device cannot hold 45 fps. *Settings → Accessibility → Smoothness* lets the user pick Auto / Full / Light.
+
+### Added
+- **Diagnostics, on the device** (*Settings → Accessibility → Diagnostics*): app health (version, rendering mode, cores, RAM, storage used, network) plus the last problems the app recorded — window errors, unhandled rejections, render crashes and high-memory warnings — with *Copy report* for a support message. Bounded to 40 entries, never includes quiz content, never uploaded.
+- **`tests/localAccount.test.ts`, `tests/accountStore.test.ts`, `tests/performance.test.ts`** — password hashing, lock-outs, session persistence across restarts, the exact reasons a sign-in fails, the performance-budget rules and the diagnostics log.
+- 12 new `verify:repo` guards so the account path, the password reveal control, the blur budget and the clock fix cannot silently regress.
+
 ## [3.0.0] - 2026-11-13
 
 Every popup in the app is now rendered in one place, on one z-index scale, so nothing can hide behind the tab bar, be clipped by a translucent card or ignore the back button — and reports are rebuilt as a premium, print-ready dashboard with a real page engine behind it.

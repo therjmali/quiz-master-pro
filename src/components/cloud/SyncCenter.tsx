@@ -29,7 +29,7 @@ import {
   type CloudDevice, changePassword, deleteAccount, listDevices,
   removeDevice, renameThisDevice, signOut, useCloudAuth,
 } from '../../platform/cloud/authStore';
-import { getCloudEndpoint } from '../../platform/cloud/config';
+import { getCloudEndpoint, isCloudConfigured } from '../../platform/cloud/config';
 import { getDeviceIdentity, renameDevice } from '../../platform/cloud/device';
 import {
   clearConflicts, fetchRevisions, pullCloudOverDevice, pushDeviceOverCloud,
@@ -42,6 +42,7 @@ import { useAccount } from '../../platform/cloud/useAccount';
 import CloudDataManager from '../CloudDataManager';
 import GlowCard from '../shared/GlowCard';
 import { getHistorySync } from '../../utils/historyStore';
+import { openSignIn } from '../../platform/cloud/signInWindow';
 import { OverlayLayer } from '../ui/Overlay';
 
 interface Props {
@@ -377,33 +378,36 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
         </div>
         <div className="max-w-md mx-auto px-5 py-16 text-center space-y-4">
           <span className="text-5xl">☁️</span>
-          <h2 className="text-xl font-black text-foreground">You are working offline</h2>
+          <h2 className="text-xl font-black text-foreground">{isCloudConfigured() ? 'You are working offline' : 'Your account lives on this phone'}</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            All quizzes, bookmarks, notes, and progress are saved safely on this device. Sign in to seamlessly sync your
-            question solving across your phone, tablet, and laptop.
+            {isCloudConfigured()
+              ? 'All quizzes, bookmarks, notes, and progress are saved safely on this device. Sign in to seamlessly sync your question solving across your phone, tablet, and laptop.'
+              : 'All quizzes, bookmarks, notes and progress are saved safely on this device. Create your account here to protect it behind your own password — no e-mail, no server, no waiting.'}
           </p>
           <Button
             className="w-full h-11 rounded-xl font-bold"
             onClick={() => {
               onClose();
               if (onTriggerAuth) onTriggerAuth('signup');
-              else window.dispatchEvent(new CustomEvent('qm:open-auth', { detail: { mode: 'signup' } }));
+              else openSignIn('signup');
             }}
           >
-            Create a free account
+            {isCloudConfigured() ? 'Create a free account' : 'Create your account'}
           </Button>
           <button
             onClick={() => {
               onClose();
               if (onTriggerAuth) onTriggerAuth('signin');
-              else window.dispatchEvent(new CustomEvent('qm:open-auth', { detail: { mode: 'signin' } }));
+              else openSignIn('signin');
             }}
             className="w-full h-10 rounded-xl border border-border/30 bg-card/30 text-xs font-semibold text-foreground hover:bg-card/60 transition-colors"
           >
             I already have an account
           </button>
           <p className="text-[10px] text-muted-foreground/80 leading-relaxed">
-            Sync Endpoint: <span className="font-mono text-muted-foreground">{getCloudEndpoint() || 'Default Server'}</span>
+            {isCloudConfigured()
+              ? <>Sync Endpoint: <span className="font-mono text-muted-foreground">{getCloudEndpoint()}</span></>
+              : <>Storage: <span className="font-mono text-muted-foreground">this device (no server in this build)</span></>}
           </p>
         </div>
       </motion.div>
@@ -498,8 +502,9 @@ export default function SyncCenter({ open, onClose, onTriggerAuth }: Props) {
                   </div>
                   <button
                     onClick={handleSyncNow}
-                    disabled={busy !== null}
-                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm"
+                    disabled={busy !== null || !isCloudConfigured()}
+                    title={isCloudConfigured() ? 'Upload and pull changes now' : 'Cloud sync needs a server address — this build keeps the account on the device'}
+                    className="h-9 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all shadow-sm disabled:opacity-40 disabled:active:scale-100"
                   >
                     {busy === 'sync' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                     <span>Sync Now</span>

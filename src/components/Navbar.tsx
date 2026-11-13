@@ -13,6 +13,7 @@ import {
   Bell,
   Smartphone,
   UserRound,
+  ShieldCheck,
 } from 'lucide-react';
 import type { AppTheme } from '../types/quiz';
 import type { SessionMode } from './SessionSelector';
@@ -54,36 +55,39 @@ interface NavbarProps {
   onOpenSyncCenter?: () => void;
 }
 
-function SyncBadge({ status, onClick }: { status: SyncStatus; onClick?: () => void }) {
+function SyncBadge({ status, onClick, deviceMode = false }: { status: SyncStatus; onClick?: () => void; deviceMode?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={`flex items-center gap-1.5 rounded-full border px-2 sm:px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-all hover:scale-105 active:scale-95 shrink-0 ${
-        status === 'syncing'
-          ? 'border-primary/25 bg-primary/10 text-primary'
-          : status === 'synced'
-            ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+        deviceMode || status === 'synced'
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+          : status === 'syncing'
+            ? 'border-primary/25 bg-primary/10 text-primary'
             : status === 'error'
               ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300'
               : 'border-border/60 bg-card/40 text-muted-foreground'
       }`}
       title={
-        status === 'syncing'
-          ? 'Cloud sync — syncing…'
-          : status === 'synced'
-            ? 'Cloud sync — everything is saved'
-            : status === 'error'
-              ? 'Cloud sync — needs attention'
-              : 'Cloud sync & devices'
+        deviceMode
+          ? 'Signed in on this device — tap for account & backup'
+          : status === 'syncing'
+            ? 'Cloud sync — syncing…'
+            : status === 'synced'
+              ? 'Cloud sync — everything is saved'
+              : status === 'error'
+                ? 'Cloud sync — needs attention'
+                : 'Cloud sync & devices'
       }
-      aria-label="Open cloud sync"
+      aria-label="Open account and sync"
     >
-      {status === 'syncing' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-      {status === 'synced' && <Cloud className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />}
-      {status === 'error' && <CloudOff className="h-3 w-3 text-red-600 dark:text-red-300" />}
-      {status === 'offline' && <CloudOff className="h-3 w-3 text-muted-foreground" />}
-      {status === 'idle' && <Cloud className="h-3 w-3 text-muted-foreground" />}
+      {deviceMode && <ShieldCheck className="h-3 w-3" />}
+      {!deviceMode && status === 'syncing' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+      {!deviceMode && status === 'synced' && <Cloud className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />}
+      {!deviceMode && status === 'error' && <CloudOff className="h-3 w-3 text-red-600 dark:text-red-300" />}
+      {!deviceMode && status === 'offline' && <CloudOff className="h-3 w-3 text-muted-foreground" />}
+      {!deviceMode && status === 'idle' && <Cloud className="h-3 w-3 text-muted-foreground" />}
       <span className="hidden sm:inline">
         {status === 'syncing' ? 'Syncing' : status === 'synced' ? 'Saved' : status === 'error' ? 'Error' : 'Local'}
       </span>
@@ -193,6 +197,8 @@ function NavbarInner({
               {/* Cloud Sync indicator — clickable */}
               <SyncBadge
                 status={effectiveSyncStatus}
+                // A device account has nothing to sync: show it as "signed in" rather than "never synced".
+                deviceMode={cloudAuth.status === 'signed-in' && !cloudAuth.configured}
                 onClick={onOpenSyncCenter || (() => { onOpenSettings(); triggerOpenSettings('cloud'); })}
               />
 

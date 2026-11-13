@@ -45,7 +45,8 @@ export default function CloudGate({ onSignIn }: { onSignIn: () => void }) {
   }, []);
 
   useEffect(() => {
-    if (!isCloudConfigured()) return;
+    // Both builds invite the user once in a while: the cloud build to sync, the offline build to put
+    // a password on the data already on this phone. Never more than once every two weeks.
     const timer = setTimeout(() => {
       try {
         if (getAuthState().status !== 'signed-out') return;
@@ -54,10 +55,13 @@ export default function CloudGate({ onSignIn }: { onSignIn: () => void }) {
         if (Date.now() - last < PROMPT_EVERY_MS) return;
         localStorage.setItem(PROMPT_KEY, String(Date.now()));
       } catch { return; }
-      toast('Back up and sync your progress', {
-        description: 'Sign in to keep your quizzes safe and the same on every device.',
+      const cloud = isCloudConfigured();
+      toast(cloud ? 'Back up and sync your progress' : 'Protect your progress with a password', {
+        description: cloud
+          ? 'Sign in to keep your quizzes safe and the same on every device.'
+          : 'Create an account on this phone - it takes a few seconds and works offline.',
         duration: 14_000,
-        action: { label: 'Sign in', onClick: () => onSignIn() },
+        action: { label: cloud ? 'Sign in' : 'Create account', onClick: () => onSignIn() },
       });
     }, PROMPT_DELAY_MS);
     return () => clearTimeout(timer);

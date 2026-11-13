@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, RotateCcw, AlertTriangle, Loader2, LogIn, Folder, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth, loginWithRedirect } from 'zitejs/auth';
+import { useAuth } from 'zitejs/auth';
+import { openSignIn } from '../../platform/cloud/signInWindow';
 import { hasBackend } from '../../platform/ai/caller';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -417,7 +418,7 @@ export default function TrashTab({ onHistoryChanged }: Props) {
           <div className="flex flex-col items-center text-center py-6 px-4 gap-3">
             <p className="text-xs text-foreground/40">Sign in to also check server-stored deleted quizzes.</p>
             <button
-              onClick={() => loginWithRedirect()}
+              onClick={() => openSignIn('signin')}
               className="flex items-center gap-2 bg-primary text-primary-foreground font-bold text-sm px-5 py-2.5 rounded-xl shadow-md shadow-primary/25 transition-all active:scale-95"
             >
               <LogIn className="w-4 h-4" /> Sign In

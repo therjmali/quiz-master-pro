@@ -3605,3 +3605,62 @@ html.qmp-scroll-locked [role="alertdialog"] { touch-action: pan-y; }
   transform: translate(-50%, -50%) !important;
   margin: 0 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PERFORMANCE BUDGET — device-adaptive glass
+   ═══════════════════════════════════════════════════════════════════════════════
+   Backdrop blur is the most expensive thing this UI does: every blurred surface
+   forces the WebView to re-composite the layer behind it, every frame. On a phone
+   with 4 cores or 2 GB RAM that is the difference between a smooth list and a
+   stutter (and, on some devices, a WebView crash under memory pressure).
+
+   `platform/perfMode.ts` puts one class on <html> at startup, before first paint:
+
+     .qmp-perf-low   - no backdrop blur anywhere, decorative animation frozen.
+                       Surfaces keep their tint and border, so the design language
+                       is unchanged; only the GPU cost disappears.
+     .qmp-perf-high  - full glass, full motion (desktop and modern phones).
+
+   This is deliberately the LAST rule block in the file so it wins without
+   !important where it can, and it is one place to tune - not a scatter of
+   per-component media queries.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+.qmp-perf-low .glass-card,
+.qmp-perf-low .glass-liquid,
+.qmp-perf-low .glass-nav,
+.qmp-perf-low .glass-header,
+.qmp-perf-low [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Without the blur the tint must carry the surface: make the panels solid enough to read on. */
+.qmp-perf-low .glass-card { background-color: hsl(var(--card) / 0.94); }
+.qmp-perf-low .glass-liquid { background: linear-gradient(165deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%); }
+.qmp-perf-low .glass-header { background-color: hsl(var(--background) / 0.97); }
+.qmp-perf-low .glass-nav { background-color: hsl(var(--card) / 0.97); }
+
+/* Decorative-only motion: infinite loops cost a repaint every frame, forever. */
+.qmp-perf-low .qmp-decorative-motion,
+.qmp-perf-low .animate-pulse,
+.qmp-perf-low .animate-ping,
+.qmp-perf-low .animate-bounce,
+.qmp-perf-low .animate-pulse-red {
+  animation: none !important;
+}
+
+/* Large soft shadows are cheap to store but expensive to raster while scrolling a long list. */
+.qmp-perf-low .glass-card,
+.qmp-perf-low .glass-liquid {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+/* The blurred gradient orbs in the hero backgrounds are the same story on a per-frame basis. */
+.qmp-perf-low .qmp-blur-orb { filter: none !important; opacity: 0.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .qmp-perf-low *,
+  .qmp-perf-low *::before,
+  .qmp-perf-low *::after { scroll-behavior: auto !important; }
+}

@@ -23,25 +23,65 @@ function AnalogWatch({ now }: { now: Date }) {
   const minRef = useRef<SVGGElement>(null);
   const secRef = useRef<SVGGElement>(null);
 
+  /**
+   * The sweeping second hand used to be driven by a 30 fps requestAnimationFrame loop that ran for
+   * as long as the dashboard was mounted - including when the card had scrolled off screen. iOS and
+   * Chrome keep rAF running for off-screen elements, so a phone paid 30 forced style recalcs a
+   * second for a clock nobody was looking at. Now:
+   *   • one 1 s interval paints the whole face (the hand ticks, which is also easier to read);
+   *   • an IntersectionObserver stops the interval the moment the card leaves the viewport;
+   *   • a hidden tab stops it too.
+   */
   useEffect(() => {
-    let raf = 0;
-    let last = 0;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    let visible = true;
+    let onScreen = false;
+
     const paint = () => {
       const d = new Date();
       const h = d.getHours(), m = d.getMinutes(), sec = d.getSeconds(), ms = d.getMilliseconds();
       hourRef.current?.setAttribute('transform', `rotate(${(h % 12) * 30 + m * 0.5}, 100, 100)`);
       minRef.current?.setAttribute('transform', `rotate(${m * 6 + sec * 0.1}, 100, 100)`);
+      // Continuous sweep from the millisecond offset at the moment of the tick (no per-frame loop).
       secRef.current?.setAttribute('transform', `rotate(${(sec + ms / 1000) * 6}, 100, 100)`);
     };
-    const loop = (ts: number) => {
-      if (ts - last >= 33) { last = ts; paint(); }
-      raf = requestAnimationFrame(loop);
+
+    const start = () => {
+      if (timer || !visible || !onScreen) return;
+      paint();
+      timer = setInterval(paint, 1000);
     };
-    paint();
-    raf = requestAnimationFrame(loop);
-    const onVis = () => { if (document.hidden) cancelAnimationFrame(raf); else { raf = requestAnimationFrame(loop); } };
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+
+    const host = secRef.current?.closest('svg') ?? null;
+    let io: IntersectionObserver | null = null;
+    if (host && typeof IntersectionObserver !== 'undefined') {
+      onScreen = true; // assume on-screen until the first observation arrives
+      io = new IntersectionObserver(entries => {
+        const next = entries.some(e => e.isIntersecting);
+        if (next === onScreen) return;
+        onScreen = next;
+        if (onScreen) start(); else stop();
+      }, { rootMargin: '80px' });
+      io.observe(host);
+    } else {
+      onScreen = true;
+    }
+
+    const onVis = () => {
+      visible = !document.hidden;
+      if (visible) start(); else stop();
+    };
     document.addEventListener('visibilitychange', onVis);
-    return () => { cancelAnimationFrame(raf); document.removeEventListener('visibilitychange', onVis); };
+    start();
+    return () => {
+      stop();
+      io?.disconnect();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, []);
 
   const dayNum = now.getDate();

@@ -182,6 +182,12 @@ export default function SettingsScreen({ history, rationaleCache, theme, onTheme
               <LogIn className="w-3.5 h-3.5" /> Sign in
             </button>
           )}
+          {account.signedIn && account.source === 'device' && (
+            <button type="button" onClick={onSignIn} title="Manage the account stored on this phone"
+              className="flex items-center gap-1.5 bg-foreground/[0.04] border border-border text-foreground/60 text-xs font-bold py-2.5 px-3.5 rounded-xl active:scale-95 transition-transform">
+              <CloudCog className="w-3.5 h-3.5" /> Account
+            </button>
+          )}
         </div>
 
         {emojiOpen && (

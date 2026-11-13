@@ -5,7 +5,7 @@ import { initReportNotificationTap, pruneMissingReports } from './platform/repor
 import { nextOpenIndex, prevOpenIndex, canEnterQuestion } from './utils/quizNav';
 import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, startTransition } from 'react';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth, logout } from 'zitejs/auth';
+import { useAuth } from 'zitejs/auth';
 import { Toaster } from '@project/components/ui/sonner';
 import { toast } from 'sonner';
 import { useShakeDetection } from './hooks/useShakeDetection';

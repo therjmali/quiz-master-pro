@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, CalendarPlus, Clock, TrendingUp, Settings, ChevronDown, Share2, Sparkles, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,9 +27,33 @@ export default function ExamPosterCard({ exam, history = [], onEdit, onPracticeS
   const [now, setNow] = useState(Date.now());
   const [planOpen, setPlanOpen] = useState(false);
 
+  // One repaint a second is only worth it while the countdown is actually on screen (the exam shelf can
+  // hold several cards, and each used to keep a timer alive after scrolling past it).
+  const rootRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+    let onScreen = true;
+    const start = () => {
+      if (id || !onScreen || document.hidden) return;
+      setNow(Date.now());
+      id = setInterval(() => setNow(Date.now()), 1000);
+    };
+    const stop = () => { if (id) clearInterval(id); id = null; };
+    let io: IntersectionObserver | null = null;
+    const host = rootRef.current;
+    if (host && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver(entries => {
+        const next = entries.some(e => e.isIntersecting);
+        if (next === onScreen) return;
+        onScreen = next;
+        if (onScreen) start(); else stop();
+      }, { rootMargin: '60px' });
+      io.observe(host);
+    }
+    const onVis = () => { if (document.hidden) stop(); else start(); };
+    document.addEventListener('visibilitychange', onVis);
+    start();
+    return () => { stop(); io?.disconnect(); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
   const t = exam.time || '09:00';
@@ -113,7 +137,7 @@ export default function ExamPosterCard({ exam, history = [], onEdit, onPracticeS
   };
 
   return (
-    <div className="relative rounded-3xl border border-white/10 bg-card/60 backdrop-blur-xl overflow-hidden shadow-2xl transition-all">
+    <div ref={rootRef} className="relative rounded-3xl border border-white/10 bg-card/60 backdrop-blur-xl overflow-hidden shadow-2xl transition-all">
       {/* Decorative gradient banner */}
       <div
         className="h-2.5 w-full bg-gradient-to-r"

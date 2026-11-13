@@ -203,6 +203,34 @@ if (exists('.github/workflows/ci.yml')) {
   check('Settings has the Reports & downloads section', read('src/components/profile/settings/settingsSearch.ts').includes("reports:"), 'missing');
   check('status card is in Settings, not on the Progress screen', read('src/components/settings/SettingsScreen.tsx').includes('<StatusStrip') && !read('src/components/profile/ProgressScreen.tsx').includes('<StatusStrip'), 'moved back');
   check('dialogs sit above full-screen panels (Sync Center)', !/\bz-50\b/.test(read('packages/components/ui/dialog.tsx')) && !/\bz-50\b/.test(read('packages/components/ui/alert-dialog.tsx')), 'z-50 dialogs would hide behind the Sync Center');
+  // ── accounts must work in the build we actually ship (no Supabase project in the APK) ──
+  const authStore = read('src/platform/cloud/authStore.ts');
+  check('the account store has an on-device path, not only Supabase',
+    authStore.includes("from '../account/localAccount'") && authStore.includes('signInOnDevice') && authStore.includes('signUpOnDevice'),
+    'sign-in would be dead again in a build without SUPABASE_URL');
+  check('signing in never leaves the user without a reason',
+    authStore.includes('function friendlyAuthError') && authStore.includes("code === 'not_configured'"),
+    'a missing cloud must produce a human message');
+  const localAccount = read('src/platform/account/localAccount.ts');
+  check('device passwords are hashed with PBKDF2, never stored in clear text',
+    localAccount.includes("name: 'PBKDF2'") && localAccount.includes('deriveBits') && localAccount.includes('randomSalt'),
+    'password storage is not hashed');
+  check('device passwords use a slow iteration count', /PBKDF2_ITERATIONS = 2\d{2}_\d{3}\b/.test(localAccount), 'iteration count too low');
+  const signInWindow = read('src/components/cloud/SignInWindow.tsx');
+  check('the sign-in window always renders the form (no dead panel)',
+    !signInWindow.includes('Cloud sign-in is not configured') && signInWindow.includes('handleSubmit') && signInWindow.includes('showPassword'),
+    'the form is hidden again when cloud is unconfigured');
+  check('the password field has a reveal control', signInWindow.includes("aria-label={showPassword ? 'Hide password' : 'Show password'}"), 'no reveal button');
+  const cloudSection = read('src/components/profile/settings/sectionsCloud.tsx');
+  check('Settings shows the account form even without a cloud project', !/isCloudConfigured\(\) \? <CloudBody \/> : <NotConfigured \/>/.test(cloudSection), 'the form is replaced by a warning again');
+  // ── performance budget + crash evidence ──
+  check('one adaptive performance budget replaces blanket glass', exists('src/platform/perfMode.ts') && read('src/index.css').includes('.qmp-perf-low'), 'perf mode missing');
+  check('the performance budget is applied before the first paint', read('src/main.tsx').includes('applyPerfMode()'), 'perf mode is not applied at boot');
+  check('crash/lag evidence is recorded on the device', read('src/main.tsx').includes('installDiagnostics()') && exists('src/platform/diagnostics.ts'), 'diagnostics not installed');
+  const heroClock = read('src/components/dashboard/HeroClock.tsx');
+  check('the analog clock no longer runs a requestAnimationFrame loop', !/\brequestAnimationFrame\(/.test(heroClock), 'the 30 fps clock loop is back');
+  check('the analog clock stops when off screen', heroClock.includes('IntersectionObserver'), 'clock keeps ticking off screen');
+
   const sec = read('src/platform/cloud/sections.ts');
   check('drafts sync between devices', sec.includes("key: 'qmp_drafts_v1'"), 'drafts are device-only again');
   check('full quiz details sync (qd: shards) so other devices and backups can open every quiz', sec.includes('buildDetailShards') && sec.includes('DETAIL_PREFIX'), 'details are not synced');
