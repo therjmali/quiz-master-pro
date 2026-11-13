@@ -26,20 +26,6 @@ import { useAccount } from './platform/cloud/useAccount';
 import { DashboardSkeleton, LibrarySkeleton } from './components/ScreenSkeleton';
 import type { ReportPreviewData } from './components/reports/ReportPreviewPage';
 
-// Fonts are linked from index.html (non-render-blocking vs. a CSS @import).
-// If the host HTML is regenerated without them, add the same tags at runtime.
-const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400&family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap';
-if (typeof document !== 'undefined' && !document.querySelector('link[href^="https://fonts.googleapis.com/css2"]')) {
-  const add = (attrs: Record<string, string>) => {
-    const l = document.createElement('link');
-    Object.entries(attrs).forEach(([k, v]) => l.setAttribute(k, v));
-    document.head.appendChild(l);
-  };
-  add({ rel: 'preconnect', href: 'https://fonts.googleapis.com' });
-  add({ rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' });
-  add({ rel: 'stylesheet', href: FONT_HREF });
-}
-
 // Retry wrapper for lazy imports — handles stale chunk URLs after deployments
 function lazyRetry<T extends { default: React.ComponentType<any> }>(
   importFn: () => Promise<T>,
@@ -157,8 +143,11 @@ import { loadTheme, persistTheme } from './utils/theme';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncStatus } from './components/Navbar';
 import { useTodos } from './hooks/useTodos';
-import { updateNativeWidgets } from './platform/widgetSync';
+import { updateNativeWidgets, subscribeWidgetActions } from './platform/widgetSync';
 import { calculateStreak } from './utils/scoring';
+import { getUpcomingExams, getExamDates } from './utils/examDates';
+import { REMINDER_CHANGED_EVENT } from './utils/studyReminders';
+import type { SubjectStats } from './components/widgets/WidgetManagerModal';
 
 // Navigation config
 import {
@@ -306,30 +295,99 @@ function AppScreens({
     return Math.round(history.reduce((a, r) => a + (r.percentage || 0), 0) / history.length);
   }, [history]);
 
-  // Keep Android Home Screen Widgets synced
+  const [examTick, setExamTick] = useState(0);
   useEffect(() => {
+    const onRemChange = () => setExamTick(t => t + 1);
+    window.addEventListener(REMINDER_CHANGED_EVENT, onRemChange);
+    return () => window.removeEventListener(REMINDER_CHANGED_EVENT, onRemChange);
+  }, []);
+
+  const subjectStats = useMemo<SubjectStats[]>(() => {
+    const map = new Map<string, { correct: number; attempted: number; total: number; lastTitle: string; lastTs: number }>();
+    for (const r of history) {
+      const name = (r.subject || '').trim();
+      if (!name) continue;
+      const cur = map.get(name) || { correct: 0, attempted: 0, total: 0, lastTitle: '', lastTs: 0 };
+      cur.correct += r.correct || 0;
+      cur.attempted += (r.correct || 0) + (r.wrong || 0);
+      cur.total += r.totalQuestions || 0;
+      if (r.timestamp >= cur.lastTs) {
+        cur.lastTs = r.timestamp;
+        cur.lastTitle = r.quizTitle || '';
+      }
+      map.set(name, cur);
+    }
+    const palette = ['#38BDF8', '#34D399', '#FB7185', '#FBBF24', '#A78BFA', '#F472B6'];
+    return [...map.entries()]
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 8)
+      .map(([name, s], idx) => {
+        const words = name.split(/[\s/&_-]+/).filter(Boolean);
+        const shortName = (words.length > 1 ? words.map(w => w[0]).join('') : name.slice(0, 4)).toUpperCase().slice(0, 5);
+        const accuracy = s.attempted > 0 ? Math.round((s.correct / s.attempted) * 100) : 0;
+        return {
+          id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          name,
+          shortName: shortName || 'SUBJ',
+          color: palette[idx % palette.length],
+          solvedQuestions: s.attempted,
+          totalQuestions: s.total,
+          accuracy,
+          activeUnitName: s.lastTitle || `${s.total} Qs practiced`,
+        };
+      });
+  }, [history]);
+
+  const userExams = useMemo(() => { void examTick; return getExamDates(); }, [examTick]);
+  const nextExam = useMemo(() => { void examTick; return getUpcomingExams(1)[0] ?? null; }, [examTick]);
+
+  // Keep Android Home Screen Widgets synced with real user history & exam schedule
+  useEffect(() => {
+    const topSubj = subjectStats[0];
+    const dailyTarget = profile.dailyQuestionGoal || 50;
+    const examPace = nextExam && nextExam.daysLeft > 0
+      ? Math.max(20, Math.round(1500 / nextExam.daysLeft))
+      : dailyTarget;
     updateNativeWidgets({
       todayQuestions: todayQuestionCount,
-      targetQuestions: profile.dailyQuestionGoal || 50,
+      targetQuestions: dailyTarget,
       streakDays: streak,
       masteryPercent: avgScore,
-      activeSubject: {
-        id: 'msn',
-        name: 'Medical-Surgical Nursing',
-        shortName: 'MSN',
-        percent: avgScore,
-        solvedQuestions: todayQuestionCount,
-        totalQuestions: profile.dailyQuestionGoal || 50,
-        activeUnitName: 'Cardiovascular MCQs',
-      },
-      examTarget: {
-        title: 'NORCET Nursing Officer Exam',
-        date: '2026-09-15',
-        daysRemaining: 180,
-        targetPace: '⚡ Target: 50 Qs / day',
-      },
+      activeSubject: topSubj
+        ? {
+            id: topSubj.id,
+            name: topSubj.name,
+            shortName: topSubj.shortName,
+            color: topSubj.color,
+            percent: topSubj.accuracy,
+            solvedQuestions: topSubj.solvedQuestions,
+            totalQuestions: topSubj.totalQuestions,
+            activeUnitName: topSubj.activeUnitName,
+          }
+        : {
+            id: 'general',
+            name: 'Subject Mastery',
+            shortName: 'QUIZ',
+            percent: avgScore,
+            solvedQuestions: todayQuestionCount,
+            totalQuestions: dailyTarget,
+            activeUnitName: history.length > 0 ? `${history.length} quizzes completed` : 'Complete a quiz to track subjects',
+          },
+      examTarget: nextExam
+        ? {
+            title: nextExam.title || nextExam.label || nextExam.subject,
+            date: nextExam.date,
+            daysRemaining: nextExam.daysLeft,
+            targetPace: nextExam.daysLeft > 0 ? `⚡ Target: ${examPace} Qs / day` : '⚡ Exam Day!',
+          }
+        : {
+            title: 'Upcoming Exam',
+            date: 'Not set',
+            daysRemaining: -1,
+            targetPace: `⚡ Daily Goal: ${dailyTarget} Qs / day`,
+          },
     });
-  }, [history, streak, todayQuestionCount, avgScore, profile.dailyQuestionGoal]);
+  }, [history, streak, todayQuestionCount, avgScore, profile.dailyQuestionGoal, subjectStats, nextExam]);
 
   useEffect(() => { screenRef.current = screen; }, [screen]);
   useEffect(() => prefetchScreensWhenIdle(), []);
@@ -465,6 +523,15 @@ function AppScreens({
     window.addEventListener(OPEN_UPDATES_EVENT, open);
     return () => window.removeEventListener(OPEN_UPDATES_EVENT, open);
   }, [openSettings]);
+
+  // Handle Android home-screen widget taps (Quick Quiz, Subject Mastery, Exam Countdown)
+  useEffect(() => {
+    return subscribeWidgetActions(({ action }) => {
+      if (action === 'quick-quiz') navigateTo('practice-dashboard');
+      else if (action === 'open-subject') navigateTo('setup');
+      else if (action === 'open-exam') navigateTo('dashboard');
+    });
+  }, [navigateTo]);
 
   /** Load full quiz detail and navigate to results */
   const viewResultWithDetail = useCallback(async (summary: QuizResult, origin?: Screen) => {
@@ -1113,6 +1180,8 @@ function AppScreens({
           targetQuestions={profile.dailyQuestionGoal || 50}
           streakDays={streak}
           masteryPercent={avgScore}
+          subjects={subjectStats}
+          exams={userExams}
           onStartSubjectQuiz={() => {
             setWidgetModalOpen(false);
             navigateTo('setup');

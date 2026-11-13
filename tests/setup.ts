@@ -18,7 +18,19 @@ g.addEventListener = events.addEventListener.bind(events);
 g.removeEventListener = events.removeEventListener.bind(events);
 g.dispatchEvent = events.dispatchEvent.bind(events);
 g.window = globalThis;
-if (!g.document) g.document = { visibilityState: 'visible', addEventListener() {}, removeEventListener() {} };
+if (!g.document) {
+  const noopEl = { setAttribute() {}, appendChild() {}, style: {} };
+  g.document = {
+    visibilityState: 'visible',
+    head: noopEl,
+    documentElement: { style: { setProperty() {}, removeProperty() {} } },
+    addEventListener() {},
+    removeEventListener() {},
+    createElement: () => ({ ...noopEl }),
+    createTextNode: (text: string) => ({ nodeValue: text }),
+    getElementsByTagName: () => [noopEl],
+  };
+}
 
 export function freshLocalStorage(): Storage {
   const s = new MemoryStorage() as unknown as Storage;

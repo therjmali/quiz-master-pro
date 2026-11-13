@@ -75,8 +75,9 @@ It is read-only - it never creates users or writes data.
   *merge* (recommended), *use the cloud copy* or *use this device*. A safety backup is saved first.
 - **Two devices editing at once** are merged field by field. If both changed the very same value, the most recent
   sync wins and the other value is listed under *Sync log* so nothing is silently lost.
-- **Deleting** something on one device deletes it everywhere (quiz results go to the trash first, which also syncs).
-- **Stays on the device:** AI keys, caches, drafts, the quiz in progress, backup files and notification schedules.
+- **Deleting** something on one device deletes it everywhere (quiz results and library items go to the 30-day trash first, which also syncs).
+- **Drafts & question details sync too:** Up to 5 active quiz drafts (`quiz_drafts`) and monthly question-detail shards (`qd:YYYY-MM`) sync across your devices so any device can resume a quiz or export full reports.
+- **Stays on the device:** AI keys (`qmp_user_api_keys` — never uploaded), caches, local backup snapshots and notification schedules.
 
 ## Troubleshooting
 

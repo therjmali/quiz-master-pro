@@ -6,6 +6,8 @@ import { Markdown } from '@project/components/markdown';
 import { QuizResult } from '../../types/quiz';
 import { getUserApiKeys, getActiveProvider, PROVIDER_INFO } from '../../utils/apiKeys';
 import { generateOfflineNotes, noteEntriesToHtml, noteEntriesToText, NoteEntry } from '../../utils/offlineNotes';
+import { exportSmartReport, exportTextReport } from '../../utils/reports/htmlReportBuilder';
+import { loadFullResults } from '../../utils/reports/loadFull';
 import { generateNotes } from 'zitejs/api';
 import { useNotesConfig } from '../../hooks/useNotesConfig';
 import { toast } from 'sonner';
@@ -15,7 +17,17 @@ type NoteFilter = 'all' | 'wrong' | 'skipped';
 
 function getFilename(subject?: string, ext = 'txt') {
   const d = new Date();
-  return `${subject || 'Notes'}_${d.toISOString().slice(0, 10)}.${ext}`;
+  const safeSubject = (subject || 'Notes').replace(/[<>:"/\\|?*]+/g, '').trim() || 'Notes';
+  return `RJQuiz_${safeSubject}_${d.toISOString().slice(0, 10)}.${ext}`;
+}
+
+function escHtml(s: string): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function stripMarkdown(text: string) {
@@ -24,28 +36,35 @@ function stripMarkdown(text: string) {
 
 function downloadAsTxt(notes: string, subject?: string, entries?: NoteEntry[]) {
   const title = subject ? `${subject} – Study Notes` : 'Study Notes';
-  const content = entries ? noteEntriesToText(entries, title).replace('\uFEFF', '') : stripMarkdown(notes);
-  const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = getFilename(subject, 'txt'); a.click();
+  const content = entries ? noteEntriesToText(entries, title) : '\uFEFF' + stripMarkdown(notes);
+  exportTextReport(content, getFilename(subject, 'txt'));
 }
 
 function openNotesAsPdf(notes: string, subject?: string, entries?: NoteEntry[]) {
+  const title = subject ? `${subject} – Study Notes` : 'Study Notes';
   if (entries && entries.length > 0) {
-    const title = subject ? `${subject} – Study Notes` : 'Study Notes';
-    const html = noteEntriesToHtml(entries, title, false, subject);
-    const win = window.open('', '_blank');
-    if (!win) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' })); a.download = getFilename(subject, 'html'); a.click(); return; }
-    win.document.open(); win.document.write(html); win.document.close();
-    win.addEventListener('load', () => setTimeout(() => { win.focus(); win.print(); }, 600));
+    const html = noteEntriesToHtml(entries, title, true, subject);
+    exportSmartReport(html, 'pdf', getFilename(subject, 'pdf'));
     return;
   }
   const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
-  const bodyHtml = notes.split('\n').map(l => l.startsWith('#') ? `<h${l.match(/^(#+)/)?.[0].length || 1}>${l.replace(/^#+\s/, '')}</h${l.match(/^(#+)/)?.[0].length || 1}>` : l.trim() ? `<p>${l.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')}</p>` : '').join('\n');
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Study Notes</title><style>body{font-family:serif;padding:40px;max-width:760px;margin:0 auto}h1,h2,h3{color:#1a40c8}@media print{@page{margin:15mm}}</style></head><body><div style="text-align:center;margin-bottom:24px"><h1>📚 Study Notes</h1><p style="color:#888">${dateStr}</p></div>${bodyHtml}</body></html>`;
-  const win = window.open('', '_blank');
-  if (!win) return;
-  win.document.open(); win.document.write(html); win.document.close();
-  win.addEventListener('load', () => setTimeout(() => { win.focus(); win.print(); }, 700));
+  const safeTitle = escHtml(title);
+  const bodyHtml = notes.split('\n').map(l => {
+    const headingMatch = l.match(/^(#{1,6})\s+(.*)$/);
+    if (headingMatch) {
+      const level = Math.min(6, headingMatch[1].length);
+      const inner = escHtml(headingMatch[2]).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      return `<h${level}>${inner}</h${level}>`;
+    }
+    if (l.trim() === '---') return '<hr/>';
+    if (l.trim()) {
+      const inner = escHtml(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      return `<p>${inner}</p>`;
+    }
+    return '';
+  }).join('\n');
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${safeTitle}</title><style>body{font-family:serif;padding:40px;max-width:760px;margin:0 auto;line-height:1.7}h1,h2,h3{color:#1a40c8;margin-top:16px}p{margin:6px 0}hr{border:none;border-top:1px solid #ddd;margin:14px 0}@media print{@page{margin:15mm}}</style></head><body><div style="text-align:center;margin-bottom:24px"><h1>${safeTitle}</h1><p style="color:#888">${escHtml(dateStr)}</p></div>${bodyHtml}</body></html>`;
+  exportSmartReport(html, 'pdf', getFilename(subject, 'pdf'));
 }
 
 export default function NotesTab({ history, rationaleCache }: Props) {
@@ -71,14 +90,15 @@ export default function NotesTab({ history, rationaleCache }: Props) {
     return style === 'detailed' ? 'detailed' : 'compact';
   };
 
-  const collectQuestions = () => {
+  const collectQuestions = async () => {
     const qs: { question: string; correctAnswer: string; rationale?: string; subject?: string }[] = [];
     const seen = new Set<string>();
-    const src = selectedSubject === 'all' ? history : history.filter(r => r.subject === selectedSubject);
-    src.forEach(r => {
+    const rawSrc = selectedSubject === 'all' ? history : history.filter(r => r.subject === selectedSubject);
+    const { results: hydratedSrc } = await loadFullResults(rawSrc);
+    hydratedSrc.forEach(r => {
       (r.quizData || []).forEach((q, i) => {
         if (seen.has(q.question)) return;
-        const ua = r.userAnswers[i];
+        const ua = r.userAnswers?.[i] ?? null;
         if (filter === 'wrong' && (ua === null || ua === q.correctAnswer)) return;
         if (filter === 'skipped' && ua !== null) return;
         seen.add(q.question);
@@ -89,10 +109,15 @@ export default function NotesTab({ history, rationaleCache }: Props) {
   };
 
   const handleGenerate = async () => {
-    const questions = collectQuestions();
-    if (!questions.length) { setError('No questions found with current filters.'); return; }
     setIsGenerating(true); setError(''); setNotes(''); setIsOffline(false); setNoteEntries(null);
+    let questions: { question: string; correctAnswer: string; rationale?: string; subject?: string }[] = [];
     try {
+      questions = await collectQuestions();
+      if (!questions.length) {
+        setError('No questions found with current filters.');
+        setIsGenerating(false);
+        return;
+      }
       const data = await generateNotes({
         questions,
         subject: selectedSubject === 'all' ? undefined : selectedSubject,
@@ -100,11 +125,12 @@ export default function NotesTab({ history, rationaleCache }: Props) {
         userGeminiKey: userKeys.gemini || undefined,
         userCohereKey: userKeys.cohere || undefined,
         userOpenaiKey: userKeys.openai || undefined,
-      });
+        ...(userKeys.anthropic ? { userAnthropicKey: userKeys.anthropic } : {}),
+      } as Parameters<typeof generateNotes>[0]);
       setNotes(data.notes); setQCount(data.questionCount);
     } catch {
       try {
-        const rawQs = collectQuestions().map(q => ({ question: q.question, options: ['N/A'], correctAnswer: q.correctAnswer, difficulty: 'medium' as const, rationale: q.rationale }));
+        const rawQs = questions.map(q => ({ question: q.question, options: ['N/A'], correctAnswer: q.correctAnswer, difficulty: 'medium' as const, rationale: q.rationale }));
         const subject = selectedSubject === 'all' ? undefined : selectedSubject;
         const entries = generateOfflineNotes(rawQs, subject, subject ? `${subject} – Study Notes` : 'Study Notes');
         setNoteEntries(entries);

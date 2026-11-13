@@ -7,6 +7,8 @@ import { useAuth } from 'zitejs/auth';
 import { getTrashCount } from 'zitejs/api';
 import { hapticTap } from '../../utils/haptics';
 import { loadTrash, ORGANIZER_CHANGED_EVENT } from '../../utils/fileTree';
+import { loadHistoryTrash, onHistoryTrashChange } from '../../utils/historyTrash';
+import { hasBackend } from '../../platform/ai/caller';
 import { QuizResult } from '../../types/quiz';
 import { SessionMode, getSessionLabel } from '../SessionSelector';
 
@@ -110,8 +112,9 @@ function organizerTrashCount(): number {
 
 function useTrashCount(refreshKey: unknown): number {
   const { user } = useAuth();
-  const signedIn = !!user;
+  const signedIn = !!user && hasBackend();
   const [org, setOrg] = useState<number>(() => organizerTrashCount());
+  const [localHistory, setLocalHistory] = useState<number>(0);
   const [cloud, setCloud] = useState(0);
 
   // Organizer trash lives on this device — follow changes made anywhere in the app
@@ -122,7 +125,18 @@ function useTrashCount(refreshKey: unknown): number {
   }, []);
   useEffect(() => { setOrg(organizerTrashCount()); }, [refreshKey]);
 
-  // Quiz-history trash lives in the cloud — tiny count query, re-checked shortly after any change
+  // Local / Supabase-synced quiz history trash
+  useEffect(() => {
+    let alive = true;
+    const syncLocal = () => {
+      void loadHistoryTrash().then(items => { if (alive) setLocalHistory(items.length); }).catch(() => {});
+    };
+    syncLocal();
+    const unsub = onHistoryTrashChange(syncLocal);
+    return () => { alive = false; unsub(); };
+  }, [refreshKey]);
+
+  // Hosted Zite cloud trash (only when hosted backend is configured and signed in)
   useEffect(() => {
     if (!signedIn) { setCloud(0); return; }
     let alive = true;
@@ -132,7 +146,7 @@ function useTrashCount(refreshKey: unknown): number {
     return () => { alive = false; clearTimeout(t); };
   }, [signedIn, refreshKey]);
 
-  return org + cloud;
+  return org + localHistory + cloud;
 }
 
 export function TrashToolbarButton({ onOpen, refreshKey }: { onOpen?: () => void; refreshKey?: unknown }) {

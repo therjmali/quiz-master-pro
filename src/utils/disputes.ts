@@ -5,6 +5,7 @@ export interface DisputeRecord {
   verdict: 'confirmed' | 'disputed' | 'incorrect';
   verdictText: string;
   confidence: number;
+  suggestedAnswer?: string;
   reason: string;
   timestamp: number;
 }

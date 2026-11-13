@@ -73,12 +73,14 @@ export function generateOfflineNotes(
 
 // ─── Highlight helpers ────────────────────────────────────────────────────────
 
-/** Highlight answerWord in HTML text (case-insensitive, red bold span, preserves original case) */
-function highlightHtml(text: string, answerWord: string): string {
-  if (!answerWord) return text;
-  const escaped = answerWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`(${escaped})`, 'gi');
-  return text.replace(re, '<span class="answer-word">$1</span>');
+/** Highlight answerWord in already-escaped HTML text (case-insensitive, red bold span, preserves original case) */
+function highlightHtml(escapedText: string, rawAnswerWord: string): string {
+  if (!rawAnswerWord) return escapedText;
+  const escapedAnswer = esc(rawAnswerWord);
+  if (!escapedAnswer) return escapedText;
+  const regexSafe = escapedAnswer.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`(${regexSafe})`, 'gi');
+  return escapedText.replace(re, match => `<span class="answer-word">${match}</span>`);
 }
 
 /** Highlight answerWord in plain text (ALL CAPS, adds ← Answer on first occurrence per entry) */
@@ -109,7 +111,9 @@ function esc(s: string): string {
   return String(s ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // ─── HTML renderer ────────────────────────────────────────────────────────────

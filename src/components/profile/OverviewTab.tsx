@@ -7,7 +7,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { QuizResult } from '../../types/quiz';
 import { getHistorySync, setHistory } from '../../utils/historyStore';
 import { clearAllLocalData } from '../../utils/dataReset';
-import { useAuth } from 'zitejs/auth';
+import { useAccount } from '../../platform/cloud/useAccount';
+import { loadFullResults } from '../../utils/reports/loadFull';
+import { storeQuizDetail } from '../../hooks/useHistorySync';
 import FolderPickerSheet from '../shared/FolderPickerSheet';
 import { formatTime, calculateStreak } from '../../utils/scoring';
 import { studyStrategy } from 'zitejs/api';
@@ -267,8 +269,7 @@ function DataManagementSection({ history, onExportJson, onExportCsv, onImport }:
   const [pw, setPw] = useState('');
   const [pwErr, setPwErr] = useState(false);
   const [clearing, setClearing] = useState(false);
-  const { user: authUser } = useAuth();
-  const signedIn = !!authUser;
+  const { signedIn } = useAccount();
 
   const handleClear = async () => {
     if (pw.trim().toUpperCase() !== CLEAR_CONFIRM_TEXT) { setPwErr(true); return; }
@@ -333,7 +334,19 @@ function DataManagementSection({ history, onExportJson, onExportCsv, onImport }:
 }
 
 const OverviewTab = React.memo(function OverviewTab({ history, filteredHistory, onViewResult, onDeleteHistory, subjectFilter, difficultyFilter = 'all' }: Props) {
-  const masterFiltered = filteredHistory;
+  const [hydratedFiltered, setHydratedFiltered] = useState<QuizResult[]>(filteredHistory);
+  useEffect(() => {
+    let alive = true;
+    setHydratedFiltered(filteredHistory);
+    if (filteredHistory.some(r => (!r.quizData || r.quizData.length === 0) && r.totalQuestions > 0)) {
+      loadFullResults(filteredHistory)
+        .then(({ results }) => { if (alive) setHydratedFiltered(results); })
+        .catch(() => {});
+    }
+    return () => { alive = false; };
+  }, [filteredHistory]);
+
+  const masterFiltered = hydratedFiltered;
 
   const filters = useHistoryFilters(masterFiltered);
   const [strategyText, setStrategyText] = useState('');
@@ -442,8 +455,16 @@ const OverviewTab = React.memo(function OverviewTab({ history, filteredHistory, 
     reader.readAsText(file); e.target.value = '';
   };
 
-  const doImport = (mode: 'overlap' | 'fresh') => {
+  const doImport = async (mode: 'overlap' | 'fresh') => {
     if (!importPending) return;
+    await Promise.all(
+      importPending.items
+        .filter(r => Array.isArray(r.quizData) && r.quizData.length > 0)
+        .flatMap(r => [
+          storeQuizDetail(String(r.timestamp), r),
+          ...(r.id ? [storeQuizDetail(String(r.id), r)] : []),
+        ]),
+    );
     if (mode === 'fresh') {
       setHistory(importPending.items.slice(0, 200));
     } else {
@@ -460,9 +481,10 @@ const OverviewTab = React.memo(function OverviewTab({ history, filteredHistory, 
     setTimeout(() => window.location.reload(), 1200);
   };
 
-  const handleExportJson = () => {
+  const handleExportJson = async () => {
     if (!history.length) { toast.info('No history to backup.'); return; }
-    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+    const { results: hydrated } = await loadFullResults(history);
+    const blob = new Blob([JSON.stringify(hydrated, null, 2)], { type: 'application/json' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
     a.download = `RJQuiz_Backup_${new Date().toISOString().split('T')[0]}.json`; a.click();
     toast.success('📦 Backup downloaded!');

@@ -221,7 +221,7 @@ export interface RestoreResult { applied: string[]; safetyBackupId: string | nul
 
 async function applyBackupFile(file: BackupFile, safetyReason: BackupReason): Promise<RestoreResult> {
   const safety = await createBackup(safetyReason).catch(() => null);
-  const applied = await applySectionsToDevice(file.sections, new Set());
+  const applied = await applySectionsToDevice(file.sections, new Set(), { allowEmptyTree: true, overwriteDetails: true });
   return { applied, safetyBackupId: safety?.id ?? null };
 }
 

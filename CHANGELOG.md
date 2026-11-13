@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-11-13
+
+Every AI feature now runs directly on your device with your own key, cloud sync and quota bugs are fixed, exports and Trash preserve full question details on synced devices, Android home-screen widgets show real data and open the right screen, and offline/APK builds are leaner and stricter.
+
+### Added
+- **Full on-device BYOK AI (no backend needed):** AI Study Coach & streaming chat, Photo-to-Quiz OCR, 7-day Study Plan, Study Strategy, AI Notes, Revision Notes, Question Verification / Dispute auto-fix, Quiz Generation and Simple Explanations all run directly from the PWA and Android APK using your Gemini, Claude, OpenAI or Cohere key in *Settings → AI*.
+- **Multimodal vision across providers:** Photo-to-Quiz OCR and image prompts work with OpenAI, Anthropic Claude and Google Gemini keys (no longer restricted to Gemini only).
+- **Android widget deep-links & real widget data:** Tapping home-screen widgets now opens Quick Quiz, Subject Setup or Exam Countdown directly, and Subject / Exam widgets display your real subjects and upcoming exams instead of sample Nursing/NORCET placeholders.
+- **RFC-4180 CSV importer:** Supports multiline quoted questions/explanations, escaped `""` quotes, CRLF line endings and UTF-8 BOM files.
+
+### Fixed
+- **Cloud sync write-guard & 24 MB quota math:** Applying incoming cloud changes or restore points no longer triggers a redundant re-dirty sync loop, and `quiz_sync_push` in `supabase/quiz_schema.sql` now processes deletions first and subtracts replaced section sizes before checking the 24 MB cap.
+- **Offline exports, imports & Trash on synced devices:** Notes PDF/Word/HTML/Text exports, JSON history exports/imports and 30-day Quiz Trash now hydrate sharded `qd:YYYY-MM` question details and use the offline-capable report pipeline (`exportSmartReport` / `exportTextReport`) instead of `window.print` popups that silently fail in Android WebView.
+- **Unified Trash:** *Settings → Trash* and the Library toolbar badge now show both deleted library items and deleted quiz results (`history_trash`) in one place.
+- **Zero-network font boot:** Removed the runtime `fonts.googleapis.com` stylesheet injection on launch so cold starts make zero external requests; enforced in `verify-repo` and `offline-smoke`.
+- **Security & accessibility:** Escaped HTML attributes and `$&` replacement patterns in offline notes, restricted `<mark>` HTML passthrough in Markdown to attribute-free tags, and enabled pinch-to-zoom in the viewport.
+- **Monotonic Android `versionCode`:** Release APKs now compute a semver-derived monotonic `versionCode` so manual builds and tag builds always upgrade cleanly over earlier releases.
+- **Exact local backup restore:** Restoring or importing a backup file now resets sections (including `library_tree` and `qd:*` shards) that were absent from the snapshot.
+
+### Removed
+- **371 unused template packages** (`@aws-sdk/*`, `googleapis`, `stripe`, `twilio`, `dropbox`, `@elevenlabs/*`, `express`, etc.) removed from `package.json` and `package-lock.json` for faster installs and a cleaner supply chain.
+
 ## [2.9.0] - 2026-11-11
 
 Drafts, true multi-device sync of quiz data, and a tighter question / report UI.

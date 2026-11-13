@@ -26,9 +26,9 @@ public class SubjectWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences("rj_widget_prefs", Context.MODE_PRIVATE);
         String raw = prefs.getString("widget_data", null);
 
-        String shortName = "MSN";
-        String subjectName = "Medical-Surgical Nursing";
-        String unitName = "Cardiovascular & Respiratory MCQs";
+        String shortName = "QUIZ";
+        String subjectName = "Subject Mastery";
+        String unitName = "Complete a quiz to track subjects";
         String unitStats = "0 / 0 Questions (0% Accuracy)";
         int progressPercent = 0;
         String subjectId = "";

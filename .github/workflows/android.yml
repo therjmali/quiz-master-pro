@@ -44,8 +44,10 @@ jobs:
       - name: Resolve version
         id: meta
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -e "console.log(JSON.parse(require('fs').readFileSync('./package.json','utf8')).version)")
+          VERSION_CODE=$(node -e "const [ma,mi,pa]=JSON.parse(require('fs').readFileSync('./package.json','utf8')).version.split('.').map(Number); const semverCode=ma*1000000+mi*10000+pa*100; const run=Number('${{ github.run_number }}')||0; console.log(Math.max(semverCode+(run%100), 100024+run))")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "version_code=$VERSION_CODE" >> "$GITHUB_OUTPUT"
           if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
             echo "::error title=Tag/version mismatch::Tag $GITHUB_REF_NAME does not match package.json version $VERSION"
             exit 1
@@ -72,7 +74,7 @@ jobs:
           npm run verify:dist
 
       - name: Prepare Android project
-        run: bash scripts/android-prepare.sh "${{ steps.meta.outputs.version }}" "${{ github.run_number }}"
+        run: bash scripts/android-prepare.sh "${{ steps.meta.outputs.version }}" "${{ steps.meta.outputs.version_code }}"
 
       - name: Assemble release APK
         working-directory: android
@@ -114,7 +116,7 @@ jobs:
           echo "APK_FILE=$OUT" >> "$GITHUB_ENV"
 
       - name: Verify APK (manifest, bundled web app, signature)
-        run: bash scripts/verify-apk.sh "$APK_FILE" "${{ steps.meta.outputs.version }}" "${{ github.run_number }}" "$APP_ID" | tee verify-apk.log
+        run: bash scripts/verify-apk.sh "$APK_FILE" "${{ steps.meta.outputs.version }}" "${{ steps.meta.outputs.version_code }}" "$APP_ID" | tee verify-apk.log
 
       - name: Job summary
         run: |
@@ -127,7 +129,7 @@ jobs:
             echo "| Size | $(du -h "$APK_FILE" | cut -f1) |"
             echo "| SHA-256 | \`$(sha256sum "$APK_FILE" | cut -d' ' -f1)\` |"
             echo "| versionName | ${{ steps.meta.outputs.version }} |"
-            echo "| versionCode | ${{ github.run_number }} |"
+            echo "| versionCode | ${{ steps.meta.outputs.version_code }} |"
             echo "| Signing | ${{ steps.sign.outputs.signing }} |"
             echo ""
             echo '```'

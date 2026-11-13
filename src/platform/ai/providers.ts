@@ -19,7 +19,7 @@ export interface ProviderInfo {
 
 export const PROVIDERS: Record<ProviderId, ProviderInfo> = {
   gemini: { id: 'gemini', label: 'Google Gemini', defaultModel: 'gemini-2.5-flash', keyHint: 'AIza...', keyUrl: 'https://aistudio.google.com/apikey' },
-  anthropic: { id: 'anthropic', label: 'Anthropic Claude', defaultModel: 'claude-haiku-5-5', keyHint: 'sk-ant-...', keyUrl: 'https://console.anthropic.com/settings/keys' },
+  anthropic: { id: 'anthropic', label: 'Anthropic Claude', defaultModel: 'claude-haiku-4-5', keyHint: 'sk-ant-...', keyUrl: 'https://console.anthropic.com/settings/keys' },
   openai: { id: 'openai', label: 'OpenAI', defaultModel: 'gpt-4o-mini', keyHint: 'sk-...', keyUrl: 'https://platform.openai.com/api-keys' },
   cohere: { id: 'cohere', label: 'Cohere', defaultModel: 'command-r-plus-08-2024', keyHint: 'Cohere API key', keyUrl: 'https://dashboard.cohere.com/api-keys' },
 };
@@ -55,8 +55,14 @@ export function saveAiClientPrefs(prefs: AiClientPrefs): void {
   try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
 }
 
+const LEGACY_MODEL_ALIASES: Record<string, string> = {
+  'claude-haiku-5-5': 'claude-haiku-4-5',
+};
+
 export function modelFor(provider: ProviderId): string {
-  return (getAiClientPrefs().models[provider] || '').trim() || PROVIDERS[provider].defaultModel;
+  const custom = (getAiClientPrefs().models[provider] || '').trim();
+  const normalized = LEGACY_MODEL_ALIASES[custom] || custom;
+  return normalized || PROVIDERS[provider].defaultModel;
 }
 
 export interface ProviderKey { provider: ProviderId; key: string }
@@ -83,15 +89,34 @@ export function hasAnyAiKey(): boolean { return availableProviders().length > 0;
 
 export interface InlineFile { base64: string; mimeType: string }
 
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface CallOptions {
   provider: ProviderId;
   key: string;
   prompt: string;
   system?: string;
+  messages?: ChatTurn[];
   files?: InlineFile[];
   model?: string;
+  temperature?: number;
+  maxTokens?: number;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+}
+
+const ANTHROPIC_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+const OPENAI_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+export function providerSupportsFiles(provider: ProviderId, files: readonly InlineFile[]): boolean {
+  if (files.length === 0) return true;
+  if (provider === 'gemini') return true;
+  if (provider === 'anthropic') return files.every(f => ANTHROPIC_IMAGE_MIMES.has(f.mimeType.toLowerCase()));
+  if (provider === 'openai') return files.every(f => OPENAI_IMAGE_MIMES.has(f.mimeType.toLowerCase()));
+  return false;
 }
 
 function statusToError(status: number, body: string, provider: ProviderId): AiError {
@@ -105,17 +130,37 @@ function statusToError(status: number, body: string, provider: ProviderId): AiEr
 }
 
 export async function callProvider(opts: CallOptions): Promise<string> {
-  const { provider, key, prompt, system, files = [], timeoutMs = 60_000 } = opts;
+  const {
+    provider,
+    key,
+    prompt,
+    system,
+    messages = [],
+    files = [],
+    temperature = 0.4,
+    maxTokens = 4096,
+    timeoutMs = 60_000,
+  } = opts;
   const doFetch = opts.fetchImpl ?? fetch;
-  const model = opts.model || modelFor(provider);
+  const rawModel = opts.model || modelFor(provider);
+  const model = LEGACY_MODEL_ALIASES[rawModel] || rawModel;
 
-  if (files.length && provider !== 'gemini') {
-    throw new AiError('Reading PDFs or images needs a Google Gemini key. Paste the text instead, or add a Gemini key.', 'unsupported', provider);
+  if (!providerSupportsFiles(provider, files)) {
+    const hasPdf = files.some(f => !f.mimeType.toLowerCase().startsWith('image/'));
+    throw new AiError(
+      hasPdf
+        ? 'Reading PDFs needs a Google Gemini key. Paste the text instead, or add a Gemini key in Settings -> AI.'
+        : 'Reading images needs a Google Gemini, Anthropic Claude, or OpenAI key in Settings -> AI.',
+      'unsupported',
+      provider,
+    );
   }
 
   let url: string;
   let headers: Record<string, string>;
   let body: unknown;
+
+  const historyTurns = messages.filter(m => m.content.trim().length > 0);
 
   switch (provider) {
     case 'gemini':
@@ -123,27 +168,82 @@ export async function callProvider(opts: CallOptions): Promise<string> {
       headers = { 'Content-Type': 'application/json', 'x-goog-api-key': key };
       body = {
         ...(system ? { systemInstruction: { parts: [{ text: system }] } } : {}),
-        contents: [{ role: 'user', parts: [{ text: prompt }, ...files.map(f => ({ inlineData: { mimeType: f.mimeType, data: f.base64 } }))] }],
-        generationConfig: { temperature: 0.4 },
+        contents: [
+          ...historyTurns.map(m => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }],
+          })),
+          {
+            role: 'user',
+            parts: [{ text: prompt }, ...files.map(f => ({ inlineData: { mimeType: f.mimeType, data: f.base64 } }))],
+          },
+        ],
+        generationConfig: { temperature, maxOutputTokens: maxTokens },
       };
       break;
-    case 'anthropic':
+    case 'anthropic': {
       url = 'https://api.anthropic.com/v1/messages';
       headers = {
         'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01',
         'anthropic-dangerous-direct-browser-access': 'true',
       };
-      body = { model, max_tokens: 4096, temperature: 0.4, ...(system ? { system } : {}), messages: [{ role: 'user', content: prompt }] };
+      const userContent = files.length > 0
+        ? [
+            ...files.map(f => ({
+              type: 'image',
+              source: { type: 'base64', media_type: f.mimeType.toLowerCase(), data: f.base64 },
+            })),
+            { type: 'text', text: prompt },
+          ]
+        : prompt;
+      body = {
+        model,
+        max_tokens: maxTokens,
+        temperature,
+        ...(system ? { system } : {}),
+        messages: [
+          ...historyTurns.map(m => ({ role: m.role, content: m.content })),
+          { role: 'user', content: userContent },
+        ],
+      };
       break;
-    case 'openai':
+    }
+    case 'openai': {
       url = 'https://api.openai.com/v1/chat/completions';
       headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
-      body = { model, temperature: 0.4, messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }] };
+      const userContent = files.length > 0
+        ? [
+            { type: 'text', text: prompt },
+            ...files.map(f => ({
+              type: 'image_url',
+              image_url: { url: `data:${f.mimeType};base64,${f.base64}` },
+            })),
+          ]
+        : prompt;
+      body = {
+        model,
+        temperature,
+        max_tokens: maxTokens,
+        messages: [
+          ...(system ? [{ role: 'system', content: system }] : []),
+          ...historyTurns.map(m => ({ role: m.role, content: m.content })),
+          { role: 'user', content: userContent },
+        ],
+      };
       break;
+    }
     case 'cohere':
       url = 'https://api.cohere.com/v2/chat';
       headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` };
-      body = { model, temperature: 0.4, messages: [...(system ? [{ role: 'system', content: system }] : []), { role: 'user', content: prompt }] };
+      body = {
+        model,
+        temperature,
+        messages: [
+          ...(system ? [{ role: 'system', content: system }] : []),
+          ...historyTurns.map(m => ({ role: m.role, content: m.content })),
+          { role: 'user', content: prompt },
+        ],
+      };
       break;
   }
 

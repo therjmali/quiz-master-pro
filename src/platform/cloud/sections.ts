@@ -391,12 +391,23 @@ export async function readAllLocalSections(): Promise<Record<string, unknown>> {
   return out;
 }
 
+export interface ApplySectionsOptions {
+  /** When true (explicit full backup restore), an absent `library_tree` clears the local organizer tree back to empty. */
+  allowEmptyTree?: boolean;
+  /** When true (explicit full backup restore), overwrite existing `qd:` question details if they differ. */
+  overwriteDetails?: boolean;
+}
+
 /**
  * Write the merged sections to the device. `skip` holds keys that changed on the device while the
  * sync was talking to the server: those are newer than the merge and must not be overwritten.
  * Returns the section keys that actually changed.
  */
-export async function applySectionsToDevice(target: Record<string, unknown>, skip: ReadonlySet<string> = new Set()): Promise<string[]> {
+export async function applySectionsToDevice(
+  target: Record<string, unknown>,
+  skip: ReadonlySet<string> = new Set(),
+  opts: ApplySectionsOptions = {},
+): Promise<string[]> {
   const changed: string[] = [];
 
   for (const def of LS_SECTIONS) {
@@ -419,8 +430,15 @@ export async function applySectionsToDevice(target: Record<string, unknown>, ski
     try { current = await readStore(def.kind); } catch { current = undefined; }
     if (next === undefined && current === undefined) continue;
     if (next !== undefined && current !== undefined && fingerprint(current) === fingerprint(next)) continue;
-    // An empty library tree must never be written over a populated one by "absence".
-    if (next === undefined && def.kind === 'tree') continue;
+    // During ordinary sync, an absent library_tree never wipes a populated one by accident;
+    // during an explicit full backup restore (`allowEmptyTree`), reset to a clean empty root.
+    if (next === undefined && def.kind === 'tree') {
+      if (opts.allowEmptyTree && current !== undefined) {
+        saveFileTree({ id: 'root', name: 'Home', type: 'folder', children: [], createdAt: Date.now(), updatedAt: Date.now() } as never);
+        changed.push(def.key);
+      }
+      continue;
+    }
     await writeStore(def.kind, next);
     changed.push(def.key);
   }
@@ -438,7 +456,7 @@ export async function applySectionsToDevice(target: Record<string, unknown>, ski
       changed.push(...differing);
     }
   }
-  // Question details: write what this device does not have yet (details never change once a quiz is finished).
+  // Question details: write what this device does not have yet (or overwrite on explicit restore).
   for (const key of Object.keys(target)) {
     if (!DETAIL_KEY_RE.test(key) || skip.has(key)) continue;
     const items = ((target[key] as { items?: Record<string, Item> } | undefined)?.items) ?? {};
@@ -451,7 +469,7 @@ export async function applySectionsToDevice(target: Record<string, unknown>, ski
       for (const d of entries) {
         const tsKey = DETAIL_IDB_PREFIX + String(d.timestamp);
         const mine = have.get(tsKey);
-        if (mine && Array.isArray(mine.quizData) && (mine.quizData as unknown[]).length > 0) continue;
+        if (!opts.overwriteDetails && mine && Array.isArray(mine.quizData) && (mine.quizData as unknown[]).length > 0) continue;
         await kvSet(tsKey, d);
         if (d.id) await kvSet(DETAIL_IDB_PREFIX + String(d.id), d);
         wrote = true;

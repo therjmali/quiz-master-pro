@@ -49,8 +49,11 @@
       "zitejs/backend/base": [
         "./node_modules/zitejs/dist/esm/backend/index.d.ts"
       ],
+      "zitejs-real-caller": [
+        "./node_modules/zitejs/dist/esm/caller/index.js"
+      ],
       "zitejs/caller": [
-        "./node_modules/zitejs/dist/esm/caller/index.d.ts"
+        "./src/platform/ai/caller.ts"
       ],
       "zitejs/integrations": [
         "./.zite/integrations/index.ts",

@@ -365,8 +365,13 @@ async function performSync(reason: string): Promise<SyncResult> {
     if (sig(freshNow[key]) !== sig(local[key])) touched.add(key);
   }
 
-  const appliedKeys = await deps.applyLocal(merged, touched);
-  if (appliedKeys.length) setSyncWriteGuard(true);
+  let appliedKeys: string[] = [];
+  setSyncWriteGuard(true);
+  try {
+    appliedKeys = await deps.applyLocal(merged, touched);
+  } finally {
+    setSyncWriteGuard(false);
+  }
 
   const nextMeta: SyncMeta = {
     ...meta, userId, endpoint, version,
@@ -440,7 +445,13 @@ export async function restoreRevision(version: number): Promise<SyncResult> {
     const doc = await deps.remote.restoreRevisionRemote(version);
     const remote = onlySyncable(doc.data ?? {});
     await clearBase();
-    const appliedKeys = await deps.applyLocal(remote, new Set());
+    let appliedKeys: string[] = [];
+    setSyncWriteGuard(true);
+    try {
+      appliedKeys = await deps.applyLocal(remote, new Set());
+    } finally {
+      setSyncWriteGuard(false);
+    }
     await saveBase(remote);
     saveMeta({
       ...loadMeta(), userId: deps.getUserId(), endpoint: deps.getEndpoint(), version: doc.version,
@@ -449,7 +460,9 @@ export async function restoreRevision(version: number): Promise<SyncResult> {
     });
     dirty = false;
     setState({ phase: 'synced', version: doc.version, lastSyncAt: deps.now(), appliedKeys, dataAppliedAt: appliedKeys.length ? deps.now() : state.dataAppliedAt });
-    if (appliedKeys.length) { setSyncWriteGuard(true); window.dispatchEvent(new CustomEvent(DATA_APPLIED_EVENT, { detail: { keys: appliedKeys, reason: 'restore' } })); }
+    if (appliedKeys.length && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(DATA_APPLIED_EVENT, { detail: { keys: appliedKeys, reason: 'restore' } }));
+    }
     return { ok: true, reason: 'restore', version: doc.version, pulled: appliedKeys };
   } catch (err) {
     const e = toCloudError(err);

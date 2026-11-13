@@ -90,7 +90,14 @@ export function trashRemovedResults(prev: readonly QuizResult[] | null | undefin
   void (async () => {
     const current = await loadHistoryTrash();
     const known = new Set(current.map(t => resultKey(t.result)));
-    const fresh = removed.filter(r => !known.has(resultKey(r))).map(result => ({ result, deletedAt: now }));
+    const freshCandidates = removed.filter(r => !known.has(resultKey(r)));
+    if (freshCandidates.length === 0) return;
+    let hydrated = freshCandidates;
+    try {
+      const { loadFullResults } = await import('./reports/loadFull');
+      hydrated = (await loadFullResults(freshCandidates)).results;
+    } catch { /* fallback to unhydrated record if IDB unavailable */ }
+    const fresh = hydrated.map(result => ({ result, deletedAt: now }));
     if (fresh.length) await saveHistoryTrash([...fresh, ...current]);
   })();
 }

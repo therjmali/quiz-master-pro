@@ -3,6 +3,9 @@ import { CalendarDays, Loader2, ChevronRight, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAccount } from '../../platform/cloud/useAccount';
 import { openSignIn } from '../../platform/cloud/signInWindow';
+import { requestOpenSettingsSection } from '../cloud/CloudGate';
+import { hasAnyAiKey } from '../../platform/ai/providers';
+import { hasBackend } from '../../platform/ai/caller';
 import { QuizResult } from '../../types/quiz';
 import { generateStudyPlan, GenerateStudyPlanOutputType } from 'zitejs/api';
 
@@ -43,8 +46,13 @@ export default function StudyPlanCard({ history, onNavigateToSetup }: Props) {
   , [history]);
 
   const handleGenerate = async () => {
-    if (!user) {
-      toast.error('Please sign in first');
+    if (!hasAnyAiKey() && !hasBackend()) {
+      toast.error('Add an AI key in Settings → AI Keys & Models to generate a study plan');
+      requestOpenSettingsSection('ai');
+      return;
+    }
+    if (!hasAnyAiKey() && hasBackend() && !user) {
+      toast.error('Please sign in or add an AI key in Settings → AI');
       openSignIn();
       return;
     }

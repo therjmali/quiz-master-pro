@@ -3,7 +3,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { FakeCloud, FakeDevice } from './helpers';
 import { CloudError } from '../src/platform/cloud/http';
-import { __setEngineDepsForTests, __resetEngineForTests, syncNow, noteLocalChange, resolveFirstSync, getSyncState, restoreRevision, fetchRevisions, wipeCloudCopy, DATA_APPLIED_EVENT, pushDeviceOverCloud, pullCloudOverDevice } from '../src/platform/cloud/syncEngine';
+import { __setEngineDepsForTests, __resetEngineForTests, syncNow, noteLocalChange, resolveFirstSync, getSyncState, restoreRevision, fetchRevisions, wipeCloudCopy, DATA_APPLIED_EVENT, pushDeviceOverCloud, pullCloudOverDevice, isSyncWriteGuarded } from '../src/platform/cloud/syncEngine';
 import { __restoreIdbForTests, __snapshotIdbForTests, idbGet, STORE } from '../src/platform/idb';
 import { __resetBaseCacheForTests, loadMeta } from '../src/platform/cloud/sections';
 
@@ -262,4 +262,21 @@ test('wiping the cloud copy leaves this device data intact', async () => {
   await on(a, async () => { await syncNow('v1'); await wipeCloudCopy(); });
   assert.deepEqual(cloud.data(), {});
   assert.ok('qmp_settings' in a.dev.data);
+});
+
+test('sync write guard is active during applyLocal and always released afterward (even without reload)', async () => {
+  cloud.seed({ qmp_settings: settings({ theme: 'light' }) });
+  const b = new Phone('B');
+  let guardedDuringApply = false;
+  const origApply = b.dev.applyLocal;
+  b.dev.applyLocal = async (target, skip) => {
+    guardedDuringApply = isSyncWriteGuarded();
+    return origApply(target, skip);
+  };
+  await on(b, async () => {
+    const res = await syncNow('pull-check');
+    assert.equal(res.ok, true);
+    assert.equal(guardedDuringApply, true, 'write guard suppresses local change loop while applying remote data');
+    assert.equal(isSyncWriteGuarded(), false, 'write guard is released immediately after applyLocal finishes');
+  });
 });

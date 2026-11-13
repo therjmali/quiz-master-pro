@@ -196,19 +196,29 @@ ${questionContext.questionType ? `Topic: ${questionContext.questionType}` : ''}
           return prev;
         });
 
-        if (tryNum < MAX_RETRIES) {
+        const isNonRetryable = err instanceof Error && (err.name === 'AiError' && ['no_key', 'auth', 'unsupported'].includes((err as any).code));
+        if (!isNonRetryable && tryNum < MAX_RETRIES) {
           // Exponential backoff: 1s, 2s
           await new Promise(r => setTimeout(r, (tryNum + 1) * 1000));
           return attempt(tryNum + 1);
         }
 
         const errMsg = err instanceof Error ? err.message : '';
+        const isAiErr = err instanceof Error && err.name === 'AiError';
         const isTimeout = errMsg.includes('timed out') || errMsg.includes('timeout');
-        const isQuota = errMsg.includes('quota') || errMsg.includes('limit');
+        const isQuota = errMsg.includes('quota') || errMsg.includes('limit') || errMsg.includes('429');
+
+        const friendlyMsg = isAiErr && errMsg
+          ? errMsg
+          : isTimeout
+            ? 'Request timed out. Tap the retry button below to try again.'
+            : isQuota
+              ? 'AI rate limit reached. Wait a moment and tap retry.'
+              : (errMsg || 'Something went wrong. Tap the retry button below to try again.');
 
         setMessages(prev => [
           ...prev,
-          { role: 'assistant', content: `❌ ${isTimeout ? 'Request timed out.' : isQuota ? 'AI quota limit reached.' : 'Something went wrong.'} Tap the retry button below to try again.` },
+          { role: 'assistant', content: `❌ ${friendlyMsg}` },
         ]);
       }
     };

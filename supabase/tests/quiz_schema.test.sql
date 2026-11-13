@@ -80,11 +80,46 @@ begin
   select jsonb_array_length(public.quiz_sync_revisions_list()->'revisions') into n;
   assert n = 5, format('only 5 restore points are kept, got %s', n);
 
-  -- 10. size limit
+  -- 10. size limit & account quota accounting across updates and deletions
   r := public.quiz_sync_pull();
   r := public.quiz_sync_push((r->>'version')::int,
          jsonb_build_object('big', jsonb_build_object('value', to_jsonb(repeat('x', 9 * 1024 * 1024)))), '{}', 'dev-1');
   assert r->'rejected'->0->>'reason' = 'section_too_large', 'oversized section is rejected';
+
+  -- Three 7 MB sections fit inside the 24 MB account limit (21 MB total)
+  r := public.quiz_sync_pull();
+  r := public.quiz_sync_push((r->>'version')::int,
+         jsonb_build_object(
+           'q1', jsonb_build_object('value', to_jsonb(repeat('a', 7 * 1024 * 1024))),
+           'q2', jsonb_build_object('value', to_jsonb(repeat('b', 7 * 1024 * 1024))),
+           'q3', jsonb_build_object('value', to_jsonb(repeat('c', 7 * 1024 * 1024)))
+         ), '{}', 'dev-1');
+  assert jsonb_array_length(r->'rejected') = 0, '21 MB across three sections fits inside 24 MB quota';
+
+  -- Updating existing sections in-place must compute net delta, not double-count old + new sizes
+  r := public.quiz_sync_push((r->>'version')::int,
+         jsonb_build_object(
+           'q1', jsonb_build_object('value', to_jsonb(repeat('d', 7 * 1024 * 1024))),
+           'q4', jsonb_build_object('value', to_jsonb(repeat('e', 2 * 1024 * 1024)))
+         ), '{}', 'dev-1');
+  assert jsonb_array_length(r->'rejected') = 0, 'in-place update uses net delta so subsequent insert still fits';
+
+  -- Deleting a 7 MB section in the same push frees quota before inserting a replacement 6 MB section
+  r := public.quiz_sync_push((r->>'version')::int,
+         jsonb_build_object('q5', jsonb_build_object('value', to_jsonb(repeat('f', 6 * 1024 * 1024)))),
+         array['q2'], 'dev-1');
+  assert jsonb_array_length(r->'rejected') = 0 and (r->'applied') ? '-q2' and (r->'applied') ? 'q5',
+         'deletions free quota before upserts in the same push';
+
+  -- Growing an existing section beyond remaining account quota is rejected cleanly
+  r := public.quiz_sync_push((r->>'version')::int,
+         jsonb_build_object('q4', jsonb_build_object('value', to_jsonb(repeat('g', 6 * 1024 * 1024)))),
+         '{}', 'dev-1');
+  assert r->'rejected'->0->>'reason' = 'account_quota_exceeded', 'growing an existing section past 24 MB is rejected';
+
+  -- Clean up large test sections
+  r := public.quiz_sync_pull();
+  perform public.quiz_sync_push((r->>'version')::int, '{}'::jsonb, array['q1', 'q3', 'q4', 'q5'], 'dev-1');
 
   -- 11. bob never sees alice's data, and cannot write tables directly
   perform pg_temp.as_user(bob);

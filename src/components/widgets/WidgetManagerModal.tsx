@@ -29,46 +29,16 @@ interface Props {
   onStartQuickPractice?: () => void;
 }
 
-const DEFAULT_NURSING_SUBJECT_STATS: SubjectStats[] = [
+const FALLBACK_SUBJECT_STATS: SubjectStats[] = [
   {
-    id: 'msn',
-    name: 'Medical-Surgical Nursing',
-    shortName: 'MSN',
+    id: 'general',
+    name: 'General Practice',
+    shortName: 'QUIZ',
     color: '#38BDF8',
-    solvedQuestions: 145,
-    totalQuestions: 200,
-    accuracy: 82,
-    activeUnitName: 'Cardiovascular & Respiratory Disorders',
-  },
-  {
-    id: 'chn',
-    name: 'Community Health Nursing',
-    shortName: 'CHN',
-    color: '#34D399',
-    solvedQuestions: 98,
-    totalQuestions: 150,
-    accuracy: 78,
-    activeUnitName: 'Epidemiology & National Health Programs',
-  },
-  {
-    id: 'obg',
-    name: 'Obstetrics & Gynaecological Nursing',
-    shortName: 'OBG',
-    color: '#FB7185',
-    solvedQuestions: 112,
-    totalQuestions: 160,
-    accuracy: 85,
-    activeUnitName: 'Antenatal Assessment & High-Risk Pregnancy',
-  },
-  {
-    id: 'chn-child',
-    name: 'Child Health Nursing (Pediatrics)',
-    shortName: 'CHN-P',
-    color: '#FBBF24',
-    solvedQuestions: 84,
-    totalQuestions: 120,
-    accuracy: 80,
-    activeUnitName: 'Growth, Development & Pediatric Emergencies',
+    solvedQuestions: 0,
+    totalQuestions: 50,
+    accuracy: 0,
+    activeUnitName: 'Complete a quiz to see your subject mastery',
   },
 ];
 
@@ -79,7 +49,7 @@ export default function WidgetManagerModal({
   targetQuestions = 50,
   streakDays,
   masteryPercent,
-  subjects = DEFAULT_NURSING_SUBJECT_STATS,
+  subjects = [],
   exams = [],
   onStartSubjectQuiz,
   onStartQuickPractice,
@@ -88,8 +58,8 @@ export default function WidgetManagerModal({
   const [showManualGuide, setShowManualGuide] = useState(false);
   const [pinnedWidgets, setPinnedWidgets] = useState<Record<string, boolean>>({});
   
-  const displaySubjects = subjects.length > 0 ? subjects : DEFAULT_NURSING_SUBJECT_STATS;
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(displaySubjects[0]?.id || 'msn');
+  const displaySubjects = subjects.length > 0 ? subjects : FALLBACK_SUBJECT_STATS;
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(displaySubjects[0]?.id || 'general');
 
   if (!open) return null;
 
@@ -102,12 +72,12 @@ export default function WidgetManagerModal({
     .map(x => ({ ...x, time: new Date(x.date).getTime() }))
     .filter(x => !isNaN(x.time) && x.time >= now)
     .sort((a, b) => a.time - b.time)[0] || exams[0] || {
-      id: 'norcet-2026',
-      title: 'NORCET Nursing Officer Exam',
-      date: '2026-09-15',
+      id: 'upcoming-exam',
+      title: 'Add an Exam Date in Dashboard',
+      date: new Date(Date.now() + 30 * 86_400_000).toISOString().split('T')[0],
       time: '09:00',
-      label: 'NORCET 2026 AIIMS',
-      subject: 'Nursing Officer Recruitment',
+      label: 'Target Exam',
+      subject: 'Exam Preparation',
       color: 'from-amber-500 to-rose-600',
     };
 

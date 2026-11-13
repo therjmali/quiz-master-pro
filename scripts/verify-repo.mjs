@@ -210,8 +210,14 @@ if (exists('.github/workflows/ci.yml')) {
   const card = read('src/components/results/ReviewCard.tsx');
   check('question card: one-line emoji header + single-line action bar', card.includes('review-card-header') && card.includes('review-card-actions') && card.includes('grid grid-cols-4'), 'card layout changed');
   const nav = read('src/components/BottomNav.tsx');
-  check('bottom tab is "Progress" (not Profile)', nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'"), 'bottom nav label');
+  const bottom = nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'");
+  check('bottom tab is "Progress" (not Profile)', bottom, 'bottom nav label');
   check('Navbar profile photo opens Settings', read('src/components/Navbar.tsx').includes('onOpenSettings'), 'missing');
+  const gFontsInSrc = ui.filter(x => /fonts\.(googleapis|gstatic)\.com/.test(x.t)).map(x => x.f);
+  check('no Google Fonts requests in src/', gFontsInSrc.length === 0, gFontsInSrc.join(', '));
+  const compPrint = ui.filter(x => /^src\/components\//.test(x.f) && /\bwindow\.print\s*\(/.test(x.t)).map(x => x.f);
+  check('no window.print() in React components (use exportSmartReport)', compPrint.length === 0, compPrint.join(', '));
+  check('MainActivity captures widget deep-link intents', act.includes('captureWidgetIntent') && act.includes('consumePendingWidgetAction'), 'missing widget intent bridge');
 }
 
 // ---------------------------------------------------------------- .gitignore hygiene
