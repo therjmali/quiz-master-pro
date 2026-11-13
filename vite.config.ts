@@ -67,6 +67,9 @@ export default defineConfig(({ command }) => ({
       '.zite-dev-sandbox.com',
       '.zite-app.com',
       '.zite-dev-app.com',
+      // preview tunnels (any host with this suffix), so the dev server can be opened from a proxy
+      '.e2b.app',
+      ...(process.env.VITE_ALLOWED_HOSTS ? process.env.VITE_ALLOWED_HOSTS.split(',').map(h => h.trim()).filter(Boolean) : []),
     ],
   },
   legacy: {

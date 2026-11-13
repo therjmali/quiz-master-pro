@@ -217,6 +217,21 @@ if (exists('.github/workflows/ci.yml')) {
   check('no Google Fonts requests in src/', gFontsInSrc.length === 0, gFontsInSrc.join(', '));
   const compPrint = ui.filter(x => /^src\/components\//.test(x.f) && /\bwindow\.print\s*\(/.test(x.t)).map(x => x.f);
   check('no window.print() in React components (use exportSmartReport)', compPrint.length === 0, compPrint.join(', '));
+  // ── one overlay architecture ──
+  const overlayUsers = ui.filter(x => /\bOverlay\b|MobilePopover/.test(x.t)).length;
+  check('overlays go through the shared Overlay/ portal component', overlayUsers >= 20, `only ${overlayUsers} files use it`);
+  const adHoc = ui.filter(x => /\bz-\[(?!\s*(var\(--qmp-z|calc\(var\(--qmp-z))/.test(x.t)).map(x => x.f);
+  check('no ad-hoc z-index values in app code (one named scale, --qmp-z-*)', adHoc.length === 0, adHoc.join(', '));
+  check('overlay layers are defined once, in index.css', /--qmp-z-nav:\s*100/.test(read('src/index.css')) && /--qmp-z-toast:\s*900/.test(read('src/index.css')), 'z scale missing');
+  check('overlay layers stay in the documented order (nav < sheet < menu < panel < dialog < blocking < toast)',
+    ['nav: 100', 'sheet: 400', 'menu: 450', 'panel: 500', 'dialog: 600', 'blocking: 800', 'toast: 900'].every(v => {
+      const [k, n] = v.split(': ');
+      return new RegExp(`--qmp-z-${k}:\\s*${n}`).test(read('src/index.css'));
+    }), 'layer order changed');
+  const strayPrint = ui.filter(x => /document\.body\.style\.overflow/.test(x.t) && !/overlayStack\.ts$/.test(x.f)).map(x => x.f);
+  check('scroll locking is refcounted in overlayStack only', strayPrint.length === 0, strayPrint.join(', '));
+  check('hardware back is handled by one chain', read('src/platform/backButton.ts').includes('export function handleBack') && read('src/main.tsx').includes('initBackButton'), 'back chain missing');
+  check('the master report template exists and is dispatched', read('src/utils/reports/pdf/generate.ts').includes('layoutMasterReport') && read('src/utils/reports/pdf/types.ts').includes("template: 'master'"), 'master template not wired');
   check('MainActivity captures widget deep-link intents', act.includes('captureWidgetIntent') && act.includes('consumePendingWidgetAction'), 'missing widget intent bridge');
 }
 
