@@ -6,7 +6,7 @@ import { docToMasterHtml } from '../src/utils/reports/pdf/masterHtml';
 import { layoutFor } from '../src/utils/reports/pdf/generate';
 import { measureText, type Face, type FontSet } from '../src/utils/reports/pdf/fontSet';
 import { buildQuestionDoc, styleFor } from '../src/utils/reports/pdf/model';
-import { docToHtml, docToText } from '../src/utils/reports/pdf/formats';
+import { docToHtml, docToText, docToWordHtml } from '../src/utils/reports/pdf/formats';
 import { markdownToBlocks } from '../src/utils/reports/pdf/markdown';
 import type { ReportItem, Page } from '../src/utils/reports/pdf/types';
 
@@ -181,4 +181,13 @@ test('master template: markdown documents (revision sheets, legacy HTML) lay out
     const widest = Math.max(...report.pages.flatMap(p => p.ops).filter(o => o.t === 'rect').map(o => o.w));
     assert.ok(widest > 400, 'markdown cards use the full content width');
   }
+});
+
+test('Word export stays on the classic page (Word cannot lay out the dashboard grid)', () => {
+  const d = doc([item(1)]);
+  const word = docToWordHtml(d, style);
+  assert.ok(word.includes('urn:schemas-microsoft-com:office:word'), 'Word namespaces present');
+  assert.ok(!word.includes('class="summary"'), 'no dashboard markup in the Word file');
+  assert.ok(!word.includes('grid-template-columns'), 'no CSS grid, which Word ignores');
+  assert.ok(word.includes('@page'), 'print setup kept');
 });
