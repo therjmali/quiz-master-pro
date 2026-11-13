@@ -1,8 +1,18 @@
 import './setup';
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { AiError, availableProviders, callProvider, saveAiClientPrefs, testProviderKey, withFallback } from '../src/platform/ai/providers';
-import { localExplainQuestion, localGenerateQuiz } from '../src/platform/ai/localEndpoints';
+import { AiError, PROVIDERS, availableProviders, callProvider, modelFor, saveAiClientPrefs, testProviderKey, withFallback } from '../src/platform/ai/providers';
+import {
+  localChatAssistant,
+  localExplainQuestion,
+  localGenerateNotes,
+  localGenerateQuiz,
+  localGenerateStudyPlan,
+  localOcrExtractQuestions,
+  localStudyStrategy,
+  localVerifyQuestion,
+} from '../src/platform/ai/localEndpoints';
+import { createStreamingCaller } from '../src/platform/ai/caller';
 import { buildQuizSystemPrompt, buildSimpleExplainPrompt } from '../src/lib/aiPrompts';
 import { saveUserApiKeys } from '../src/utils/apiKeys';
 
@@ -68,7 +78,8 @@ test('HTTP and network failures become clear, typed errors', async () => {
   await assert.rejects(run(() => ({ status: 503, text: '' })), (e: AiError) => e.code === 'unavailable');
   await assert.rejects(run(() => ({ throws: new TypeError('fetch failed') })), (e: AiError) => e.code === 'network');
   await assert.rejects(run(() => ({ json: { choices: [{ message: { content: '   ' } }] } })), (e: AiError) => e.code === 'bad_response');
-  await assert.rejects(callProvider({ provider: 'openai', key: 'K', prompt: 'x', files: [{ base64: 'AA', mimeType: 'image/png' }], fetchImpl: mockFetch(() => ({})).impl }), (e: AiError) => e.code === 'unsupported');
+  await assert.rejects(callProvider({ provider: 'cohere', key: 'K', prompt: 'x', files: [{ base64: 'AA', mimeType: 'image/png' }], fetchImpl: mockFetch(() => ({})).impl }), (e: AiError) => e.code === 'unsupported');
+  await assert.rejects(callProvider({ provider: 'openai', key: 'K', prompt: 'x', files: [{ base64: 'AA', mimeType: 'application/pdf' }], fetchImpl: mockFetch(() => ({})).impl }), (e: AiError) => e.code === 'unsupported');
 });
 
 test('saved keys are ordered by preference and disabled keys are skipped', () => {
@@ -142,4 +153,80 @@ test('shared prompts keep their contract (guards the backend/app refactor)', () 
   assert.match(buildQuizSystemPrompt('easy'), /Difficulty target: easy/);
   assert.match(buildQuizSystemPrompt('all'), /Return ONLY a valid JSON array/);
   assert.match(buildSimpleExplainPrompt('Q?', 'A'), /like I'm 5 years old/);
+});
+
+test('Anthropic default model is claude-haiku-4-5 and legacy claude-haiku-5-5 prefs self-heal', () => {
+  assert.equal(PROVIDERS.anthropic.defaultModel, 'claude-haiku-4-5');
+  saveAiClientPrefs({ preferred: 'anthropic', models: { anthropic: 'claude-haiku-5-5' } });
+  assert.equal(modelFor('anthropic'), 'claude-haiku-4-5');
+});
+
+test('on-device BYOK supports OCR, study plan, study strategy, notes, verification, and streaming chat', async () => {
+  saveUserApiKeys({ openai: 'sk-test' });
+
+  // Multimodal image OCR with OpenAI key (no Gemini key required for images)
+  const ocrMock = mockFetch(() => ({
+    json: {
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            questions: [{ question: 'Capital of Rajasthan?', options: ['Jaipur', 'Jodhpur', 'Udaipur', 'Kota'], correctAnswer: 'Jaipur', difficulty: 'easy', rationale: 'Jaipur is the state capital.' }],
+            rawText: 'Capital of Rajasthan? A) Jaipur',
+          }),
+        },
+      }],
+    },
+  }));
+  const ocr = await localOcrExtractQuestions({ imageBase64: 'YWJj', mimeType: 'image/jpeg' }, ocrMock.impl);
+  assert.equal(ocr.questions.length, 1);
+  assert.equal(ocr.questions[0].correctAnswer, 'Jaipur');
+  assert.equal(ocrMock.calls[0].body.messages[0].content[1].type, 'image_url');
+
+  // Study plan
+  const planMock = mockFetch(() => ({
+    json: {
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            plan: [{ day: 1, date: '2026-11-13', subject: 'Pharmacology', activity: '30 MCQs', duration: '2h', priority: 'high' }],
+            summary: 'Focus on Pharmacology first.',
+            tips: ['Review rationales'],
+          }),
+        },
+      }],
+    },
+  }));
+  const plan = await localGenerateStudyPlan({ weakTopics: [{ subject: 'Pharmacology', accuracy: 45, totalQuestions: 20 }], totalQuizzes: 5, averageScore: 60 }, planMock.impl);
+  assert.equal(plan.plan[0].subject, 'Pharmacology');
+
+  // Verify question with suggestedAnswer normalization
+  const verifyMock = mockFetch(() => ({
+    json: {
+      choices: [{
+        message: {
+          content: JSON.stringify({ verdict: 'incorrect', verdictText: 'Mitral valve is bicuspid.', confidence: 96, suggestedAnswer: 'mitral valve' }),
+        },
+      }],
+    },
+  }));
+  const ver = await localVerifyQuestion({ question: 'Which valve is bicuspid?', options: ['Tricuspid valve', 'Mitral valve'], markedCorrectAnswer: 'Tricuspid valve' }, verifyMock.impl);
+  assert.equal(ver.verdict, 'incorrect');
+  assert.equal(ver.suggestedAnswer, 'Mitral valve', 'normalizes case to exact option text');
+
+  // Study strategy & notes
+  const textMock = mockFetch(() => ({ json: { choices: [{ message: { content: '# Study Notes\n1) **Fact**' } }] } }));
+  const notes = await localGenerateNotes({ questions: [{ question: 'Q?', correctAnswer: 'A' }] }, textMock.impl);
+  assert.match(notes.notes, /Study Notes/);
+  const strat = await localStudyStrategy({ totalQuizzes: 5, totalQuestions: 50, correctCount: 35, wrongCount: 15, skippedCount: 0, avgAccuracy: 70, bestScore: 90, streak: 3, totalTimeSec: 600, recentTrend: 'improving' }, textMock.impl);
+  assert.ok(strat.strategy.length > 0);
+  const chat = await localChatAssistant({ message: 'How am I doing?', conversationHistory: [{ role: 'user', content: 'Hi' }] }, textMock.impl);
+  assert.ok(chat.text.length > 0);
+
+  // Streaming caller surfaces clear no_key AiError when no backend and no keys exist
+  localStorage.clear();
+  const stream = createStreamingCaller<{ message: string }, { text: string }>('chatGuest')({ message: 'Hello' });
+  await assert.rejects(
+    async () => { for await (const _chunk of stream) { void _chunk; } },
+    (e: AiError) => e.code === 'no_key' && /Settings -> AI/.test(e.message),
+  );
 });

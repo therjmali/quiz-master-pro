@@ -54,8 +54,9 @@ export default function PromptTool() {
       for await (const chunk of stream) {
         setResult(prev => prev + chunk);
       }
-    } catch {
-      setResult('❌ Failed to process. Please try again.');
+    } catch (err) {
+      const msg = err instanceof Error && err.message ? err.message : 'Failed to process. Please try again.';
+      setResult(`❌ ${msg}`);
     } finally {
       setLoading(false);
     }

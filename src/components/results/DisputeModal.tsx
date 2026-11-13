@@ -31,6 +31,7 @@ export default function DisputeModal({ question, onClose, onFixed }: Props) {
         verdict: data.verdict,
         verdictText: data.verdictText,
         confidence: data.confidence,
+        suggestedAnswer: data.suggestedAnswer,
         reason,
         timestamp: Date.now(),
       });
@@ -95,7 +96,24 @@ export default function DisputeModal({ question, onClose, onFixed }: Props) {
                 <span className="ml-auto text-xs font-bold opacity-70">{result.confidence}% confident</span>
               </div>
               <p className="text-sm leading-relaxed opacity-80">{result.verdictText}</p>
+              {result.suggestedAnswer && result.suggestedAnswer !== question.correctAnswer && (
+                <div className="mt-3 pt-2.5 border-t border-current/15 text-xs font-bold">
+                  Suggested correct answer: <span className="underline">{result.suggestedAnswer}</span>
+                </div>
+              )}
             </div>
+            {onFixed && result.suggestedAnswer && result.suggestedAnswer !== question.correctAnswer && result.verdict !== 'confirmed' && (
+              <button
+                onClick={() => {
+                  onFixed(result.suggestedAnswer!);
+                  toast.success(`Updated correct answer to "${result.suggestedAnswer}"`);
+                  onClose();
+                }}
+                className="w-full flex items-center justify-center gap-2 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/35 text-emerald-400 text-xs font-black py-2.5 rounded-xl transition-all active:scale-[0.98]"
+              >
+                ✓ Apply Suggested Answer
+              </button>
+            )}
             <button onClick={onClose}
               className="w-full text-xs font-bold text-foreground/40 hover:text-foreground/70 py-2 transition-colors">
               Close

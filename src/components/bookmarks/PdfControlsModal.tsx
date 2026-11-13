@@ -16,6 +16,7 @@ import {
 import { ExportFormat } from '../../utils/reports/reportData';
 import SmartPreviewModal from '../reports/SmartPreviewModal';
 import { ReportPreviewData } from '../reports/ReportPreviewPage';
+import { hasBackend } from '../../platform/ai/caller';
 import { generateBookmarksPdf } from 'zitejs/api';
 
 interface Props {
@@ -69,38 +70,43 @@ export default function PdfControlsModal({ open, onClose, bookmarks, title, onOp
       const opts = currentOptsRef.current;
 
       if (fmt === 'pdf') {
-        try {
-          toast.info('Generating PDF…');
-          const bms = items.map(b => ({
-            question: b.question,
-            options: b.options,
-            correctAnswer: b.correctAnswer,
-            userAnswer: b.userAnswer,
-            rationale: b.rationale,
-            aiRationale: (b as any).aiRationale || undefined,
-            difficulty: b.difficulty,
-            questionType: b.questionType,
-            quizTitle: b.quizTitle,
-            subject: b.subject,
-          }));
-          const { url } = await generateBookmarksPdf({
-            bookmarks: bms,
-            title,
-            showAnswers: opts.showAnswers,
-            showBookRationale: opts.showBookRat,
-            showAiRationale: opts.showAiRat,
-            difficultyFilter: opts.difficultyFilter,
-          });
-          const a = document.createElement('a');
-          a.href = url;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          a.click();
-          toast.success('📄 PDF downloaded!');
-        } catch {
-          const html = editedHtml || previewHtml;
+        const html = editedHtml || previewHtml;
+        if (!hasBackend()) {
           exportSmartReport(html, 'pdf', `${fname}.pdf`);
           toast.success('📄 PDF downloaded!');
+        } else {
+          try {
+            toast.info('Generating PDF…');
+            const bms = items.map(b => ({
+              question: b.question,
+              options: b.options,
+              correctAnswer: b.correctAnswer,
+              userAnswer: b.userAnswer,
+              rationale: b.rationale,
+              aiRationale: (b as any).aiRationale || undefined,
+              difficulty: b.difficulty,
+              questionType: b.questionType,
+              quizTitle: b.quizTitle,
+              subject: b.subject,
+            }));
+            const { url } = await generateBookmarksPdf({
+              bookmarks: bms,
+              title,
+              showAnswers: opts.showAnswers,
+              showBookRationale: opts.showBookRat,
+              showAiRationale: opts.showAiRat,
+              difficultyFilter: opts.difficultyFilter,
+            });
+            const a = document.createElement('a');
+            a.href = url;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
+            a.click();
+            toast.success('📄 PDF downloaded!');
+          } catch {
+            exportSmartReport(html, 'pdf', `${fname}.pdf`);
+            toast.success('📄 PDF downloaded!');
+          }
         }
       } else if (fmt === 'doc') {
         const html = editedHtml || previewHtml;

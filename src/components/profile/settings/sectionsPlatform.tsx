@@ -275,7 +275,9 @@ export const DataSection = memo(function DataSection({ open, onToggle, onOpenTab
           <ul className="space-y-1.5 py-2 max-h-72 overflow-y-auto">
             {trash.map(t => {
               const key = resultKey(t.result); const left = daysLeft(t.deletedAt);
-              const title = (t.result.quizData as { title?: string } | undefined)?.title || 'Untitled quiz';
+              const firstQ = Array.isArray(t.result.quizData) ? t.result.quizData[0]?.question : undefined;
+              const legacyTitle = !Array.isArray(t.result.quizData) ? (t.result.quizData as { title?: string } | undefined)?.title : undefined;
+              const title = t.result.quizTitle || t.result.subject || legacyTitle || firstQ || 'Untitled quiz';
               return (
                 <li key={key} className="rounded-xl border border-border bg-foreground/[0.03] px-3 py-2">
                   <p className="text-[12px] font-bold text-foreground truncate">{title}</p>

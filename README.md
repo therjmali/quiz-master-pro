@@ -42,14 +42,14 @@ emulator, including a cold start in airplane mode. Each release lists the file's
 - **Account & cloud sync** — optional sign-in (Supabase) that keeps history, library, bookmarks, mistakes, flashcards and settings identical across devices, with a safe first-sign-in choice, restore points and a readable sync log. [Setup guide](docs/CLOUD_SETUP.md).
 - **Automatic backups** — scheduled, checksummed snapshots with rotation, restore (with a safety copy), export to file and import.
 - **Smart reminders** — real Android notifications for daily study, due cards, streak saver, exam countdown and a weekly summary, with quiet hours.
-- **AI on your device** — bring your own Gemini, Claude, OpenAI or Cohere key; quiz generation and explanations run directly from the device.
-- **Data & Trash** — deleted quiz results are restorable for 30 days (and sync), storage meter, data check.
-- **App icon & device** — custom app icon and install controls.
-- **Reports** — *Progress* and the results screen make PDF / Word / text / web reports on your device (no internet, no server) in a clean numbered Q&A format with explanations, one or two columns, preview full screen, saved to Downloads / R.J QUIZ with a notification. Tune them in *Settings → Reports & downloads*.
+- **AI on your device** — bring your own Gemini, Claude, OpenAI or Cohere key; quiz generation, AI tutor chat, photo-to-quiz OCR, 7-day study plans, revision notes, question verification and explanations all run directly from your device with no server.
+- **Data & Trash** — deleted library items and quiz results are restorable for 30 days (and sync), storage meter, data check.
+- **App icon, widgets & device** — custom app icon, install controls, and 4 Android home-screen widgets (Study Stats, Quick Actions, Subject Mastery, Exam Countdown) wired to your live data.
+- **Reports** — *Progress*, *Notes*, *Bookmarks* and the results screen make PDF / Word / text / web reports on your device (no internet, no server) in a clean numbered Q&A format with explanations, one or two columns, preview full screen, saved to Downloads / R.J QUIZ with a notification. Tune them in *Settings → Reports & downloads*.
 - **Drafts** — leaving a quiz saves it (last 5, one per quiz) and drafts sync to your other devices; the full question data of finished quizzes syncs too, so every device can open every quiz.
 - **In-app updates** — *Settings → App updates* downloads the new APK inside the app with live progress, verifies it and opens Android's installer. No browser, no manual download.
 - **Progress** — the bottom *Progress* tab is your lifetime score, report and overview, with a rank meter and live cloud / backup / storage / app status. Everything else lives in **Settings**, opened from your profile photo at the top right.
-- **Still backend-only:** photo-to-quiz OCR and e-mailed reports (PDF reports are now made on the device).
+- **Optional legacy backend only:** e-mailed reports (`emailQuizReport`). Everything else works standalone in the PWA and APK.
 
 ### Works offline vs. needs a connection
 
@@ -58,11 +58,11 @@ IndexedDB / localStorage on your device.
 
 | Works with no network | Needs internet | Needs the optional legacy backend |
 | --- | --- | --- |
-| Opening and installing the app, all screens, fonts and icons | Cloud sync and sign-in (Supabase) | Photo-to-quiz OCR |
-| Taking quizzes from imported or pasted question sets | AI generation and explanations (your own key, straight to your provider) | PDF and e-mailed reports |
-| History, bookmarks, flashcards, spaced repetition, analytics, calendar | | |
-| Notes, automatic backups, export and import, trash and restore | | |
-| Android reminders and notifications | | |
+| Opening and installing the app, all screens, fonts and icons | Cloud sync and sign-in (Supabase) | E-mailed reports |
+| Taking quizzes from imported or pasted question sets (incl. RFC-4180 CSV) | AI tutor, quiz generation, photo OCR, study plans & explanations (your own key, straight to your provider) | |
+| History, bookmarks, flashcards, spaced repetition, analytics, calendar | Checking for / downloading in-app APK updates (GitHub Releases) | |
+| PDF / Word / HTML / text reports, notes, automatic backups, export/import, trash & restore | | |
+| Android reminders, notifications and home-screen widgets | | |
 
 Without an AI key or a cloud project, those features simply say what is needed; nothing else is affected.
 

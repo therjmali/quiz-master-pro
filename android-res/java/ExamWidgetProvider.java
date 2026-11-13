@@ -26,10 +26,10 @@ public class ExamWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences("rj_widget_prefs", Context.MODE_PRIVATE);
         String raw = prefs.getString("widget_data", null);
 
-        String title = "NORCET Nursing Officer Exam";
-        String examDate = "Upcoming";
-        String daysLeftStr = "Target";
-        String paceStr = "⚡ Target: 50 Qs / day";
+        String title = "Upcoming Exam";
+        String examDate = "Not set";
+        String daysLeftStr = "Set Date";
+        String paceStr = "⚡ Tap to schedule your exam";
 
         if (raw != null) {
             try {

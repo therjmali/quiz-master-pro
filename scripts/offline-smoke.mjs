@@ -93,6 +93,9 @@ try {
   step(await rootHasContent(page), 'offline: deep link renders the app');
   await page.screenshot({ path: path.join(OUT, '03-offline-deeplink.png') });
 
+  step(remote.size === 0, 'zero remote HTTP origins contacted during offline smoke', [...remote].join(', ') || 'none');
+  step(pageErrors.length === 0, 'zero uncaught page errors during offline smoke', pageErrors.length ? [...new Set(pageErrors)].slice(0, 3).join(' | ') : 'none');
+
   console.log(`INFO  remote origins contacted: ${[...remote].join(', ') || 'none'}`);
   console.log(`INFO  uncaught page errors: ${pageErrors.length}${pageErrors.length ? ` -> ${[...new Set(pageErrors)].slice(0, 3).join(' | ')}` : ''}`);
 } catch (e) {

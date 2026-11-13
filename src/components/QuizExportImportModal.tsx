@@ -11,6 +11,8 @@ import { QuizQuestion, QuizResult } from '../types/quiz';
 import { loadFileTree, createFile, findDuplicateFile, ROOT_ID, FileNode, getAllFiles } from '../utils/fileTree';
 import { localOfflineParser, toMcqText, MCQ_SAMPLE } from '../utils/quizParser';
 import { parseCSVText, autoMapColumns, validateAndConvert } from '../utils/csvParser';
+import { loadFullResults } from '../utils/reports/loadFull';
+import { storeQuizDetail } from '../hooks/useHistorySync';
 import { getQuizDetail } from 'zitejs/api';
 import { useAuth } from 'zitejs/auth';
 
@@ -217,12 +219,15 @@ function ExportPanel({ history, selectedQuiz, onClose, fetchFullDetail, isLogged
       setExporting(true);
       setExportProgress('Preparing data…');
       try {
-        // Fetch full data from server for quizzes that only have summaries
+        // First hydrate from local IndexedDB detail shards (qd:YYYY-MM / qmp_detail_*)
+        const { results: locallyHydrated } = await loadFullResults(selectedQuizzes);
+
+        // Fetch full data from server for quizzes that still only have summaries
         const fullQuizzes: QuizResult[] = [];
         let fetchedCount = 0;
-        const needsFetch = selectedQuizzes.filter(r => (!r.quizData || r.quizData.length === 0) && r.id);
+        const needsFetch = locallyHydrated.filter(r => (!r.quizData || r.quizData.length === 0) && r.id);
 
-        for (const r of selectedQuizzes) {
+        for (const r of locallyHydrated) {
           if ((!r.quizData || r.quizData.length === 0) && r.id && fetchFullDetail && isLoggedIn) {
             fetchedCount++;
             setExportProgress(`Fetching quiz ${fetchedCount}/${needsFetch.length}…`);
@@ -304,25 +309,26 @@ function ExportPanel({ history, selectedQuiz, onClose, fetchFullDetail, isLogged
       return;
     }
 
-    // Non-JSON formats: question-only (existing behavior)
-    const allQuestions = selectedQuizzes.flatMap(r => {
+    // Non-JSON formats: hydrate from local detail shards first so sharded quizzes export cleanly offline
+    const { results: hydratedSelected } = await loadFullResults(selectedQuizzes);
+    const allQuestions = hydratedSelected.flatMap(r => {
       let qs = r.quizData || [];
       if (!includeRationale) qs = qs.map(q => ({ ...q, rationale: undefined }));
       return qs;
     });
 
     if (allQuestions.length === 0) {
-      toast.error('Selected quizzes have no question data. Sign in to fetch full data.');
+      toast.error('Selected quizzes have no question data on this device.');
       return;
     }
 
-    const title = selectedQuizzes.length === 1
-      ? selectedQuizzes[0].quizTitle || 'Quiz Export'
-      : `${selectedQuizzes.length} Quizzes Export`;
+    const title = hydratedSelected.length === 1
+      ? hydratedSelected[0].quizTitle || 'Quiz Export'
+      : `${hydratedSelected.length} Quizzes Export`;
     const dateStr = new Date().toISOString().split('T')[0];
 
     if (format === 'quizpkg') {
-      const files = selectedQuizzes
+      const files = hydratedSelected
         .filter(r => r.quizData?.length > 0)
         .map(r => ({
           id: `exp_${r.timestamp}`,
@@ -704,6 +710,14 @@ function ImportPanel({ onStartQuiz, onClose, onImportToHistory, isLoggedIn }: {
     if (onImportToHistory) {
       setImportingToHistory(true);
       try {
+        await Promise.all(
+          importedResults
+            .filter(r => Array.isArray(r.quizData) && r.quizData.length > 0)
+            .flatMap(r => [
+              storeQuizDetail(String(r.timestamp), r),
+              ...(r.id ? [storeQuizDetail(String(r.id), r)] : []),
+            ]),
+        );
         onImportToHistory(importedResults);
         toast.success(`✅ Imported ${importedResults.length} quizzes locally`);
         onClose();

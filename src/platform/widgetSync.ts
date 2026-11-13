@@ -48,6 +48,12 @@ interface NativeWidgetBridge {
   updateWidgetData?: (json: string) => void;
   isPinWidgetSupported?: () => boolean;
   requestPinWidget?: (widgetType: string) => boolean;
+  consumePendingWidgetAction?: () => string | null;
+}
+
+export interface WidgetIntentAction {
+  action: 'quick-quiz' | 'open-subject' | 'open-exam' | string;
+  subject?: string | null;
 }
 
 interface QmNativePluginType {
@@ -134,4 +140,40 @@ export function updateNativeWidgets(stats: WidgetStats): void {
   } catch {
     // best-effort
   }
+}
+
+/** Listen for home screen widget taps (both cold start and warm resume). */
+export function subscribeWidgetActions(handler: (evt: WidgetIntentAction) => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const win = window as unknown as {
+    __qmWidgetAction?: (payload: WidgetIntentAction | string) => void;
+  };
+
+  const dispatch = (raw: WidgetIntentAction | string | null | undefined) => {
+    if (!raw) return;
+    try {
+      const parsed: WidgetIntentAction = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (parsed && typeof parsed.action === 'string') {
+        handler(parsed);
+      }
+    } catch {
+      // ignore malformed payload
+    }
+  };
+
+  win.__qmWidgetAction = (payload) => {
+    try { getBridge()?.consumePendingWidgetAction?.(); } catch {}
+    dispatch(payload);
+  };
+
+  try {
+    const pending = getBridge()?.consumePendingWidgetAction?.();
+    if (pending) dispatch(pending);
+  } catch {
+    // ignore
+  }
+
+  return () => {
+    if (win.__qmWidgetAction) delete win.__qmWidgetAction;
+  };
 }

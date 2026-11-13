@@ -121,3 +121,21 @@ test('deleting a backup removes it from the list and the store', async () => {
   assert.equal((await listBackups()).length, 0);
   assert.equal((await verifyBackup(m!.id)).ok, false);
 });
+
+test('restoring a backup resets absent library_tree and localStorage sections cleanly', async () => {
+  const snapshot = await createBackup('manual');
+  const { saveFileTree, initFileTreeStore } = await import('../src/utils/fileTree');
+  saveFileTree({
+    id: 'root',
+    name: 'Home',
+    type: 'folder',
+    createdAt: 1,
+    updatedAt: 1,
+    children: [{ id: 'f1', name: 'Added Later', type: 'folder', children: [], createdAt: 2, updatedAt: 2 }],
+  });
+  localStorage.setItem('qmp_pinned', JSON.stringify(['p1']));
+  await restoreBackup(snapshot!.id);
+  assert.equal(localStorage.getItem('qmp_pinned'), null, 'absent localStorage section cleared');
+  const tree = await initFileTreeStore();
+  assert.equal(tree.children?.length ?? 0, 0, 'library_tree added after snapshot is cleared on explicit restore');
+});

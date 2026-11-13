@@ -24,6 +24,7 @@ import GestureShortcutsPanel from '../../GestureShortcutsPanel';
 import { SettingsSection, SettingRow, SubHeading, Toggle, LinkRow } from './controls';
 import { AiProvidersPanel } from './sectionsPlatform';
 import { hasBackend } from '../../../platform/ai/caller';
+import { useAccount } from '../../../platform/cloud/useAccount';
 import type { SectionProps } from './sectionsA';
 
 export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'awards' | 'notes';
@@ -64,8 +65,10 @@ const DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 export const NotificationsSection = memo(function NotificationsSection({ open, onToggle, markDirty }: SectionProps & { markDirty: Dirty }) {
-  const { user } = useAuth();
-  const [email, setEmail] = useState(() => getPreferredEmail(user?.email));
+  const { user: ziteUser } = useAuth();
+  const account = useAccount();
+  const accountEmail = account.email || ziteUser?.email;
+  const [email, setEmail] = useState(() => getPreferredEmail(accountEmail));
   const [savedEmail, setSavedEmail] = useState(email);
   const [weekly, setWeekly] = useState(getWeeklyEmailEnabled);
   const [sending, setSending] = useState(false);
@@ -113,11 +116,11 @@ export const NotificationsSection = memo(function NotificationsSection({ open, o
                 {dirtyEmail ? 'Save' : <Check className="w-4 h-4" />}
               </button>
             </div>
-            {user?.email && savedEmail && savedEmail !== user.email && (
+            {accountEmail && savedEmail && savedEmail !== accountEmail && (
               <p className="text-[11px] text-foreground/45">
-                Custom address · sign-in is {user.email}.{' '}
+                Custom address · sign-in is {accountEmail}.{' '}
                 <button type="button" className="font-bold text-primary hover:underline"
-                  onClick={() => { setPreferredEmail(user.email!); setEmail(user.email!); setSavedEmail(user.email!); markDirty(); toast.success('Using your sign-in email'); }}>
+                  onClick={() => { setPreferredEmail(accountEmail); setEmail(accountEmail); setSavedEmail(accountEmail); markDirty(); toast.success('Using your sign-in email'); }}>
                   Use sign-in email
                 </button>
               </p>

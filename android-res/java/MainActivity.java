@@ -23,6 +23,19 @@ public class MainActivity extends BridgeActivity {
 
     /** Overlap of the system bars with the WebView, in dp: {top, right, bottom, left}. */
     private volatile int[] insetsDp = new int[] {0, 0, 0, 0};
+    private volatile String pendingWidgetAction = null;
+
+    private void captureWidgetIntent(Intent intent) {
+        if (intent == null) return;
+        String action = intent.getStringExtra("rj_action");
+        if (action == null || action.isEmpty()) return;
+        String subject = intent.getStringExtra("rj_subject");
+        intent.removeExtra("rj_action");
+        intent.removeExtra("rj_subject");
+        String payload = "{\"action\":" + q(action) + ",\"subject\":" + q(subject) + "}";
+        pendingWidgetAction = payload;
+        js("if(window.__qmWidgetAction){window.__qmWidgetAction(" + payload + ");}");
+    }
 
     /**
      * Measures how much of the WebView is covered by the status / navigation bars (edge-to-edge) and
@@ -97,6 +110,14 @@ public class MainActivity extends BridgeActivity {
         public String getInsets() {
             int[] i = insetsDp;
             return "{\"top\":" + i[0] + ",\"right\":" + i[1] + ",\"bottom\":" + i[2] + ",\"left\":" + i[3] + "}";
+        }
+
+        /** Returns and clears any pending widget click action (cold start from home screen widget). */
+        @JavascriptInterface
+        public String consumePendingWidgetAction() {
+            String p = pendingWidgetAction;
+            pendingWidgetAction = null;
+            return p;
         }
 
         /* ── Reports: save to Downloads/R.J QUIZ, open, share (all local) ── */
@@ -208,6 +229,8 @@ public class MainActivity extends BridgeActivity {
         getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
             @Override public void onGlobalLayout() { measureInsets(); }
         });
+
+        captureWidgetIntent(getIntent());
     }
 
     @Override
@@ -220,5 +243,6 @@ public class MainActivity extends BridgeActivity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        captureWidgetIntent(intent);
     }
 }

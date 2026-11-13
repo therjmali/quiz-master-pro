@@ -25,35 +25,48 @@ export interface RowError {
 }
 
 /**
- * Parse CSV text into headers and rows.
- * Handles quoted fields with commas inside.
+ * Parse CSV text into headers and rows (RFC 4180 compliant).
+ * Handles UTF-8 BOM, CRLF/LF line endings, escaped double-quotes (""), and multiline quoted fields.
  */
 export function parseCSVText(text: string): CSVParseResult {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return { headers: [], rows: [], totalRows: 0 };
+  const clean = String(text ?? '').replace(/^\uFEFF/, '');
+  if (!clean.trim()) return { headers: [], rows: [], totalRows: 0 };
 
-  const parseLine = (line: string): string[] => {
-    const result: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
-        else inQuotes = !inQuotes;
-      } else if (ch === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
+  const records: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < clean.length; i++) {
+    const ch = clean[i];
+    if (ch === '"') {
+      if (inQuotes && clean[i + 1] === '"') {
+        field += '"';
+        i++;
       } else {
-        current += ch;
+        inQuotes = !inQuotes;
       }
+    } else if (ch === ',' && !inQuotes) {
+      row.push(field.trim());
+      field = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+      if (ch === '\r' && clean[i + 1] === '\n') i++;
+      row.push(field.trim());
+      field = '';
+      if (row.some(cell => cell.length > 0)) records.push(row);
+      row = [];
+    } else {
+      field += ch;
     }
-    result.push(current.trim());
-    return result;
-  };
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field.trim());
+    if (row.some(cell => cell.length > 0)) records.push(row);
+  }
 
-  const headers = parseLine(lines[0]);
-  const rows = lines.slice(1).filter(l => l.trim()).map(parseLine);
+  if (records.length < 2) return { headers: [], rows: [], totalRows: 0 };
+
+  const [headers, ...rows] = records;
   return { headers, rows, totalRows: rows.length };
 }
 

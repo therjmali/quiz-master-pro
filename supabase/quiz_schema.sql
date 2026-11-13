@@ -151,6 +151,7 @@ declare
   incoming   jsonb;
   val        jsonb;
   sz         integer;
+  old_sz     integer;
   h          text;
   existing   text;
   total      bigint;
@@ -169,6 +170,13 @@ begin
     return jsonb_build_object('conflict', true) || public._quiz_sync_payload(uid, d.version, d.updated_at, null);
   end if;
 
+  foreach k in array coalesce(p_deletions, '{}') loop
+    if k ~ '^[A-Za-z0-9._:-]{1,80}$' then
+      delete from public.quiz_sync_sections where user_id = uid and key = k;
+      if found then applied := applied || ('-' || k); end if;
+    end if;
+  end loop;
+
   select coalesce(sum(octet_length(value::text)), 0), count(*)
     into total, n_sections from public.quiz_sync_sections where user_id = uid;
 
@@ -185,7 +193,9 @@ begin
       rejected := rejected || jsonb_build_object('key', k, 'reason', 'section_too_large'); continue;
     end if;
     h := md5(val::text);
-    select hash into existing from public.quiz_sync_sections where user_id = uid and key = k;
+    select hash, octet_length(value::text)
+      into existing, old_sz
+      from public.quiz_sync_sections where user_id = uid and key = k;
     if existing = h then continue; end if;
     if existing is null then
       if n_sections >= max_count then
@@ -195,20 +205,18 @@ begin
         rejected := rejected || jsonb_build_object('key', k, 'reason', 'account_quota_exceeded'); continue;
       end if;
       n_sections := n_sections + 1;
+      total := total + sz;
+    else
+      if total - coalesce(old_sz, 0) + sz > max_account then
+        rejected := rejected || jsonb_build_object('key', k, 'reason', 'account_quota_exceeded'); continue;
+      end if;
+      total := total - coalesce(old_sz, 0) + sz;
     end if;
-    total := total + sz;
     insert into public.quiz_sync_sections (user_id, key, value, hash, updated_at, device_id)
     values (uid, k, val, h, now(), p_device_id)
     on conflict (user_id, key) do update
       set value = excluded.value, hash = excluded.hash, updated_at = now(), device_id = excluded.device_id;
     applied := applied || k;
-  end loop;
-
-  foreach k in array coalesce(p_deletions, '{}') loop
-    if k ~ '^[A-Za-z0-9._:-]{1,80}$' then
-      delete from public.quiz_sync_sections where user_id = uid and key = k;
-      if found then applied := applied || ('-' || k); end if;
-    end if;
   end loop;
 
   if coalesce(array_length(applied, 1), 0) = 0 then

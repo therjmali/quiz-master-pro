@@ -5,14 +5,14 @@ import { cn } from '../lib/utils';
 
 import './markdown.css';
 
-// Runs before rehype-raw: remove any raw HTML nodes that aren't <mark> tags.
+// Runs before rehype-raw: remove any raw HTML nodes that aren't attribute-free <mark> or </mark> tags.
 function rehypeAllowOnlyMark() {
   return (tree: any) => {
     const filter = (node: any) => {
       if (!node.children) return;
       node.children = node.children.filter((child: any) => {
         if (child.type === 'raw') {
-          return /^<\/?mark(\s[^>]*)?>$/i.test(child.value.trim());
+          return /^<\/?mark>$/i.test(child.value.trim());
         }
         filter(child);
         return true;
