@@ -17,7 +17,7 @@ export const ICON_COLORS = {
   bookFill: '#ede9fe', bookLine: '#6d28d9', robotFill: '#cffafe', robotLine: '#0e7490',
 };
 
-const circle = (cx: number, cy: number, r: number, fill: string): Op => ({ t: 'rect', x: cx - r, y: cy - r, w: 2 * r, h: 2 * r, r, fill });
+const circle = (cx: number, cy: number, r: number, fill: string): Op => ({ t: 'circle', x: cx, y: cy, r, fill });
 const seg = (x1: number, y1: number, x2: number, y2: number, w: number, color: string): Op => ({ t: 'line', x1, y1, x2, y2, w, color, cap: 'round' });
 
 const check = (cx: number, cy: number, r: number, w: number, color: string): Op[] => [

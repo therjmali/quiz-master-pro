@@ -112,7 +112,7 @@ for (const [label,w,h,expectRows] of [['phone landscape 800x360',800,360,1],['ta
   await page.evaluate(()=>window.scrollTo(0,0)); await page.waitForTimeout(300);
   await page.screenshot({path:`${SHOTS}/qa_results_${w}x${h}.png`});
   // button actions work
-  const share=page.getByRole('button',{name:'Share'}); if(await share.count()){ await share.first().click(); await page.waitForTimeout(700); ok(`Share opens — ${label}`, await page.evaluate(()=>/Share|Download|Copy/i.test(document.body.innerText)&&!!document.querySelector('[class*="fixed"]')) ); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
+  const share=page.getByRole('button',{name:'Share'}); if(await share.count()){ await share.first().click(); await page.waitForTimeout(700); ok(`Share opens — ${label}`, await page.evaluate(()=>/Share|Download|Copy/i.test(document.body.innerText)&&!!document.querySelector('[class*="fixed"],.qmp-overlay,[role="dialog"]')) ); await page.keyboard.press('Escape'); await page.waitForTimeout(300); }
   ok(`no JS errors — results ${label}`, errs.length===0, errs.join(' | ').slice(0,300));
   await ctx.close();
 }

@@ -108,7 +108,7 @@ npm run test:offline   # real-Chrome test: install SW, go offline, reload, deep 
 | --- | --- |
 | `npm run verify:repo` | Checks required files, manifest and icon dimensions, Android resources, workflows, `.gitignore`, and scans for leaked secrets |
 | `npm run verify:dist` | Checks the build: no remote scripts/styles, SPA fallback, precache covers every file, service worker stamped |
-| `npm run test:ui:v211` | Real-Chrome test of widgets in Settings, Light/Dark, the AI switch, the preview answer toggle and a Light-vs-Dark text audit (after `npm run build`) |
+| `npm run test:ui:v32` | Real-Chrome test of widgets in Settings, Light/Dark, the AI switch, the preview answer toggle and a Light-vs-Dark text audit (after `npm run build`) |
 | `npm run test:offline` | Headless Chrome offline test, screenshots in `test-results/` |
 | `scripts/android-prepare.sh` | Generates the native project, branding, version numbers |
 | `scripts/verify-apk.sh` | Static APK inspection (used by CI) |

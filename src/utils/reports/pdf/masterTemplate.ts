@@ -20,6 +20,8 @@ import { measureText, type FontSet } from './fontSet';
 import { PAPER, wrapSpans, type Span } from './layout';
 import type { Block } from './markdown';
 import type { LaidOutReport, Op, Page, ReportDoc, ReportItem, ReportStyle } from './types';
+import { levelOf, markedOptions, rationaleBullets } from './cardModel';
+import { decorOps } from './icons';
 
 /* ───────────────────────────── design tokens ───────────────────────────── */
 
@@ -37,7 +39,7 @@ const T = {
   optBd: 'rgba(17,24,39,0.09)',
   okBg: '#F0FDF4', okBd: '#BBF7D0', okInk: '#15803D', okPill: '#DCFCE7',
   noBg: '#FEF2F2', noBd: '#FECACA', noInk: '#B91C1C', noPill: '#FEE2E2',
-  skBg: '#FFFBEB', skBd: '#FDE68A', skInk: '#B45309', skPill: '#FEF3C7',
+  skBg: '#FEFCE8', skBd: '#FEF08A', skInk: '#A16207', skPill: '#FEF9C3',
   exBg: '#F5F3FF', exBd: '#DDD6FE', exInk: '#6D28D9', exText: '#4B5563', aiInk: '#0E7490',
   gold: '#F2B233',
 } as const;
@@ -258,126 +260,91 @@ function statsBar(doc: ReportDoc, set: FontSet, pageW: number, y: number): { ops
 
 /* ───────────────────────────── question card ───────────────────────────── */
 
-const optionH = (lines: number, f: number, sc: Scale) => Math.max(15 * sc, lines * f * 1.3 + 7 * sc);
-
+/**
+ * One question as a status card:
+ *   [status icon] Q1. [difficulty dot] question text
+ *   (A) option                      (B) option  ✓      <- green check on the answer of attempted questions
+ *   ─────────── divider ───────────
+ *   📖 • rationale bullet            (original bullets only, no text label)
+ * Icons are vector shapes (the bundled fonts have no emoji), so the PDF and the preview match exactly.
+ */
 function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: number, sc: Scale, maxH = Infinity, attempt = 0): { ops: Op[]; h: number } {
   const st = STATUS[it.status] ?? STATUS.unknown;
   const ops: Op[] = [];
-  const innerW = colW - PAD * 2;
-  const fQ = 7.7 * sc, fOpt = 6.9 * sc, fAns = 7 * sc, fEx = 6.5 * sc, fPill = 5.3 * sc;
-  const showAnswers = style.answers === 'inline';
+  const fQ = 7.7 * sc, fOpt = 6.9 * sc, fEx = 6.5 * sc;
+  const inline = style.answers === 'inline';
+  const hasIcon = it.status === 'correct' || it.status === 'wrong' || it.status === 'skipped';
+  const R = fQ * 0.62;
+  const textX = PAD + (hasIcon ? R * 2 + 5 * sc : 0);
+  const rightEdge = colW - PAD;
 
-  /* head: number badge + question text + status pill */
-  const pillH = fPill + 7 * sc;
-  const pillW = wOf(set, st.label, true, fPill) + 20;
-  const numW = 15 * sc;
-  const textX = PAD + numW + 6;
-  const textW = colW - PAD - pillW - 6 - textX;
-  const qLines = wrap(set, (it.question || '').trim() || '(no question text)', textW, fQ, true, 60);
-  const headTop = PAD * 0.55;
+  /* head */
+  const lvl = levelOf(it.difficulty);
+  const label = `Q${it.n}.`;
+  const labelW = wOf(set, label, true, fQ);
+  const dotR = fQ * 0.3, dotGap = fQ * 0.32;
+  const spaceW = Math.max(0.1, wOf(set, ' ', false, fQ));
+  const spacer = ' '.repeat(lvl ? Math.max(1, Math.ceil((dotR * 2 + dotGap * 2) / spaceW)) : 1);
+  const spans: Span[] = [{ text: label, bold: true, color: T.ink }, { text: spacer + ((it.question || '').trim() || '(no question text)'), bold: false, color: T.ink }];
+  let qLines = wrapSpans(spans, Math.max(20, rightEdge - textX), fQ, set);
+  if (qLines.length > 60) { qLines = qLines.slice(0, 60); const last = qLines[59]; if (last.length) last[last.length - 1] = { ...last[last.length - 1], text: last[last.length - 1].text + '…' }; }
+  const headTop = PAD * 0.8;
+  const base0 = headTop + fQ * 0.95;
+  qLines.forEach((line, li) => {
+    let x = textX;
+    const by = base0 + li * fQ * 1.32;
+    for (const sp of line) {
+      if (sp.text === '') continue;
+      ops.push(txt(x, by, sp.text, { bold: sp.bold, size: fQ, color: sp.color ?? T.ink }));
+      x += wOf(set, sp.text, sp.bold, fQ);
+    }
+  });
+  const cy0 = base0 - fQ * 0.36;
+  if (hasIcon) ops.push(...decorOps({ k: 'status', status: it.status as 'correct' | 'wrong' | 'skipped', cx: PAD + R, r: R }, 0, cy0));
+  if (lvl) ops.push(...decorOps({ k: 'diff', level: lvl, cx: textX + labelW + dotGap + dotR, r: dotR }, 0, cy0));
+  let y = base0 + (qLines.length - 1) * fQ * 1.32 + fQ * 0.5 + 6 * sc;
 
-  ops.push(box(PAD, headTop, numW, numW, { fill: T.white, stroke: st.bd, sw: 0.9, r: 3.6 }));
-  const nStr = String(it.n);
-  ops.push(txt(PAD + (numW - wOf(set, nStr, true, fQ)) / 2, headTop + numW / 2 + fQ * 0.36, nStr, { bold: true, size: fQ, color: st.ink }));
-  // one line sits level with the badge; several lines start at its top edge and grow downwards
-  const firstBaseline = qLines.length <= 1 ? headTop + numW / 2 + fQ * 0.36 : headTop + fQ * 0.95;
-  qLines.forEach((ln, i) => ops.push(txt(textX, firstBaseline + i * fQ * 1.32, ln, { bold: true, size: fQ, color: T.ink })));
-  ops.push(...pill(set, colW - PAD - pillW, headTop, st.label, { fill: st.pill, ink: st.ink, size: fPill, h: pillH, withDot: true }));
-
-  const headBottom = Math.max(
-    headTop + numW,
-    firstBaseline + (qLines.length - 1) * fQ * 1.32 + fQ * 0.34,
-    headTop + pillH,
-  );
-  let y = headBottom + 9 * sc;
-
-  /* options: 2-up when every option is short enough, else 1-up */
+  /* options: a list, green check on the right */
   const opts = it.options ?? [];
-  const idxOf = (t: string) => opts.findIndex(o => o.trim() === String(t ?? '').trim());
-  const short = opts.length > 0 && opts.length <= 4 && opts.every(o => wOf(set, o, false, fOpt) < (innerW - 9) / 2 - 34);
-  const twoUp = short && opts.length >= 2;
-  const cellW = twoUp ? (innerW - 9) / 2 : innerW;
+  const marks = markedOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
+  const markR = fOpt * 0.5;
+  const markW = marks.ok.some(Boolean) || marks.no.some(Boolean) ? markR * 2 + 8 : 0;
+  const optX = textX + 3;
+  const hang = wOf(set, '(A) ', true, fOpt);
+  const optLH = fOpt * 1.34;
+  opts.forEach((o, i) => {
+    const lines = wrap(set, o || '—', Math.max(20, rightEdge - optX - hang - markW), fOpt, false, 24);
+    const base = y + fOpt * 0.95;
+    ops.push(txt(optX, base, `(${LETTER(i)})`, { bold: true, size: fOpt, color: T.ink }));
+    lines.forEach((ln, li) => ops.push(txt(optX + hang, base + li * optLH, ln, { size: fOpt, color: T.ink2 })));
+    if (marks.ok[i] || marks.no[i]) ops.push(...decorOps({ k: 'mark', mark: marks.ok[i] ? 'ok' : 'no', cx: rightEdge - markR, r: markR }, 0, base - fOpt * 0.36));
+    y += Math.max(1, lines.length) * optLH + 1.5 * sc;
+  });
 
-  const drawOption = (i: number, x: number, yy: number, w: number, h: number) => {
-    const lines = wrap(set, opts[i] || '—', w - 34, fOpt, false, 24);
-    ops.push(box(x, yy, w, h, { fill: T.optBg, stroke: T.optBd, sw: 0.5, r: 4.5 }));
-    const bs = 11 * sc;
-    const byy = yy + (h - bs) / 2;
-    ops.push(dot(x + 6.5 + bs / 2, byy + bs / 2, bs / 2, { fill: '#F1F2F5', stroke: '#E3E6EB', sw: 0.5 }));
-    const L = LETTER(i);
-    ops.push(txt(x + 6.5 + bs / 2 - wOf(set, L, true, fOpt * 0.82) / 2, byy + bs / 2 + fOpt * 0.29, L, { bold: true, size: fOpt * 0.82, color: T.ink2 }));
-    lines.forEach((ln, li) => ops.push(txt(x + 6.5 + bs + 5, byy + bs / 2 + fOpt * 0.30 - ((lines.length - 1) * fOpt * 1.3) / 2 + li * fOpt * 1.3, ln, { size: fOpt, color: T.ink2 })));
-  };
-
-  if (twoUp) {
-    for (let i = 0; i < opts.length; i += 2) {
-      const hA = optionH(wrap(set, opts[i] || '—', cellW - 34, fOpt, false, 24).length, fOpt, sc);
-      const hB = i + 1 < opts.length ? optionH(wrap(set, opts[i + 1] || '—', cellW - 34, fOpt, false, 24).length, fOpt, sc) : 0;
-      const h = Math.max(hA, hB);
-      drawOption(i, PAD, y, cellW, h);
-      if (i + 1 < opts.length) drawOption(i + 1, PAD + cellW + 9, y, cellW, h);
-      y += h + 5 * sc;
-    }
-  } else {
-    for (let i = 0; i < opts.length; i++) {
-      const h = optionH(wrap(set, opts[i] || '—', cellW - 34, fOpt, false, 24).length, fOpt, sc);
-      drawOption(i, PAD, y, cellW, h);
-      y += h + 5 * sc;
-    }
-  }
-  y += 2 * sc;
-
-  /* explanation box */
-  if (showAnswers) {
-    const answerText = (it.correct ?? []).map(c => { const i = idxOf(c); return i >= 0 ? `(${LETTER(i)}) ${c}` : String(c); }).join(', ');
-    const title = `Ans.${it.n}.: ${answerText || '—'}`;
-    const innerX = PAD + 10;
-    const bodyW = innerW - 22;
-    const titleLines = wrap(set, title, bodyW, fAns, true, 12);
-
-    const bodies: { label?: string; color: string; lines: string[] }[] = [];
-    const addBody = (label: string, color: string, raw: string) => {
-      String(raw ?? '').replace(/\r/g, '').split('\n').map(t => t.trim()).filter(Boolean).slice(0, 24).forEach((p, pi) => {
-        bodies.push({ label: pi === 0 ? label : undefined, color, lines: wrap(set, p, bodyW - 5, fEx, false, 120) });
-      });
-    };
-    if (it.book?.trim()) addBody('Explanation', T.exInk, it.book.trim());
-    if (it.ai?.trim()) addBody('AI explanation', T.aiInk, it.ai.trim());
-
-    const userLine = style.showUserAnswer && it.status !== 'unknown'
-      ? (it.status === 'skipped'
-        ? 'Your answer: not attempted'
-        : `Your answer: ${it.user ? (idxOf(it.user) >= 0 ? `(${LETTER(idxOf(it.user))}) ` : '') + it.user : '—'}`)
-      : '';
-
-    let need = titleLines.length * fAns * 1.32 + 5 * sc;
-    if (userLine) need += fEx * 1.55;
-    for (const b of bodies) need += (b.label ? fEx * 1.45 : 0) + b.lines.length * fEx * 1.32 + 1.5 * sc;
-    const boxH = Math.max(need + 7 * sc, 22 * sc);
-
-    ops.push(box(PAD, y, innerW, boxH, { fill: T.exBg, stroke: T.exBd, sw: 0.5, r: 5.5 }));
-    ops.push(box(PAD, y + 4.5, 2.2, boxH - 9, { fill: st.ink, r: 1.1 }));
-
-    let cy = y + 6.5 * sc;
-    titleLines.forEach((ln, i) => ops.push(txt(innerX, cy + fAns * 0.92 + i * fAns * 1.32, ln, { bold: true, size: fAns, color: st.ink })));
-    cy += titleLines.length * fAns * 1.32 + 2.5 * sc;
-    if (userLine) {
-      ops.push(txt(innerX, cy + fEx * 0.92, fit(set, userLine, bodyW, false, fEx), { size: fEx, color: T.exText }));
-      cy += fEx * 1.55;
-    }
-    for (const b of bodies) {
-      if (b.label) {
-        ops.push(dot(innerX + 2, cy + fEx * 0.42, 1.2, { fill: b.color }));
-        ops.push(txt(innerX + 5.5, cy + fEx * 0.92, b.label, { bold: true, size: fEx, color: b.color }));
-        cy += fEx * 1.45;
+  /* rationale: divider + 📖 (and 🤖) bullets, no text labels */
+  if (inline) {
+    const groups: { k: 'book' | 'robot'; bullets: string[] }[] = [{ k: 'book', bullets: rationaleBullets(it.book) }, { k: 'robot', bullets: rationaleBullets(it.ai) }];
+    if (groups.some(g => g.bullets.length)) {
+      y += 3 * sc;
+      ops.push(rule(PAD, y, rightEdge, y, { w: 0.7, color: st.bd }));
+      y += 7 * sc;
+      const bw = wOf(set, '• ', false, fEx);
+      const exLH = fEx * 1.38;
+      const bulletX = PAD + R * 2 + 5 * sc;   // same column as the question text, so the 📖 sits under the status icon
+      for (const g of groups) {
+        g.bullets.forEach((b, bi) => {
+          const lines = wrap(set, b, Math.max(20, rightEdge - bulletX - bw), fEx, false, 400);
+          const base = y + fEx * 0.95;
+          ops.push(txt(bulletX, base, '•', { bold: true, size: fEx, color: T.exInk }));
+          lines.forEach((ln, li) => ops.push(txt(bulletX + bw, base + li * exLH, ln, { size: fEx, color: T.exText })));
+          if (bi === 0) ops.push(...decorOps({ k: g.k, cx: PAD + R, r: R * 0.9 }, 0, base - fEx * 0.36));
+          y += Math.max(1, lines.length) * exLH + 1.6 * sc;
+        });
       }
-      b.lines.forEach((ln, i) => ops.push(txt(innerX + 5.5, cy + fEx * 0.92 + i * fEx * 1.32, ln, { size: fEx, color: T.exText })));
-      cy += b.lines.length * fEx * 1.32 + 1.5 * sc;
     }
-    y += boxH;
   }
 
-  const cardH = Math.max(y + PAD, 46 * sc);
+  const cardH = Math.max(y + PAD * 0.7, 40 * sc);
   // Too tall for any column? Try tighter type before spending a whole page on one question.
   if (cardH > maxH && attempt < 2) return questionCard(it, style, set, colW, sc * 0.82, maxH, attempt + 1);
   return { ops: [box(0, 0, colW, cardH, { fill: st.bg, stroke: st.bd, sw: 0.8, r: RADIUS }), ...ops], h: cardH };

@@ -53,7 +53,7 @@ async function run(label, w, h) {
   ok(`[${label}] rationale bullets are shown (book rationale on)`, /Beta blockers reduce heart rate \(case 1\)/.test(t1));
   const count = (sel) => page.evaluate(s => document.querySelectorAll('[data-page] svg ' + s).length, sel);
   // status-tinted cards: 5 correct (green), 4 wrong (red), 3 skipped (yellow) - all on the pages
-  ok(`[${label}] cards are tinted by status (5 green, 4 red, 3 yellow)`, (await count('rect[fill="#f0fdf4"]')) === 5 && (await count('rect[fill="#fef2f2"]')) === 4 && (await count('rect[fill="#fefce8"]')) === 3, `${await count('rect[fill="#f0fdf4"]')}/${await count('rect[fill="#fef2f2"]')}/${await count('rect[fill="#fefce8"]')}`);
+  ok(`[${label}] cards are tinted by status (5 green, 4 red, 3 yellow)`, (await count('rect[fill="#f0fdf4" i]')) === 5 && (await count('rect[fill="#fef2f2" i]')) === 4 && (await count('rect[fill="#fefce8" i]')) === 3, `${await count('rect[fill="#f0fdf4" i]')}/${await count('rect[fill="#fef2f2" i]')}/${await count('rect[fill="#fefce8" i]')}`);
   ok(`[${label}] a green check on the right of the answer for the 9 attempted questions (none for skipped)`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 18, String(await count('line[stroke="#16a34a"][stroke-linecap="round"]')));
   ok(`[${label}] the 4 wrong picks are crossed`, (await count('line[stroke="#dc2626"][stroke-linecap="round"]')) >= 8);
   ok(`[${label}] footer has page numbers and the brand`, /Page 1 of \d+/.test(t1) && /R\.J QUIZ/.test(t1));
@@ -72,13 +72,13 @@ async function run(label, w, h) {
   await page.getByRole('button', { name: /Answers: after each/ }).click(); await page.waitForTimeout(250);
   await page.getByRole('button', { name: /Answers: key at end/ }).click(); await page.waitForTimeout(250);
   await page.waitForSelector('[data-testid="report-pages"]'); await page.waitForTimeout(700);
-  { const hid = await svgText(); ok(`[${label}] answers can be hidden: no check marks and no rationale, the status tint stays`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 0 && !/Beta blockers reduce heart rate/.test(hid) && (await count('rect[fill="#f0fdf4"]')) === 5); }
+  { const hid = await svgText(); ok(`[${label}] answers can be hidden: no check marks and no rationale, the status tint stays`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 0 && !/Beta blockers reduce heart rate/.test(hid) && (await count('rect[fill="#f0fdf4" i]')) === 5); }
   await page.getByRole('tab', { name: /Mistakes/ }).click(); await page.waitForTimeout(1200);
   const mist = await svgText();
   const qCount = (mist.match(/Q\d+\./g) || []).length;
-  ok(`[${label}] Mistakes tab shows only the 4 wrong questions`, qCount >= 4 && (await count('rect[fill="#fef2f2"]')) === 4 && (await count('rect[fill="#f0fdf4"]')) === 0, `Q labels: ${qCount}`);
+  ok(`[${label}] Mistakes tab shows only the 4 wrong questions`, qCount >= 4 && (await count('rect[fill="#fef2f2" i]')) === 4 && (await count('rect[fill="#f0fdf4" i]')) === 0, `Q labels: ${qCount}`);
   await page.getByRole('tab', { name: /Skipped/ }).click(); await page.waitForTimeout(1200);
-  ok(`[${label}] Skipped tab shows the 3 skipped questions`, (await count('rect[fill="#fefce8"]')) === 3 && (await count('rect[fill="#f0fdf4"]')) === 0);
+  ok(`[${label}] Skipped tab shows the 3 skipped questions`, (await count('rect[fill="#fefce8" i]')) === 3 && (await count('rect[fill="#f0fdf4" i]')) === 0);
   await page.getByRole('tab', { name: /Full report/ }).click(); await page.waitForTimeout(1200);
 
   // PDF download from the top bar

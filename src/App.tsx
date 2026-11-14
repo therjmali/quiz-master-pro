@@ -676,13 +676,12 @@ function AppScreens({
     return registerBackHandler(() => {
       if (syncCenterOpen) { setSyncCenterOpen(false); return true; }
       if (notifCenterOpen) { setNotifCenterOpen(false); return true; }
-      if (widgetModalOpen) { setWidgetModalOpen(false); return true; }
       if (chatbotState.open) { setChatbotState({ open: false }); return true; }
       if (screenRef.current === 'report-preview') { handleCloseReportPreview(); return true; }
       if (screenRef.current !== 'dashboard') { goBackFromScreen(); return true; }
       return false;
     });
-  }, [syncCenterOpen, notifCenterOpen, widgetModalOpen, chatbotState.open, handleCloseReportPreview, goBackFromScreen]);
+  }, [syncCenterOpen, notifCenterOpen, chatbotState.open, handleCloseReportPreview, goBackFromScreen]);
 
 
   const handleReportHelperChange = useCallback((mode: AIPrefs['reportHelper']) => { setAiPrefs(prev => ({ ...prev, reportHelper: mode })); }, [setAiPrefs]);

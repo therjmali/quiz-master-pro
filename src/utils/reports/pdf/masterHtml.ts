@@ -7,10 +7,12 @@
  *
  * Geometry follows the approved reference: 1000px content column on white, 2-column 16px grid, 12px radii,
  * 16px card padding, `0 2px 8px rgba(0,0,0,.04)` elevation, Inter with a system fallback stack (weights 400–800).
- * Status colours: correct #f0fdf4/#bbf7d0, wrong #fef2f2/#fecaca, skipped #fffbeb/#fde68a, explanation #f5f3ff.
+ * Status colours: correct #f0fdf4/#bbf7d0, wrong #fef2f2/#fecaca, skipped #fefce8/#fef08a (Tailwind yellow-50/200). Question cards: status icon, Q#, difficulty dot, options with a
+ * green check, then the 📖 rationale bullets (no text labels).
  */
 import { parseInline } from './markdown';
 import type { ReportDoc, ReportItem, ReportStyle } from './types';
+import { AI_EMOJI, BOOK_EMOJI, DIFF_EMOJI, STATUS_EMOJI, levelOf, markedOptions, rationaleBullets } from './cardModel';
 
 const esc = (s: unknown) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -59,7 +61,7 @@ const CSS = `
   --ink:#111827;--ink-2:#374151;--mute:#6B7280;--faint:#9CA3AF;--line:rgba(17,24,39,.10);
   --ok-bg:#F0FDF4;--ok-bd:#BBF7D0;--ok-ink:#15803D;--ok-pill:#DCFCE7;
   --no-bg:#FEF2F2;--no-bd:#FECACA;--no-ink:#B91C1C;--no-pill:#FEE2E2;
-  --sk-bg:#FFFBEB;--sk-bd:#FDE68A;--sk-ink:#B45309;--sk-pill:#FEF3C7;
+  --sk-bg:#FEFCE8;--sk-bd:#FEF08A;--sk-ink:#A16207;--sk-pill:#FEF9C3;
   --ex-bg:#F5F3FF;--ex-bd:#DDD6FE;--ex-ink:#6D28D9;--ex-text:#4B5563;--ai-ink:#0E7490;
   --radius:12px;--pad:16px;
 }
@@ -111,40 +113,25 @@ body{margin:0;background:#EEF1F6;color:var(--ink);
 .card.no{background:var(--no-bg);border-color:var(--no-bd)}
 .card.sk{background:var(--sk-bg);border-color:var(--sk-bd)}
 .card.un{background:#F8FAFC;border-color:#E2E8F0}
-.card-head{display:flex;align-items:flex-start;gap:9px}
-.num{flex:none;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:#fff;
-  border:1.5px solid var(--line);font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums}
-.card.ok .num{color:var(--ok-ink);border-color:var(--ok-bd)}
-.card.no .num{color:var(--no-ink);border-color:var(--no-bd)}
-.card.sk .num{color:var(--sk-ink);border-color:var(--sk-bd)}
-.qtext{flex:1;min-width:0;font-size:12.5px;font-weight:700;line-height:1.38;color:var(--ink);word-break:break-word}
-.pill{flex:none;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;
-  font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
-.pill.ok{background:var(--ok-pill);color:var(--ok-ink)}
-.pill.no{background:var(--no-pill);color:var(--no-ink)}
-.pill.sk{background:var(--sk-pill);color:var(--sk-ink)}
-.pill.un{background:#F1F5F9;color:var(--mute)}
-
-/* options */
-.opts{display:grid;gap:7px;margin-top:11px}
-.opts.two{grid-template-columns:1fr 1fr}
-.opt{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;background:#fff;
-  border:1px solid var(--line);font-size:11.5px;color:var(--ink-2);min-width:0}
-.opt .lt{flex:none;width:19px;height:19px;border-radius:50%;display:grid;place-items:center;
-  background:#F1F2F5;border:1px solid #E3E6EB;font-size:9.5px;font-weight:800;color:var(--ink-2)}
-.opt span{min-width:0;overflow-wrap:anywhere}
-
-/* explanation */
-.ex{margin-top:10px;border-radius:10px;background:var(--ex-bg);border:1px solid var(--ex-bd);
-  padding:11px 12px 11px 14px;position:relative;overflow:hidden}
-.ex::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--ex-ink)}
-.ex.ok::before{background:var(--ok-ink)}.ex.no::before{background:var(--no-ink)}.ex.sk::before{background:var(--sk-ink)}
-.ans{margin:0;font-size:11.5px;font-weight:800;line-height:1.35;color:var(--ex-ink)}
-.ex.ok .ans{color:var(--ok-ink)}.ex.no .ans{color:var(--no-ink)}.ex.sk .ans{color:var(--sk-ink)}
-.you{margin:4px 0 0;font-size:11px;color:var(--ex-text)}
-.rat{margin:6px 0 0;font-size:11px;line-height:1.45;color:var(--ex-text);overflow-wrap:anywhere}
-.rat b{display:block;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--ex-ink);margin-bottom:1px}
-.rat.ai b{color:var(--ai-ink)}
+/* question card: [status] Q1. [difficulty] text / options with a ✓ / divider / 📖 rationale (no text labels) */
+.qh{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;line-height:1.4;color:var(--ink)}
+.qh .st{flex:none;font-size:15px;line-height:1.25}
+.qh .qn{flex:none;font-weight:800;line-height:1.4}
+.qh .dl{flex:none;font-size:11px;line-height:1.6}
+.qh .qt{flex:1;min-width:0;font-weight:600;word-break:break-word}
+.opts{display:grid;gap:3px;margin:9px 0 0 24px}
+.opt{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;font-size:11.5px;line-height:1.45;color:var(--ink-2);min-width:0}
+.opt .ot{min-width:0;overflow-wrap:anywhere}
+.opt .ot b{font-weight:800;color:var(--ink)}
+.opt .mk{flex:none;font-weight:800;font-size:13px;line-height:1.3}
+.opt .mk.ok{color:#16A34A}.opt .mk.no{color:#DC2626}
+hr.div{border:0;border-top:1px solid;margin:10px 0 8px}
+.card.ok hr.div{border-color:var(--ok-bd)}.card.no hr.div{border-color:var(--no-bd)}.card.sk hr.div{border-color:var(--sk-bd)}.card.un hr.div{border-color:#E2E8F0}
+.rat{display:flex;gap:7px;align-items:flex-start;margin:0 0 4px}
+.rat .ic{flex:none;font-size:13px;line-height:1.4;width:17px}
+.rat ul{margin:0;padding:0;list-style:none;min-width:0}
+.rat li{font-size:11px;line-height:1.45;color:var(--ex-text);overflow-wrap:anywhere;margin:0 0 2px}
+.rat li::before{content:"•";margin-right:5px;color:var(--ex-ink)}
 
 /* summary */
 .summary{border-radius:var(--radius);padding:15px 16px;color:#fff;break-inside:avoid;
@@ -190,6 +177,15 @@ body{margin:0;background:#EEF1F6;color:var(--ink);
 .foot .brand small{display:block;font-weight:600;color:var(--faint);letter-spacing:0;font-size:8.5px;margin-top:1px}
 .foot .mid{display:flex;align-items:center;gap:7px;font-weight:600}
 
+@media (prefers-color-scheme:dark){
+  :root{--ink:#F3F4F6;--ink-2:#D1D5DB;--mute:#9CA3AF;--faint:#8B92A0;--line:rgba(229,231,235,.14);--ex-text:#D1D5DB;--ex-ink:#C4B5FD;
+    --ok-bg:rgba(5,46,22,.30);--ok-bd:rgba(34,197,94,.30);--ok-ink:#86EFAC;
+    --no-bg:rgba(69,10,10,.30);--no-bd:rgba(239,68,68,.30);--no-ink:#FCA5A5;
+    --sk-bg:rgba(66,32,6,.30);--sk-bd:rgba(234,179,8,.30);--sk-ink:#FDE047}
+  body{background:#07070B}.page{background:#0E0E14}
+  .key,.md{background:#14141C}.card.un{background:#14141C;border-color:rgba(229,231,235,.14)}
+  .opt .mk.ok{color:#4ADE80}.opt .mk.no{color:#F87171}
+}
 @media (max-width:820px){
   .page{padding:14px 12px 20px}
   .grid{grid-template-columns:1fr;gap:12px}
@@ -198,7 +194,6 @@ body{margin:0;background:#EEF1F6;color:var(--ink);
   .verdict{order:3;width:100%;max-width:none}
   .mast h1{font-size:19px}
   .key ol{columns:1}
-  .opts.two{grid-template-columns:1fr}
 }
 @media (max-width:420px){.stats{grid-template-columns:repeat(2,1fr)}}
 @media print{
@@ -257,33 +252,29 @@ function statsBar(doc: ReportDoc): string {
   }).join('')}</div>`;
 }
 
-function userLine(it: ReportItem): string {
-  if (it.status === 'skipped') return 'Your answer: not attempted';
-  const i = it.options.findIndex(o => o.trim() === String(it.user ?? '').trim());
-  return `Your answer: ${it.user ? (i >= 0 ? `(${L(i)}) ` : '') + it.user : '—'}`;
-}
-
+/** Question card (same rules as the PDF: see cardModel.ts). */
 function questionCard(it: ReportItem, style: ReportStyle): string {
   const st = STATUS[it.status] ?? STATUS.unknown;
+  const inline = style.answers === 'inline';
   const options = it.options ?? [];
-  const idxOf = (t: string) => options.findIndex(o => o.trim() === String(t ?? '').trim());
-  // 2-up only when every option is short enough to read comfortably in half a column
-  const twoUp = options.length >= 2 && options.length <= 4 && options.every(o => o.length <= 26 && !o.includes('\n'));
+  const lvl = levelOf(it.difficulty);
+  const m = markedOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
+  const icon = it.status === 'correct' || it.status === 'wrong' || it.status === 'skipped' ? STATUS_EMOJI[it.status] : '';
+  const label = it.status === 'correct' ? 'Correct' : it.status === 'wrong' ? 'Incorrect' : it.status === 'skipped' ? 'Skipped' : '';
 
-  const answers = (it.correct ?? []).map(c => { const i = idxOf(c); return i >= 0 ? `(${L(i)}) ${c}` : String(c); }).join(', ');
-  const answerLine = !answers ? '' : `<p class="ans">Ans.${it.n}.: ${esc(answers)}</p>`;
-  const explain = [it.book?.trim() ? `<div class="rat"><b>Explanation</b>${esc(it.book).replace(/\n/g, '<br>')}</div>` : '', it.ai?.trim() ? `<div class="rat ai"><b>AI explanation</b>${esc(it.ai).replace(/\n/g, '<br>')}</div>` : ''].join('');
-  const you = style.showUserAnswer && it.status !== 'unknown' ? `<p class="you">${esc(userLine(it))}</p>` : '';
-  const showEx = style.answers === 'inline' && (answerLine || you || explain);
-
+  const head = `<div class="qh">${icon ? `<span class="st" role="img" aria-label="${label}">${icon}</span>` : ''}<span class="qn">Q${it.n}.</span>${lvl ? `<span class="dl" role="img" aria-label="${lvl}">${DIFF_EMOJI[lvl]}</span>` : ''}<span class="qt">${esc(it.question || '(no question text)')}</span></div>`;
+  const opts = options.length
+    ? `<div class="opts">${options.map((o, i) => `<div class="opt"><span class="ot"><b>(${L(i)})</b> ${esc(o)}</span>${m.ok[i] ? '<span class="mk ok" aria-label="Correct answer">✓</span>' : m.no[i] ? '<span class="mk no" aria-label="Your answer">✗</span>' : ''}</div>`).join('')}</div>`
+    : '';
+  const rat = (emoji: string, text: string | undefined) => {
+    const bullets = rationaleBullets(text);
+    return bullets.length ? `<div class="rat"><span class="ic" aria-hidden="true">${emoji}</span><ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : '';
+  };
+  const rationale = inline ? rat(BOOK_EMOJI, it.book) + rat(AI_EMOJI, it.ai) : '';
   return `<article class="card ${st.cls}">
-  <div class="card-head">
-    <div class="num">${it.n}</div>
-    <div class="qtext">${esc(it.question || '(no question text)')}</div>
-    <div class="pill ${st.cls}">${esc(st.label)}</div>
-  </div>
-  ${options.length ? `<div class="opts${twoUp ? ' two' : ''}">${options.map((o, i) => `<div class="opt"><span class="lt">${L(i)}</span><span>${esc(o)}</span></div>`).join('')}</div>` : ''}
-  ${showEx ? `<div class="ex ${st.cls}">${answerLine}${you}${explain}</div>` : ''}
+  ${head}
+  ${opts}
+  ${rationale ? `<hr class="div">${rationale}` : ''}
 </article>`;
 }
 

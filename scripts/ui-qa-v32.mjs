@@ -1,8 +1,8 @@
 /**
- * UI regression for v2.11 (real Chrome): Android Widgets moved into Settings > Integrations, exactly two display modes
+ * UI regression for v3.2 (real Chrome): Android Widgets moved into Settings > Integrations, exactly two display modes
  * (Light / Dark) with legacy values migrated, one AI Generation switch with saved-key choices, Preview answer toggle,
  * and a Light-vs-Dark audit that flags invisible text on the main screens.
- * Run: npm run build && npm run test:ui:v211
+ * Run: npm run build && npm run test:ui:v32
  */
 import path from 'node:path';
 import os from 'node:os';
@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import { preview } from 'vite';
 import { chromium } from 'playwright-core';
 
-const SHOTS = path.join(os.tmpdir(), 'qmp-ui-v211'); fs.mkdirSync(SHOTS, { recursive: true });
+const SHOTS = path.join(os.tmpdir(), 'qmp-ui-v32'); fs.mkdirSync(SHOTS, { recursive: true });
 const server = await preview({ configFile: path.resolve('vite.config.ts'), preview: { port: 4211, strictPort: true, host: '127.0.0.1' } });
 const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: process.env.PW_CHANNEL || 'chrome' }), args: ['--no-sandbox'] });
 let failed = 0;
@@ -190,5 +190,5 @@ try {
   await run('phone 390x800', 390, 800);
   await run('tablet 1280x800', 1280, 800);
 } finally { await browser.close(); await server.close(); }
-console.log(failed ? `\n${failed} check(s) FAILED  (screenshots: ${SHOTS})` : `\nAll v2.11 UI checks passed  (screenshots: ${SHOTS})`);
+console.log(failed ? `\n${failed} check(s) FAILED  (screenshots: ${SHOTS})` : `\nAll v3.2 UI checks passed  (screenshots: ${SHOTS})`);
 process.exit(failed ? 1 : 0);

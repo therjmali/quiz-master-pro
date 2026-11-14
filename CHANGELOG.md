@@ -11,12 +11,12 @@ Two display modes, widgets out of the header, status-card reports and a single A
 ### Changed
 - **Android Widgets** moved out of the top bar into *Settings → Integrations → Android Widgets* (its own page; searchable in Settings).
 - **Appearance** is exactly two modes, ☀️ Light and 🌙 Dark, plus text size. Parchment / Ink / Papyrus / Liquid Glass, the accent palette and the glass blur slider are gone (accent and blur are fixed to tuned defaults). Saved `amoled` / `ancient` / `glass` values are mapped to Dark / Light / the phone's setting. Dark mode now also sets Tailwind's `dark` class; faint secondary labels were raised to about 3:1 in both modes.
-- **Reports** (PDF, full-page preview, HTML, text) use status cards: green ✅ correct, red ❌ incorrect, yellow ⏭️ skipped; header `Q1.` with a 🟢/🟡/🔴 dot when the question has a difficulty; options below with a green ✓ on the answer of attempted questions (a red ✗ on a wrong pick when "Your answer" is on); a divider and the 📖 rationale bullets, with no "Rationale / Explanation / Answer" labels. The exam paper keeps its plain layout. HTML reports follow the phone's dark setting.
+- **Reports** (the Master template, the classic layout, the web page and the text export) use one question-card format: tinted green ✅ correct, red ❌ incorrect, yellow ⏭️ skipped (skipped is now Tailwind yellow-50 `#fefce8` instead of amber); header `Q1.` with a 🟢/🟡/🔴 dot when the question has a difficulty; options below with a green ✓ on the answer of attempted questions (a red ✗ on a wrong pick when "Your answer" is on); a divider and the 📖 rationale bullets, with no "Rationale / Explanation / Answer" labels. The status pill, number badge, boxed options and the purple `Ans.N.:` / Explanation box of the Master card are gone. The exam paper keeps its plain layout. The web-page export follows the phone's dark setting (the PDF stays white paper). Icons are vector shapes because the bundled PDF fonts have no emoji; the web page and text export use the emoji.
 - **Create Quiz → AI** is one *AI Generation* ON/OFF switch. OFF hides everything else; ON lists only the API keys saved in Profile → API Keys (`🔑 Gemini`, `🔑 OpenAI`, …) or a prompt to add one. The switch drives both quiz and rationale AI.
 - **Create Quiz preview** hides the correct answers until the eye button is tapped.
 
 ### Added
-- `test:ui:v211` (real Chrome), unit tests for the theme mapping, AI key choices and the report card rules, and `verify-repo` contract checks.
+- `test:ui:v32` (real Chrome), unit tests for the theme mapping, AI key choices and the report card rules, and `verify-repo` contract checks.
 
 ### Removed
 - Unused `useTheme` hook and the Liquid Glass / Papyrus / Ink theme code.

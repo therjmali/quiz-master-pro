@@ -129,9 +129,10 @@ test('docToText / docToHtml follow the same settings and escape markup', () => {
   assert.ok(!/Explanation|Rationale|Answer|Ans\./i.test(t), 'no text labels in the card format');
   const noAns = docToText(doc, { ...styleFor('all'), answers: 'none' });
   assert.ok(!/✓|📖/.test(noAns), 'answers hidden: no check, no rationale');
-  const h = docToHtml(doc, styleFor('all'));
+  const h = docToHtml(doc, { ...styleFor('all'), template: 'classic' });
   assert.ok(h.includes('Is &lt;b&gt;x&lt;/b&gt; &amp; y?') && !h.includes('<b>x</b>'));
   assert.match(h, /class="card wrong"/); assert.match(h, /prefers-color-scheme:dark/);
+  assert.ok(docToHtml(doc, styleFor('all')).includes('Is &lt;b&gt;x&lt;/b&gt; &amp; y?'), 'the default (master) web page escapes too');
   // the exam paper (a blank test) keeps the plain numbered layout
   const exam = docToText(buildQuestionDoc([result([Q(1, { rationale: 'Because' })], [null])], { ...BUILD, kind: 'exam' }), styleFor('exam', {}, true));
   assert.match(exam, /Ans\.1\. : \(B\) Beta/);
@@ -170,7 +171,7 @@ test('layoutReport: status cards - tinted background per status, icons, difficul
   const cards = ops.filter((o): o is Extract<typeof o, { t: 'rect' }> => o.t === 'rect' && !!o.r && o.r === 6);
   assert.deepEqual(cards.map(c => c.fill), ['#f0fdf4', '#fef2f2', '#fefce8'], 'green / red / yellow cards in question order');
   assert.ok(cards.every(c => c.w > 100 && c.h > 40));
-  const circles = ops.filter((o): o is Extract<typeof o, { t: 'rect' }> => o.t === 'rect' && !!o.r && o.w === o.h && o.r === o.w / 2);
+  const circles = ops.filter((o): o is Extract<typeof o, { t: 'circle' }> => o.t === 'circle');
   const fills = circles.map(c => c.fill);
   for (const f of ['#16a34a', '#dc2626', '#ca8a04']) assert.ok(fills.includes(f), `status icon ${f}`);
   assert.ok(fills.includes('#22c55e') && fills.includes('#ef4444'), 'easy (green) and hard (red) dots');

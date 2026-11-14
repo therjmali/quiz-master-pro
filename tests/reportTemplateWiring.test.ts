@@ -12,7 +12,7 @@ test('report design tokens match the approved reference', () => {
   const css = read('src/utils/reports/pdf/masterHtml.ts');
   assert.ok(css.includes('--ok-bg:#F0FDF4') && css.includes('--ok-bd:#BBF7D0'), 'correct tint');
   assert.ok(css.includes('--no-bg:#FEF2F2') && css.includes('--no-bd:#FECACA'), 'wrong tint');
-  assert.ok(css.includes('--sk-bg:#FFFBEB') && css.includes('--sk-bd:#FDE68A'), 'skipped tint');
+  assert.ok(css.includes('--sk-bg:#FEFCE8') && css.includes('--sk-bd:#FEF08A'), 'skipped tint (Tailwind yellow-50 / yellow-200)');
   assert.ok(css.includes('--ex-bg:#F5F3FF'), 'explanation tint');
   assert.ok(css.includes('--radius:12px') && css.includes('--pad:16px'), 'radii and padding');
   assert.ok(css.includes('max-width:1000px'), 'content column');

@@ -35,7 +35,7 @@ test('master template: draws both columns, keeps every question, and numbers pag
   const report = layoutMasterReport(doc(items), style, set);
   assert.ok(report.pages.length >= 2, 'a dozen questions need more than one page');
 
-  const numbers = flat(report.pages, 'text').map(o => o.text).filter((t: string) => /^\d+$/.test(t)).map(Number);
+  const numbers = flat(report.pages, 'text').map(o => o.text).filter((t: string) => /^Q\d+\.$/.test(t)).map(t => Number(t.slice(1, -1)));
   for (let n = 1; n <= items.length; n++) assert.ok(numbers.includes(n), `question ${n} was dropped`);
 
   report.pages.forEach((p, i) => {
@@ -52,7 +52,7 @@ test('master template: draws both columns, keeps every question, and numbers pag
 
 test('master template: uses circles for icons and keeps everything inside the page', () => {
   const report = layoutMasterReport(doc([item(1), item(2, { status: 'wrong' })]), style, set);
-  assert.ok(flat(report.pages, 'circle').length > 5, 'status dots and badge marks are circles');
+  assert.ok(flat(report.pages, 'circle').length >= 2, 'status icons are circles');
 
   for (const p of report.pages) {
     for (const op of p.ops) {
@@ -80,11 +80,11 @@ test('master template: text never overflows the card that holds it', () => {
 });
 
 test('master template: a card taller than a column gets its own full-width page instead of looping or vanishing', () => {
-  const giant = item(1, { question: 'Long question. '.repeat(120), book: 'Rationale text. '.repeat(200) });
+  const giant = item(1, { question: 'Long question. '.repeat(120), book: 'Rationale text. '.repeat(900) });
   const report = layoutMasterReport(doc([giant, item(2)]), style, set);
   const wide = report.pages.flatMap(p => p.ops).filter(o => o.t === 'rect' && o.r === 7 && o.w > 500) as any[];
   assert.ok(wide.length >= 1, 'the oversized card should be laid out at full width');
-  assert.ok(flat(report.pages, 'text').some(o => o.text === '1') && flat(report.pages, 'text').some(o => o.text === '2'));
+  assert.ok(flat(report.pages, 'text').some(o => o.text === 'Q1.') && flat(report.pages, 'text').some(o => o.text === 'Q2.'));
 });
 
 test('master template: summary card closes the last page and carries the real numbers', () => {
@@ -100,16 +100,22 @@ test('master template: summary card closes the last page and carries the real nu
 
 test('master template: answer modes — inline prints answers, key prints a key, none prints neither', () => {
   const items = [item(1), item(2, { status: 'wrong', user: 'Gamma' })];
-  const inline = flat(layoutMasterReport(doc(items), style, set).pages, 'text').map(o => o.text);
-  assert.ok(inline.some(t => t.startsWith('Ans.1.:')), 'inline answers after each question');
-  assert.ok(inline.some(t => t.includes('Your answer:')), 'user answer line');
+  const lines = (r: ReturnType<typeof layoutMasterReport>, color: string) => r.pages.flatMap(p => p.ops).filter(o => o.t === 'line' && o.color === color && o.cap === 'round' && o.x1 > 250).length;
+  const inlineRep = layoutMasterReport(doc(items), style, set);
+  const inline = flat(inlineRep.pages, 'text').map(o => o.text);
+  assert.ok(inline.some(t => t.includes('Because the enzyme')), 'inline: the rationale bullets follow each question');
+  assert.ok(!inline.some(t => /Ans\.|Explanation|Rationale|Your answer/.test(t)), 'no text labels in the card format');
+  assert.equal(lines(inlineRep, '#16a34a'), 4, 'a green check (two strokes) on the answer of each of the 2 attempted questions');
+  assert.equal(lines(inlineRep, '#dc2626'), 2, 'the wrong pick of question 2 is crossed');
 
-  const keyOnly = flat(layoutMasterReport(doc(items), { ...style, answers: 'key' }, set).pages, 'text').map(o => o.text);
+  const keyRep = layoutMasterReport(doc(items), { ...style, answers: 'key' }, set);
+  const keyOnly = flat(keyRep.pages, 'text').map(o => o.text);
   assert.ok(keyOnly.includes('Answer Key'));
-  assert.ok(!keyOnly.some(t => t.startsWith('Ans.1.:')));
+  assert.ok(!keyOnly.some(t => t.includes('Because the enzyme')) && lines(keyRep, '#16a34a') === 0, 'answers move to the key: no bullets, no checks on the cards');
 
-  const hidden = flat(layoutMasterReport(doc(items), { ...style, answers: 'none', showUserAnswer: false }, set).pages, 'text').map(o => o.text);
-  assert.ok(!hidden.some(t => t.startsWith('Ans.')) && !hidden.some(t => t.includes('Your answer')));
+  const hiddenRep = layoutMasterReport(doc(items), { ...style, answers: 'none', showUserAnswer: false }, set);
+  const hidden = flat(hiddenRep.pages, 'text').map(o => o.text);
+  assert.ok(!hidden.some(t => t.includes('Because the enzyme')) && lines(hiddenRep, '#16a34a') === 0 && lines(hiddenRep, '#dc2626') === 0);
   assert.equal(hidden.length < inline.length, true);
 });
 
@@ -129,7 +135,8 @@ test('master template: one column, small and large type all stay inside the page
 test('layoutFor dispatches on the template and keeps the classic engine intact', () => {
   const d = doc([item(1)]);
   assert.ok(flat(layoutFor(d, style, set).pages, 'circle').length > 0, 'master draws circles');
-  assert.equal(flat(layoutFor(d, { ...style, template: 'classic' }, set).pages, 'circle').length, 0, 'classic has no circles');
+  assert.ok(!flat(layoutFor(d, { ...style, template: 'classic' }, set).pages, 'text').some(o => o.text === 'Quiz Summary'), 'classic has no master summary card');
+  assert.ok(flat(layoutFor(d, style, set).pages, 'text').some(o => o.text === 'Quiz Summary'), 'master has the summary card');
   assert.ok(styleFor('exam').template === 'classic', 'exam papers stay on the classic template');
   assert.ok(styleFor('all').template === 'master', 'reports default to the master template');
 });
@@ -146,8 +153,10 @@ test('HTML export: self-contained, no network, escapes content, and matches the 
   assert.ok(html.includes('&lt;script&gt;'), 'question text is escaped');
   assert.ok(html.includes('max-width:1000px'), 'the 1000px content column from the design');
   assert.ok(html.includes('grid-template-columns:1fr 1fr'), 'two-column grid');
-  assert.ok(html.includes('#F5F3FF'), 'explanation boxes use the approved purple');
-  assert.ok(html.includes('Ans.1.:'), 'the answer line is printed');
+  assert.ok(html.includes('📖') && html.includes('Because the enzyme'), 'the 📖 rationale bullets are printed');
+  assert.ok(!/Ans\.1\.|>Explanation<|>Rationale</.test(html), 'no text labels');
+  assert.ok(html.includes('class="card ok"') && html.includes('class="card no"') && html.includes('✅') && html.includes('❌'), 'status cards with status icons');
+  assert.ok(html.includes('prefers-color-scheme:dark'), 'dark variant for the web-page export');
   assert.ok(html.includes('Quiz Summary') && html.includes('Saved on device'), 'summary and footer present');
   assert.ok((html.match(/<article class="card/g) ?? []).length === 2, 'one card per question');
   // the web-page export and the PDF now share one template
@@ -156,7 +165,7 @@ test('HTML export: self-contained, no network, escapes content, and matches the 
 
 test('text export still works when the template is set to master', () => {
   const txt = docToText(doc([item(1)]), style);
-  assert.ok(txt.includes('Q1.') && txt.includes('Ans.1.'));
+  assert.ok(txt.includes('Q1.') && txt.includes('📖 • Because'));
 });
 
 test('buildQuestionDoc summary feeds the template (shown / maxScore / bookRange)', () => {
@@ -199,4 +208,23 @@ test('free-form documents keep the classic template; question reports use the da
   assert.ok(/exportMarkdownReport[\s\S]{0,900}template: 'classic'/.test(src), 'revision sheets / notes stay classic');
   const fallbackStray = /prefs, columns: 1, answers: 'none', showUserAnswer: false };/.test(src);
   assert.equal(fallbackStray, false, 'every single-column fallback states its template explicitly');
+});
+
+test('master template: status cards - tints, icons, difficulty dots, ✓ on the answer, 📖 bullets without labels', () => {
+  const items = [
+    item(1, { status: 'correct', user: 'Beta', difficulty: 'easy', book: '• Point A\n• Point B', ai: '' }),
+    item(2, { status: 'wrong', user: 'Alpha', difficulty: 'hard', book: 'One paragraph.', ai: '' }),
+    item(3, { status: 'skipped', user: null, difficulty: undefined, book: 'Third question note', ai: '' }),
+  ];
+  const report = layoutMasterReport(doc(items), style, set);
+  const ops = report.pages.flatMap(p => p.ops);
+  const bgs = ops.filter(o => o.t === 'rect' && o.r === 7 && o.h > 40 && o.w > 100 && ['#F0FDF4', '#FEF2F2', '#FEFCE8'].includes(String(o.fill).toUpperCase())) as any[];
+  assert.deepEqual(bgs.map(b => String(b.fill).toUpperCase()).sort(), ['#F0FDF4', '#FEF2F2', '#FEFCE8'], 'green / red / yellow cards');
+  const fills = ops.filter(o => o.t === 'circle').map((o: any) => o.fill);
+  for (const f of ['#16a34a', '#dc2626', '#ca8a04']) assert.ok(fills.includes(f), `status icon ${f}`);
+  assert.equal(fills.filter(f => f === '#22c55e' || f === '#eab308' || f === '#ef4444').length, 2, 'dots for easy and hard only, none for the question without difficulty');
+  const texts = ops.filter(o => o.t === 'text').map((o: any) => o.text as string);
+  for (const q of ['Q1.', 'Q2.', 'Q3.']) assert.ok(texts.includes(q));
+  assert.ok(texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')) && texts.some(t => t.includes('One paragraph.')));
+  assert.ok(!texts.some(t => /^(Ans\.|Explanation|AI explanation|Rationale)/.test(t)), 'no text labels on the cards');
 });
