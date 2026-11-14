@@ -1,3 +1,4 @@
+import { ACCENT_HSL } from '../utils/theme';
 import { useState, useCallback, useEffect } from 'react';
 
 const KEY = 'rjquiz:profile';
@@ -128,21 +129,9 @@ const DEFAULTS: ProfileData = {
   featureVisibility: { ...DEFAULT_VISIBILITY },
 };
 
-/** Pre-defined HSL values for the accent colour swatches. */
-const COLOR_TO_HSL: Record<string, string> = {
-  '#6366F1': '239 84% 67%',
-  '#8B5CF6': '262 83% 65%',
-  '#06B6D4': '192 91% 43%',
-  '#F43F5E': '350 89% 60%',
-  '#10B981': '160 84% 39%',
-  '#F59E0B': '38 92% 50%',
-};
-
-/** Write the chosen accent colour to the CSS --primary variable so it takes
- *  effect immediately across the whole app. */
-function applyAccentColor(hex: string) {
-  const hsl = COLOR_TO_HSL[hex];
-  if (hsl) document.documentElement.style.setProperty('--primary', hsl);
+/** The accent colour is fixed (the palette picker was removed); a stored custom accent is ignored. */
+function applyAccentColor(_hex?: string) {
+  document.documentElement.style.setProperty('--primary', ACCENT_HSL);
 }
 
 /** Notify all other useProfileStore instances in the same tab */

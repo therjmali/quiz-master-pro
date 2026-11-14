@@ -12,7 +12,7 @@ import { AccessibilitySection } from './settings/sectionsAccessibility';
 import { UpdatesSection } from './settings/sectionsUpdates';
 import { ReportsSection } from './settings/sectionsReports';
 import { AutoBackupSection, RemindersSection, DataSection, DeviceSection } from './settings/sectionsPlatform';
-import { AISection, LibrarySection, NotificationsSection, GesturesSection, AccountSection, AdvancedSection, type ProfileTabLink } from './settings/sectionsB';
+import { AISection, LibrarySection, NotificationsSection, GesturesSection, AccountSection, AdvancedSection, IntegrationsSection, type ProfileTabLink } from './settings/sectionsB';
 
 export interface BackupPrefs {
   autoDriveBackup?: boolean;
@@ -182,6 +182,7 @@ export default function SettingsTab({ theme, onThemeChange, isLoggedIn = false, 
         {visible('data') && <DataSection {...sectionProps('data')} onOpenTab={openTab} />}
         {visible('notifications') && <NotificationsSection {...sectionProps('notifications')} markDirty={markDirty} />}
         {visible('reminders') && <RemindersSection {...sectionProps('reminders')} />}
+        {visible('integrations') && <IntegrationsSection {...sectionProps('integrations')} onOpenTab={openTab} />}
         {visible('gestures') && <GesturesSection {...sectionProps('gestures')} />}
         {visible('cloud') && <CloudSection {...sectionProps('cloud')} />}
         {visible('account') && <AccountSection {...sectionProps('account')} markDirty={markDirty} />}

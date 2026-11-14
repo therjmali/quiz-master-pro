@@ -17,9 +17,11 @@ export interface SubjectStats {
   activeUnitName?: string;
 }
 
-interface Props {
-  open: boolean;
-  onClose: () => void;
+export interface WidgetManagerProps {
+  open?: boolean;
+  /** Render as a page section (Settings → Integrations → Android Widgets) instead of a floating sheet. */
+  inline?: boolean;
+  onClose?: () => void;
   todayQuestions: number;
   targetQuestions: number;
   streakDays: number;
@@ -29,6 +31,7 @@ interface Props {
   onStartSubjectQuiz?: (subjectName: string) => void;
   onStartQuickPractice?: () => void;
 }
+type Props = WidgetManagerProps;
 
 const FALLBACK_SUBJECT_STATS: SubjectStats[] = [
   {
@@ -44,8 +47,9 @@ const FALLBACK_SUBJECT_STATS: SubjectStats[] = [
 ];
 
 export default function WidgetManagerModal({
-  open,
-  onClose,
+  open = true,
+  inline = false,
+  onClose = () => {},
   todayQuestions,
   targetQuestions = 50,
   streakDays,
@@ -109,8 +113,8 @@ export default function WidgetManagerModal({
 
   const progressPct = Math.min(100, Math.round((todayQuestions / (targetQuestions || 50)) * 100));
 
-  return (
-    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="sm:max-w-xl" labelledBy="widgets-title" hideClose>
+  const body = (
+    <>
         {/* Header */}
         <div className="flex items-center justify-between gap-3 border-b border-border/15 px-5 pb-3 pt-5 sm:px-6">
           <div className="flex items-center gap-2.5">
@@ -125,13 +129,16 @@ export default function WidgetManagerModal({
               <p className="text-xs text-muted-foreground font-medium">Glanceable quiz stats, subject mastery &amp; instant exam practice</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="qmp-panel-close-inline"
-          >
-            ✕
-          </button>
+          {!inline && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="qmp-panel-close-inline"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         <div className="qmp-panel-body space-y-4 px-5 py-4 sm:px-6">
@@ -477,6 +484,14 @@ export default function WidgetManagerModal({
           </AnimatePresence>
         </div>
         </div>
+    </>
+  );
+
+  // Settings → Integrations → Android Widgets renders the same content as a normal page (no floating sheet)
+  if (inline) return <div data-testid="widget-manager" className="w-full rounded-3xl border border-border bg-card shadow-sm overflow-hidden">{body}</div>;
+  return (
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="sm:max-w-xl" labelledBy="widgets-title" hideClose>
+      {body}
     </Overlay>
   );
 }

@@ -251,6 +251,17 @@ if (exists('.github/workflows/ci.yml')) {
   const bottom = nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'");
   check('bottom tab is "Progress" (not Profile)', bottom, 'bottom nav label');
   check('Navbar profile photo opens Settings', read('src/components/Navbar.tsx').includes('onOpenSettings'), 'missing');
+  // v2.11 contracts
+  const settingsScreen = read('src/components/settings/SettingsScreen.tsx');
+  check('Android Widgets live under Settings > Integrations, not in the header', read('src/components/profile/settings/sectionsB.tsx').includes('IntegrationsSection') && settingsScreen.includes("view === 'widgets'") && !read('src/components/Navbar.tsx').includes('onOpenWidgets') && !read('src/App.tsx').includes('<WidgetManagerModal'), 'widgets are back in the header / main settings');
+  const themeTypes = read('src/types/quiz.ts'), appearance = read('src/components/profile/settings/sectionsA.tsx');
+  check('exactly two display modes (Light, Dark); legacy values migrate', themeTypes.includes("ThemeMode = 'light' | 'dark'") && read('src/utils/theme.ts').includes("value === 'amoled'") && !appearance.includes('ACCENT_PALETTES') && !appearance.includes('qmp_glass_intensity') && !exists('src/hooks/useTheme.ts'), 'extra themes, accent palette or glass slider are back');
+  check('Dark mode sets the Tailwind `dark` class and no theme uses hex-only CSS classes', read('src/utils/theme.ts').includes("classList.toggle('dark'") && !/\.app-amoled|amoled-mode|glass-dark/.test(read('src/index.css')), 'dark class missing or old amoled selectors remain');
+  const aiCtl = read('src/components/AISourceControls.tsx');
+  check('AI Generation is one ON/OFF switch with saved-key choices', aiCtl.includes('role="switch"') && aiCtl.includes('savedKeyChoices') && !aiCtl.includes('Zite AI') && !aiCtl.includes('Custom AI'), 'AI controls changed');
+  const lay = read('src/utils/reports/pdf/layout.ts'), cm = read('src/utils/reports/pdf/cardModel.ts');
+  check('reports: status cards, difficulty dots, check marks, 📖 rationale without text labels', lay.includes('cardGroups') && cm.includes("'#f0fdf4'") && cm.includes("'#fef2f2'") && cm.includes("'#fefce8'") && !/'(Explanation|Rationale|AI explanation):'/.test(lay.slice(lay.indexOf('function cardGroups'), lay.indexOf('function rationaleRows'))), 'card layout or its no-label rule changed');
+  check('Create Quiz preview hides answers until the eye button is tapped', read('src/components/setup/QuizPreview.tsx').includes('showAnswers') && read('src/components/setup/QuizPreview.tsx').includes('preview-toggle-answers'), 'preview toggle missing');
   const gFontsInSrc = ui.filter(x => /fonts\.(googleapis|gstatic)\.com/.test(x.t)).map(x => x.f);
   check('no Google Fonts requests in src/', gFontsInSrc.length === 0, gFontsInSrc.join(', '));
   const compPrint = ui.filter(x => /^src\/components\//.test(x.f) && /\bwindow\.print\s*\(/.test(x.t)).map(x => x.f);

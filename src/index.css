@@ -99,7 +99,7 @@
     --safe-right:  var(--qmp-inset-right);
     --bottom-nav-h: 72px;
 
-    --glass-blur: 40px;
+    --glass-blur: 12px; /* fixed: crisp and fast on older phones (the blur slider was removed) */
     --glass-opacity: 0.85;
     --font-size-base: 16px;
   }
@@ -125,7 +125,7 @@
   }
 
   /* ── Glass AMOLED — Pure black frosted ── */
-  .app-amoled {
+  .app-dark {
     --background: 240 15% 2%;
     --foreground: 0 0% 88%;
     --card: 240 12% 5%;
@@ -254,7 +254,7 @@
   opacity: 0.5;
 }
 
-.app-amoled .glass-liquid {
+.app-dark .glass-liquid {
   background: radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.03) 0%, transparent 60%),
               linear-gradient(165deg, rgba(4,4,10,0.92) 0%, rgba(2,2,6,0.96) 100%);
   backdrop-filter: blur(56px) saturate(200%) brightness(1.02);
@@ -378,7 +378,7 @@
   opacity: 0.4;
 }
 
-.app-amoled .glass-card {
+.app-dark .glass-card {
   background: rgba(8, 8, 16, 0.78);
   backdrop-filter: blur(40px) saturate(180%) brightness(1.02);
   -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.02);
@@ -387,7 +387,7 @@
     0 8px 32px rgba(0, 0, 0, 0.6),
     0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
-.app-amoled .glass-card::before { opacity: 0.3; }
+.app-dark .glass-card::before { opacity: 0.3; }
 
 /* ── Stat cards ── */
 .stat-card {
@@ -413,7 +413,7 @@
   box-shadow: 0 8px 24px -6px rgba(0,0,0,0.2);
 }
 
-.app-amoled .stat-card {
+.app-dark .stat-card {
   background: hsl(var(--card));
   border-color: hsl(var(--border));
 }
@@ -438,7 +438,7 @@
   will-change: transform;
 }
 
-.app-amoled .bottom-nav {
+.app-dark .bottom-nav {
   background: rgba(2, 2, 6, 0.9);
   border-top-color: rgba(255,255,255,0.04);
   box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
@@ -547,7 +547,7 @@
   opacity: 0.45;
 }
 
-.app-amoled .option-btn {
+.app-dark .option-btn {
   background: rgba(255,255,255,0.02);
   border-color: rgba(255,255,255,0.05);
 }
@@ -760,7 +760,7 @@
   border-color: rgba(0,0,0,0.08);
   box-shadow: 0 4px 16px rgba(0,0,0,0.1);
 }
-.app-amoled .zoom-control-group {
+.app-dark .zoom-control-group {
   background: rgba(4,4,12,0.85);
   border-color: rgba(255,255,255,0.05);
 }
@@ -1487,7 +1487,7 @@
   color: #fff;
 }
 
-.app-amoled [data-radix-popper-content-wrapper] [role="listbox"] {
+.app-dark [data-radix-popper-content-wrapper] [role="listbox"] {
   background: rgba(8,8,16,0.95);
   border-color: rgba(255,255,255,0.04);
 }
@@ -1861,20 +1861,20 @@
   background: hsl(var(--background));
 }
 
-.app-amoled .smart-preview-modal {
+.app-dark .smart-preview-modal {
   background: rgba(2, 2, 6, 0.98);
 }
-.app-amoled .smart-preview-topbar {
+.app-dark .smart-preview-topbar {
   background: linear-gradient(180deg, #040408 0%, #020206 100%);
 }
-.app-amoled .smart-preview-strip {
+.app-dark .smart-preview-strip {
   background: #020206;
 }
 
 /* Preview iframe background — paper-like */
 .smart-preview-iframe-bg { background: #c8cdd5; }
 .app-light .smart-preview-iframe-bg { background: #d8dfe8; }
-.app-amoled .smart-preview-iframe-bg { background: #1a1a20; }
+.app-dark .smart-preview-iframe-bg { background: #1a1a20; }
 
 /* ═══════════════════════════════════════════════════════
    LIGHT MODE — REPORT PREVIEW & BUTTONS
@@ -2016,8 +2016,8 @@
 .qball-fade-right { background: linear-gradient(to left, rgba(10,10,15,0.9), transparent); }
 .app-light .qball-fade-left { background: linear-gradient(to right, hsl(var(--background)), transparent); }
 .app-light .qball-fade-right { background: linear-gradient(to left, hsl(var(--background)), transparent); }
-.app-amoled .qball-fade-left { background: linear-gradient(to right, rgba(2,2,6,0.9), transparent); }
-.app-amoled .qball-fade-right { background: linear-gradient(to left, rgba(2,2,6,0.9), transparent); }
+.app-dark .qball-fade-left { background: linear-gradient(to right, rgba(2,2,6,0.9), transparent); }
+.app-dark .qball-fade-right { background: linear-gradient(to left, rgba(2,2,6,0.9), transparent); }
 
 .app-light .prog-bar-bg { background: rgba(0,0,0,0.06); }
 
@@ -2315,14 +2315,14 @@
 }
 
 /* ── AMOLED Speedometer ── */
-.app-amoled .speedo-track { stroke: rgba(255,255,255,0.04); }
-.app-amoled .speedo-track-inner { stroke: rgba(255,255,255,0.02); }
-.app-amoled .speedo-tick-empty { stroke: rgba(255,255,255,0.06); }
-.app-amoled .speedo-label { fill: rgba(255,255,255,0.15); }
-.app-amoled .speedo-hub-ring { fill: rgba(255,255,255,0.02); stroke: rgba(255,255,255,0.06); }
-.app-amoled .speedo-hub-inner { fill: rgba(0,0,0,0.5); stroke: rgba(255,255,255,0.08); }
-.app-amoled .speedo-stat-card { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.04); }
-.app-amoled .speedo-formula { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.04); }
+.app-dark .speedo-track { stroke: rgba(255,255,255,0.04); }
+.app-dark .speedo-track-inner { stroke: rgba(255,255,255,0.02); }
+.app-dark .speedo-tick-empty { stroke: rgba(255,255,255,0.06); }
+.app-dark .speedo-label { fill: rgba(255,255,255,0.15); }
+.app-dark .speedo-hub-ring { fill: rgba(255,255,255,0.02); stroke: rgba(255,255,255,0.06); }
+.app-dark .speedo-hub-inner { fill: rgba(0,0,0,0.5); stroke: rgba(255,255,255,0.08); }
+.app-dark .speedo-stat-card { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.04); }
+.app-dark .speedo-formula { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.04); }
 
 /* ═══════════════════════════════════════════════════════
    STATS SECTION
@@ -2591,7 +2591,7 @@ button, .q-ball, .option-btn, .prem-option-btn, .pqn-btn { -webkit-user-select: 
   opacity: 0.5;
 }
 
-.app-amoled .glass-prismatic {
+.app-dark .glass-prismatic {
   background: rgba(8, 8, 16, 0.78);
   border-color: rgba(255, 255, 255, 0.06);
 }
@@ -2817,7 +2817,7 @@ button, .q-ball, .option-btn, .prem-option-btn, .pqn-btn { -webkit-user-select: 
 }
 .flip-card[data-tone="dark"] { --flip-bg: #202124; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.65); --flip-shadow: rgba(0,0,0,.4); }
 .flip-card[data-tone="auto"] { --flip-bg: hsl(var(--card)); --flip-fg: hsl(var(--foreground)); --flip-line: hsl(var(--foreground) / .22); --flip-shadow: hsl(var(--foreground) / .16); }
-html.amoled-mode .flip-card[data-tone="auto"], html.glass-dark .flip-card[data-tone="auto"] { --flip-bg: #232428; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.7); --flip-shadow: rgba(0,0,0,.5); }
+html.app-dark .flip-card[data-tone="auto"] { --flip-bg: #232428; --flip-fg: #f1f1f2; --flip-line: rgba(0,0,0,.7); --flip-shadow: rgba(0,0,0,.5); }
 .flip-half { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; background: var(--flip-bg); backface-visibility: hidden; -webkit-backface-visibility: hidden; }
 .flip-half > span { position: absolute; left: 0; right: 0; height: 200%; display: flex; align-items: center; justify-content: center; color: var(--flip-fg); font-size: var(--ffs); line-height: 1; font-weight: 800; letter-spacing: -.02em; font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
 .flip-top { top: 0; border-radius: calc(var(--fw) * .16) calc(var(--fw) * .16) 0 0; transform-origin: 50% 100%; background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0)); }
@@ -2832,17 +2832,17 @@ html.amoled-mode .flip-card[data-tone="auto"], html.glass-dark .flip-card[data-t
 @media (prefers-reduced-motion: reduce) { .flip-flap-top, .flip-flap-bottom { animation-duration: .01s; animation-delay: 0s; } }
 
 /* ═════════ Readable text guard ═════════ */
-html:not(.amoled-mode):not(.glass-dark) .text-chart-1,
-html:not(.amoled-mode):not(.glass-dark) .text-chart-3,
-html:not(.amoled-mode):not(.glass-dark) .text-chart-5 { color: color-mix(in srgb, hsl(var(--chart-1)) 62%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-chart-2 { color: color-mix(in srgb, hsl(var(--chart-2)) 66%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-chart-4 { color: color-mix(in srgb, hsl(var(--chart-4)) 60%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-accent { color: color-mix(in srgb, hsl(var(--accent)) 52%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-secondary { color: color-mix(in srgb, hsl(var(--secondary)) 70%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-diff-easy { color: color-mix(in srgb, hsl(var(--diff-easy)) 58%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-diff-medium { color: color-mix(in srgb, hsl(var(--diff-medium)) 50%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-diff-hard { color: color-mix(in srgb, hsl(var(--diff-hard)) 66%, hsl(var(--foreground))); }
-html:not(.amoled-mode):not(.glass-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--destructive)) 82%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-chart-1,
+html:not(.app-dark) .text-chart-3,
+html:not(.app-dark) .text-chart-5 { color: color-mix(in srgb, hsl(var(--chart-1)) 62%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-chart-2 { color: color-mix(in srgb, hsl(var(--chart-2)) 66%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-chart-4 { color: color-mix(in srgb, hsl(var(--chart-4)) 60%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-accent { color: color-mix(in srgb, hsl(var(--accent)) 52%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-secondary { color: color-mix(in srgb, hsl(var(--secondary)) 70%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-diff-easy { color: color-mix(in srgb, hsl(var(--diff-easy)) 58%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-diff-medium { color: color-mix(in srgb, hsl(var(--diff-medium)) 50%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-diff-hard { color: color-mix(in srgb, hsl(var(--diff-hard)) 66%, hsl(var(--foreground))); }
+html:not(.app-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--destructive)) 82%, hsl(var(--foreground))); }
 
 
 @keyframes qmp-pop-in {
@@ -3664,3 +3664,35 @@ html.qmp-scroll-locked [role="alertdialog"] { touch-action: pan-y; }
   .qmp-perf-low *::before,
   .qmp-perf-low *::after { scroll-behavior: auto !important; }
 }
+/* ── Dark mode: readable secondary labels ───────────────────────────────────────────────────────
+   Faint `text-foreground/10..40` labels were ~1.5-2.4:1 on the near-black surfaces (Light already
+   had a matching boost). Raise the floor to about 3:1 and keep the order of the steps. */
+.app-dark .text-foreground\/10 { color: hsl(var(--foreground) / 0.36); }
+.app-dark .text-foreground\/15 { color: hsl(var(--foreground) / 0.40); }
+.app-dark .text-foreground\/20 { color: hsl(var(--foreground) / 0.44); }
+.app-dark .text-foreground\/25 { color: hsl(var(--foreground) / 0.46); }
+.app-dark .text-foreground\/30 { color: hsl(var(--foreground) / 0.48); }
+.app-dark .text-foreground\/35 { color: hsl(var(--foreground) / 0.5); }
+.app-dark .text-foreground\/40 { color: hsl(var(--foreground) / 0.54); }
+.app-dark .text-muted-foreground\/60 { color: hsl(var(--muted-foreground) / 0.85); }
+.app-dark .text-muted-foreground\/50 { color: hsl(var(--muted-foreground) / 0.8); }
+
+/* Light mode: same floor (~3:1 on the cream surfaces) for the faintest labels */
+.app-light .text-foreground\/10 { color: hsl(var(--foreground) / 0.3); }
+.app-light .text-foreground\/15 { color: hsl(var(--foreground) / 0.38); }
+.app-light .text-foreground\/20 { color: hsl(var(--foreground) / 0.48); }
+.app-light .text-foreground\/25 { color: hsl(var(--foreground) / 0.5); }
+.app-light .text-foreground\/30 { color: hsl(var(--foreground) / 0.52); }
+.app-light .text-foreground\/35 { color: hsl(var(--foreground) / 0.54); }
+.app-light .text-foreground\/40 { color: hsl(var(--foreground) / 0.58); }
+
+/* Light mode: pastel -300/-200 text written for dark surfaces had no Light override (about 1.6:1 on cream) */
+.app-light .text-blue-300, .app-light .text-blue-200 { color: #1d4ed8; }
+.app-light .text-purple-300, .app-light .text-purple-200 { color: #7e22ce; }
+.app-light .text-violet-200 { color: #6d28d9; }
+.app-light .text-amber-200 { color: #92400e; }
+.app-light .text-emerald-200 { color: #047857; }
+.app-light .text-red-200 { color: #b91c1c; }
+.app-light .text-green-300, .app-light .text-green-200 { color: #15803d; }
+.app-light .text-pink-300, .app-light .text-rose-300 { color: #be123c; }
+.app-light .text-teal-300 { color: #0f766e; }

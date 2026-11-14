@@ -42,10 +42,11 @@ emulator, including a cold start in airplane mode. Each release lists the file's
 - **Account & cloud sync** — optional sign-in (Supabase) that keeps history, library, bookmarks, mistakes, flashcards and settings identical across devices, with a safe first-sign-in choice, restore points and a readable sync log. [Setup guide](docs/CLOUD_SETUP.md).
 - **Automatic backups** — scheduled, checksummed snapshots with rotation, restore (with a safety copy), export to file and import.
 - **Smart reminders** — real Android notifications for daily study, due cards, streak saver, exam countdown and a weekly summary, with quiet hours.
-- **AI on your device** — bring your own Gemini, Claude, OpenAI or Cohere key; quiz generation, AI tutor chat, photo-to-quiz OCR, 7-day study plans, revision notes, question verification and explanations all run directly from your device with no server.
+- **AI on your device** — bring your own Gemini, Claude, OpenAI or Cohere key; on *Create* one **AI Generation** switch (ON lists only the keys you saved, as `🔑 Gemini`, `🔑 OpenAI` …; OFF loads MCQs offline); quiz generation, AI tutor chat, photo-to-quiz OCR, 7-day study plans, revision notes, question verification and explanations all run directly from your device with no server.
 - **Data & Trash** — deleted library items and quiz results are restorable for 30 days (and sync), storage meter, data check.
-- **App icon, widgets & device** — custom app icon, install controls, and 4 Android home-screen widgets (Study Stats, Quick Actions, Subject Mastery, Exam Countdown) wired to your live data.
-- **Reports** — *Progress*, *Notes*, *Bookmarks* and the results screen make PDF / Word / text / web reports on your device (no internet, no server) in a clean numbered Q&A format with explanations, one or two columns, preview full screen, saved to Downloads / R.J QUIZ with a notification. Tune them in *Settings → Reports & downloads*.
+- **App icon, widgets & device** — custom app icon, install controls, and 4 Android home-screen widgets (Study Stats, Quick Actions, Subject Mastery, Exam Countdown) wired to your live data. Widgets are set up in *Settings → Integrations → Android Widgets*.
+- **Light & Dark** — exactly two display modes (☀️ Light, 🌙 Dark) in *Settings → Appearance*, plus text size. Older themes (Ink, Papyrus, Liquid Glass) are mapped to Light or Dark automatically.
+- **Reports** — *Progress*, *Notes*, *Bookmarks* and the results screen make PDF / Word / text / web reports on your device (no internet, no server) as status cards (✅ green correct, ❌ red wrong, ⏭️ yellow skipped) — `Q1.` with a difficulty dot, options with a green ✓ on the answer, and the 📖 rationale bullets (no text labels) — one or two columns, preview full screen, saved to Downloads / R.J QUIZ with a notification. Tune them in *Settings → Reports & downloads*.
 - **Drafts** — leaving a quiz saves it (last 5, one per quiz) and drafts sync to your other devices; the full question data of finished quizzes syncs too, so every device can open every quiz.
 - **In-app updates** — *Settings → App updates* downloads the new APK inside the app with live progress, verifies it and opens Android's installer. No browser, no manual download.
 - **Progress** — the bottom *Progress* tab is your lifetime score, report and overview, with a rank meter and live cloud / backup / storage / app status. Everything else lives in **Settings**, opened from your profile photo at the top right.
@@ -107,6 +108,7 @@ npm run test:offline   # real-Chrome test: install SW, go offline, reload, deep 
 | --- | --- |
 | `npm run verify:repo` | Checks required files, manifest and icon dimensions, Android resources, workflows, `.gitignore`, and scans for leaked secrets |
 | `npm run verify:dist` | Checks the build: no remote scripts/styles, SPA fallback, precache covers every file, service worker stamped |
+| `npm run test:ui:v211` | Real-Chrome test of widgets in Settings, Light/Dark, the AI switch, the preview answer toggle and a Light-vs-Dark text audit (after `npm run build`) |
 | `npm run test:offline` | Headless Chrome offline test, screenshots in `test-results/` |
 | `scripts/android-prepare.sh` | Generates the native project, branding, version numbers |
 | `scripts/verify-apk.sh` | Static APK inspection (used by CI) |
@@ -171,7 +173,7 @@ service worker (*Update & reload*). If something goes wrong the panel shows the 
 | Where | What |
 | --- | --- |
 | **Bottom bar** | Home · Library · Create · Stats · **Progress** (lifetime score, report, overview) |
-| **Profile photo, top right** | **Settings**: account card (photo, name, emoji, sign-in), quick jumps (updates, cloud, backups, trash), then every setting (appearance, quiz & study, AI, backups, data & trash, notifications, reminders, gestures, cloud, device, advanced), plus Awards, AI notes, templates and API keys |
+| **Profile photo, top right** | **Settings**: account card (photo, name, emoji, sign-in), quick jumps (updates, cloud, backups, trash), then every setting (appearance, quiz & study, AI, backups, data & trash, notifications, reminders, integrations, gestures, cloud, device, advanced), plus Awards, AI notes, templates and API keys |
 
 The profile photo is stored on the device as a small cropped JPEG (no server needed), so it works offline.
 

@@ -3,7 +3,7 @@ import { useAuth } from 'zitejs/auth';
 import { sendWeeklyReport } from 'zitejs/api';
 import {
   Sparkles, KeyRound, LayoutTemplate, Database, Trophy, BookOpenText, Trash2, Bell, Hand, UserRound, Settings2,
-  LogIn, LogOut, Loader2, Send, Check,
+  LogIn, LogOut, Loader2, Send, Check, Smartphone, Plug,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAccount } from '../../../platform/cloud/useAccount';
@@ -31,7 +31,7 @@ import { Pill } from './platformUi';
 import { hasBackend } from '../../../platform/ai/caller';
 import type { SectionProps } from './sectionsA';
 
-export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'awards' | 'notes';
+export type ProfileTabLink = 'apikeys' | 'templates' | 'trash' | 'awards' | 'notes' | 'widgets';
 type Dirty = () => void;
 
 /* ═════════ AI & Content ═════════ */
@@ -45,6 +45,15 @@ export const AISection = memo(function AISection({ open, onToggle, onOpenTab }: 
       <SubHeading>Content</SubHeading>
       <LinkRow id="templates" icon={<LayoutTemplate className="w-4 h-4" />} title="Quiz templates" hint="Saved quiz configurations for one-tap setup" onClick={() => onOpenTab?.('templates')} />
       <p className="text-[11px] text-foreground/40 pt-2 leading-snug">Turn individual AI features on or off under Quiz & Study → Feature visibility. Rationale style is chosen on the quiz setup screen.</p>
+    </SettingsSection>
+  );
+});
+
+/* ═════════ Integrations ═════════ */
+export const IntegrationsSection = memo(function IntegrationsSection({ open, onToggle, onOpenTab }: SectionProps & { onOpenTab?: (t: ProfileTabLink) => void }) {
+  return (
+    <SettingsSection id="integrations" icon={<Plug className="w-4 h-4" />} open={open} onToggle={onToggle}>
+      <LinkRow id="androidWidgets" icon={<Smartphone className="w-4 h-4" />} title="Android Widgets" hint="Pin quiz progress, subject and exam widgets to your home screen" onClick={() => onOpenTab?.('widgets')} />
     </SettingsSection>
   );
 });

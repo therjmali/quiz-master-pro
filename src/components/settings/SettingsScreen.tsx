@@ -15,13 +15,14 @@ import NotesTab from '../profile/NotesTab';
 import TemplatesTab from '../profile/TemplatesTab';
 import TrashTab from '../profile/TrashTab';
 import ApiKeysTab from '../profile/ApiKeysTab';
+import WidgetManager, { type WidgetManagerProps } from '../widgets/WidgetManagerModal';
 import CloudDataManager from '../CloudDataManager';
 import StatusStrip from '../profile/StatusStrip';
 import { requestOpenSettingsSection } from '../cloud/CloudGate';
 import type { ProfileTabLink } from '../profile/settings/sectionsB';
 
 export type SettingsView = 'main' | ProfileTabLink;
-const SUB_TITLES: Record<ProfileTabLink, string> = { apikeys: 'API keys', templates: 'Quiz templates', trash: 'Trash', awards: 'Awards', notes: 'AI notes' };
+const SUB_TITLES: Record<ProfileTabLink, string> = { apikeys: 'API keys', templates: 'Quiz templates', trash: 'Trash', awards: 'Awards', notes: 'AI notes', widgets: 'Android Widgets' };
 const EMOJI_OPTIONS = ['🧑‍⚕️', '🧑‍💻', '🧑‍🎓', '👩‍🎓', '🧑‍🔬', '🧑‍🎨', '🦸', '🧙', '🦊', '🐼', '🦁', '🌟', '🔥', '⚡', '🎯', '💎', '🚀', '🌈'];
 
 interface Props {
@@ -34,12 +35,14 @@ interface Props {
   onHistoryChanged?: () => void;
   initialView?: string;
   onViewChange?: (view: SettingsView) => void;
+  /** Live data for the Android Widgets page (Settings → Integrations → Android Widgets). */
+  widgetProps?: Omit<WidgetManagerProps, 'open' | 'inline' | 'onClose'>;
 }
 
 const isSub = (v: string | undefined): v is ProfileTabLink => !!v && v in SUB_TITLES;
 
 /** Settings hub, opened from the profile photo at the top right. Account card, quick jumps, then every setting. */
-export default function SettingsScreen({ history, rationaleCache, theme, onThemeChange, onBack, onSignIn, onHistoryChanged, initialView, onViewChange }: Props) {
+export default function SettingsScreen({ history, rationaleCache, theme, onThemeChange, onBack, onSignIn, onHistoryChanged, initialView, onViewChange, widgetProps }: Props) {
   const account = useAccount();
   const cloudAuth = useCloudAuth();
   const { profile, update } = useProfileStore();
@@ -100,6 +103,7 @@ export default function SettingsScreen({ history, rationaleCache, theme, onTheme
         {view === 'templates' && <TemplatesTab />}
         {view === 'trash' && <TrashTab onHistoryChanged={() => onHistoryChanged?.()} />}
         {view === 'apikeys' && <ApiKeysTab />}
+        {view === 'widgets' && <WidgetManager inline todayQuestions={0} targetQuestions={50} streakDays={0} masteryPercent={0} {...widgetProps} />}
       </div>
     );
   }

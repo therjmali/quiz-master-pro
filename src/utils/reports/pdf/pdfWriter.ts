@@ -1,5 +1,5 @@
 /** Draws a laid-out report into a PDF with pdf-lib (works fully offline). */
-import { rgb } from 'pdf-lib';
+import { rgb, LineCapStyle } from 'pdf-lib';
 import { segmentText } from './fontSet';
 import type { LaidOutReport, Op } from './types';
 import type { ReportFonts } from './reportFonts';
@@ -33,7 +33,7 @@ export async function writePdf(report: LaidOutReport, fonts: ReportFonts, info: 
           x += seg.face.width(seg.text, op.size);
         }
       } else if (op.t === 'line') {
-        page.drawLine({ start: { x: op.x1, y: H - op.y1 }, end: { x: op.x2, y: H - op.y2 }, thickness: op.w, color: color(op.color), dashArray: op.dash });
+        page.drawLine({ start: { x: op.x1, y: H - op.y1 }, end: { x: op.x2, y: H - op.y2 }, thickness: op.w, color: color(op.color), dashArray: op.dash, lineCap: op.cap === 'round' ? LineCapStyle.Round : undefined });
       } else if (op.t === 'circle') {
         page.drawCircle({
           x: op.x, y: H - op.y, size: op.r,

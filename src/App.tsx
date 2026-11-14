@@ -78,7 +78,6 @@ const AIChatbot = lazyRetry(() => import('./components/AIChatbot'));
 const PracticeDashboardScreen = lazyRetry(() => import('./components/practice/PracticeDashboardScreen'));
 const SyncCenter = lazyRetry(() => import('./components/cloud/SyncCenter'));
 const NotificationCenter = lazyRetry(() => import('./components/NotificationCenter'));
-const WidgetManagerModal = lazyRetry(() => import('./components/widgets/WidgetManagerModal'));
 
 // Warm the chunks of frequently-opened screens once the browser is idle, so the
 // first visit renders instantly instead of flashing the Suspense skeleton.
@@ -142,7 +141,7 @@ import { loadFileTree, saveFileTree, getAllFiles, updateNode as updateNodeInTree
 // Hooks
 import { useHistorySync } from './hooks/useHistorySync';
 import { initLocalStores } from './utils/localStores';
-import { loadTheme, persistTheme } from './utils/theme';
+import { loadTheme, persistTheme, applyThemeToDocument } from './utils/theme';
 import { useCloudSync } from './hooks/useCloudSync';
 import { SyncStatus } from './components/Navbar';
 import { useTodos } from './hooks/useTodos';
@@ -275,10 +274,9 @@ function AppScreens({
     try { return !localStorage.getItem('qmp_onboarding_done'); } catch { return false; }
   });
 
-  // Modals for Cloud Sync, Notifications, and Android Home Screen Widgets
+  // Modals for Cloud Sync and Notifications
   const [syncCenterOpen, setSyncCenterOpen] = useState(false);
   const [notifCenterOpen, setNotifCenterOpen] = useState(false);
-  const [widgetModalOpen, setWidgetModalOpen] = useState(false);
 
   // To-Do / Task Management
   const { todos, addTodo, toggleTodo, deleteTodo, updateTodo } = useTodos();
@@ -775,7 +773,7 @@ function AppScreens({
   return (
     <div
       ref={swipeRef}
-      className={`qmp-app-root ${bgTheme} ${theme === 'light' ? 'app-light' : ''} ${theme === 'amoled' ? 'app-amoled' : ''} transition-colors duration-300 overflow-x-hidden`}
+      className={`qmp-app-root ${bgTheme} ${theme === 'dark' ? 'app-dark' : 'app-light'} transition-colors duration-300 overflow-x-hidden`}
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
       {hideBadge && <style>{`[data-zite-badge], .zite-badge, [class*="zite-badge"] { display: none !important; }`}</style>}
@@ -811,10 +809,9 @@ function AppScreens({
             syncStatus={syncStatus}
             quizCount={history.length}
             theme={theme}
-            onToggleTheme={() => setTheme(t => t === 'amoled' ? 'light' : t === 'light' ? 'ancient' : t === 'ancient' ? 'glass' : 'amoled')}
+            onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
             onOpenNotifications={() => setNotifCenterOpen(true)}
             unreadNotificationCount={pendingTaskCount}
-            onOpenWidgets={() => setWidgetModalOpen(true)}
             onOpenSyncCenter={() => setSyncCenterOpen(true)}
             isDashboard={screen === 'dashboard'}
             profileAvatarEmoji={profile.avatarEmoji}
@@ -893,6 +890,7 @@ function AppScreens({
               onReportHelperChange={handleReportHelperChange}
               isEditingActiveQuiz={editingActiveQuiz} onReturnToQuiz={handleResumeAfterEdit}
               featureVisibility={profile.featureVisibility}
+              onOpenApiKeys={() => { screenMetaRef.current = { ...screenMetaRef.current, settingsView: 'apikeys' }; navigateTo('settings'); }}
             />
           </ErrorBoundary>
         )}
@@ -1142,6 +1140,16 @@ function AppScreens({
               onHistoryChanged={handleHistoryChanged}
               initialView={screenMetaRef.current.settingsView}
               onViewChange={v => { screenMetaRef.current = { ...screenMetaRef.current, settingsView: v }; }}
+              widgetProps={{
+                todayQuestions: todayQuestionCount,
+                targetQuestions: profile.dailyQuestionGoal || 50,
+                streakDays: streak,
+                masteryPercent: avgScore,
+                subjects: subjectStats,
+                exams: userExams,
+                onStartSubjectQuiz: () => navigateTo('setup'),
+                onStartQuickPractice: () => navigateTo('practice-dashboard'),
+              }}
             />
           </ErrorBoundary>
         )}
@@ -1192,27 +1200,6 @@ function AppScreens({
         />
       </Suspense>
 
-      {/* Android Home Screen Widgets Manager */}
-      <Suspense fallback={null}>
-        <WidgetManagerModal
-          open={widgetModalOpen}
-          onClose={() => setWidgetModalOpen(false)}
-          todayQuestions={todayQuestionCount}
-          targetQuestions={profile.dailyQuestionGoal || 50}
-          streakDays={streak}
-          masteryPercent={avgScore}
-          subjects={subjectStats}
-          exams={userExams}
-          onStartSubjectQuiz={() => {
-            setWidgetModalOpen(false);
-            navigateTo('setup');
-          }}
-          onStartQuickPractice={() => {
-            setWidgetModalOpen(false);
-            navigateTo('practice-dashboard');
-          }}
-        />
-      </Suspense>
     </div>
   );
 }
@@ -1259,16 +1246,12 @@ function AppContent() {
 
   useEffect(() => {
     persistTheme(theme);
-    document.documentElement.classList.toggle('app-light', theme === 'light');
-    document.documentElement.classList.toggle('app-amoled', theme === 'amoled');
-    document.documentElement.classList.toggle('app-ancient', theme === 'ancient');
-    document.documentElement.classList.toggle('app-glass', theme === 'glass');
-    document.documentElement.setAttribute('data-theme', theme);
+    applyThemeToDocument(theme);
   }, [theme]);
   useEffect(() => { try { localStorage.setItem('qmp_settings', JSON.stringify(settings)); } catch {} }, [settings]);
   useEffect(() => { try { localStorage.setItem('qmp_ai_prefs', JSON.stringify(aiPrefs)); } catch {} }, [aiPrefs]);
   useEffect(() => { try { localStorage.setItem('qmp_rationale_prefs', JSON.stringify(rationalePrefs)); } catch {} }, [rationalePrefs]);
-  useEffect(() => { try { const hsl = localStorage.getItem('qmp_accent_hsl'); if (hsl) document.documentElement.style.setProperty('--primary', hsl); const fs = localStorage.getItem('qmp_font_size'); if (fs) { const map: Record<string, string> = { small: '14px', medium: '16px', large: '18px' }; document.documentElement.style.setProperty('--font-size-base', map[fs] || '16px'); } const gi = localStorage.getItem('qmp_glass_intensity'); if (gi) { const val = Number(gi); document.documentElement.style.setProperty('--glass-blur', `${val}px`); document.documentElement.style.setProperty('--glass-opacity', `${Math.min(0.95, 0.5 + val / 100)}`); } } catch {} }, []);
+  useEffect(() => { try { const fs = localStorage.getItem('qmp_font_size'); if (fs) { const map: Record<string, string> = { small: '14px', medium: '16px', large: '18px' }; document.documentElement.style.setProperty('--font-size-base', map[fs] || '16px'); } } catch {} }, []);
   useEffect(() => { historySync.userRef.current = user; }, [user, historySync.userRef]);
 
   // Mark data loaded

@@ -24,7 +24,7 @@ export function ensureFontFaces(keys: string[]): Promise<void[]> {
 
 function OpView({ op, set }: { op: Op; set: FontSet }) {
   if (op.t === 'rect') return <rect x={op.x} y={op.y} width={op.w} height={op.h} rx={op.r} fill={op.fill ?? 'none'} fillOpacity={op.opacity} stroke={op.stroke} strokeWidth={op.sw} />;
-  if (op.t === 'line') return <line x1={op.x1} y1={op.y1} x2={op.x2} y2={op.y2} stroke={op.color} strokeWidth={op.w} strokeDasharray={op.dash?.join(' ')} />;
+  if (op.t === 'line') return <line x1={op.x1} y1={op.y1} x2={op.x2} y2={op.y2} stroke={op.color} strokeWidth={op.w} strokeDasharray={op.dash?.join(' ')} strokeLinecap={op.cap === 'round' ? 'round' : undefined} />;
   if (op.t === 'circle') return <circle cx={op.x} cy={op.y} r={op.r} fill={op.fill ?? 'none'} fillOpacity={op.opacity} stroke={op.stroke} strokeWidth={op.sw} />;
   let x = op.x;
   return (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, ChevronDown, Check, AlertTriangle, FileText, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, ChevronDown, Check, AlertTriangle, FileText, Sparkles } from 'lucide-react';
 import type { QuizQuestion } from '../../types/quiz';
 
 interface Props {
@@ -18,6 +18,8 @@ const COLLAPSED = 3;
 /** Live preview of what will be created: parsed MCQs (with answers marked), or a notes summary for AI. */
 export default function QuizPreview({ questions, issues, duplicates, words, text, fileNames, pending }: Props) {
   const [showAll, setShowAll] = useState(false);
+  // Answers stay hidden until the eye button is tapped (so the preview never gives them away)
+  const [showAnswers, setShowAnswers] = useState(false);
   const hasText = text.trim().length > 20;
   const hasQs = questions.length > 0;
   const withAnswer = questions.filter(q => q.correctAnswer).length;
@@ -37,6 +39,14 @@ export default function QuizPreview({ questions, issues, duplicates, words, text
             {pending ? ' · updating…' : ''}
           </p>
         </div>
+        {hasQs && (
+          <button type="button" onClick={() => setShowAnswers(v => !v)} aria-pressed={showAnswers} data-testid="preview-toggle-answers"
+            aria-label={showAnswers ? 'Hide correct answers' : 'Show correct answers'} title={showAnswers ? 'Hide correct answers' : 'Show correct answers'}
+            style={{ minHeight: 0, minWidth: 0 }}
+            className={`flex-shrink-0 grid place-items-center w-10 h-10 rounded-2xl border transition-all active:scale-90 ${showAnswers ? 'border-primary/40 bg-primary/10 text-primary' : 'border-border bg-foreground/[0.04] text-foreground/60'}`}>
+            {showAnswers ? <Eye className="w-4 h-4" aria-hidden="true" /> : <EyeOff className="w-4 h-4" aria-hidden="true" />}
+          </button>
+        )}
       </div>
 
       <div className="cq-card-body space-y-3">
@@ -68,7 +78,7 @@ export default function QuizPreview({ questions, issues, duplicates, words, text
                 <p className="cq-prev-qtext"><span className="cq-prev-num">{i + 1}</span>{q.question}</p>
                 <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
                   {q.options.map((o, oi) => {
-                    const ok = o === q.correctAnswer || q.correctAnswers?.includes(o);
+                    const ok = showAnswers && (o === q.correctAnswer || !!q.correctAnswers?.includes(o));
                     return (
                       <li key={oi} className={`cq-prev-opt ${ok ? 'is-correct' : ''}`}>
                         <span className="cq-prev-letter">{LETTERS[oi]}</span>

@@ -12,11 +12,11 @@ export interface SettingEntry {
 
 export type SectionId =
   | 'updates' | 'appearance' | 'accessibility' | 'reports' | 'quiz' | 'ai' | 'library' | 'autobackup' | 'data' | 'notifications' | 'reminders'
-  | 'gestures' | 'cloud' | 'account' | 'device' | 'advanced';
+  | 'integrations' | 'gestures' | 'cloud' | 'account' | 'device' | 'advanced';
 
 export const SECTION_META: Record<SectionId, { title: string; desc: string }> = {
   updates:       { title: 'App updates',             desc: 'Download and install the latest version inside the app' },
-  appearance:    { title: 'Appearance',              desc: 'Theme, colour, text size and visual effects' },
+  appearance:    { title: 'Appearance',              desc: 'Light or Dark mode and text size' },
   accessibility: { title: 'Accessibility',         desc: 'Zoom the whole app in or out' },
   reports:       { title: 'Reports & downloads',     desc: 'PDF layout, notifications and saved files' },
   quiz:          { title: 'Quiz & Study',            desc: 'Study targets, cards, exam dates and quiz features' },
@@ -26,6 +26,7 @@ export const SECTION_META: Record<SectionId, { title: string; desc: string }> = 
   data:          { title: 'Data & Trash',            desc: 'Storage, deleted results and data checks' },
   notifications: { title: 'Notifications & Email',   desc: 'Daily reminder and email reports' },
   reminders:     { title: 'Smart Reminders',         desc: 'Due cards, streak saver, exam countdown' },
+  integrations:  { title: 'Integrations',          desc: 'Android home-screen widgets' },
   gestures:      { title: 'Gestures & Shortcuts',    desc: 'Haptics, swipes and keyboard shortcuts' },
   cloud:         { title: 'Account & Cloud Sync',    desc: 'Sign in and sync across devices' },
   account:       { title: 'Profile',                 desc: 'Display name, avatar and preferences' },
@@ -33,7 +34,7 @@ export const SECTION_META: Record<SectionId, { title: string; desc: string }> = 
   advanced:      { title: 'Advanced & About',        desc: 'Platform badge and resetting preferences' },
 };
 
-export const SECTION_ORDER: SectionId[] = ['updates', 'appearance', 'accessibility', 'reports', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'gestures', 'cloud', 'account', 'device', 'advanced'];
+export const SECTION_ORDER: SectionId[] = ['updates', 'appearance', 'accessibility', 'reports', 'quiz', 'ai', 'library', 'autobackup', 'data', 'notifications', 'reminders', 'integrations', 'gestures', 'cloud', 'account', 'device', 'advanced'];
 
 export const SETTINGS: SettingEntry[] = [
   // App updates
@@ -47,10 +48,8 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'reportNotify', section: 'reports', title: 'Report saved notification', hint: 'Notify when a download finishes', keywords: ['notification', 'download', 'pdf', 'saved', 'alert'] },
   { id: 'reportWhere', section: 'reports', title: 'Where reports are saved', hint: 'Downloads / R.J QUIZ', keywords: ['downloads', 'folder', 'storage', 'location', 'pdf', 'file'] },
   // Appearance
-  { id: 'theme', section: 'appearance', title: 'Theme', hint: 'Light or AMOLED black — styles the whole app and quiz screen', keywords: ['dark mode', 'night', 'black', 'colour scheme', 'skin'] },
-  { id: 'accent', section: 'appearance', title: 'Accent colour', hint: 'Highlight colour used for buttons and active states', keywords: ['color', 'primary', 'tint', 'brand'] },
+  { id: 'theme', section: 'appearance', title: 'Display Mode', hint: 'Light or Dark. Styles the whole app, quiz and reports', keywords: ['theme', 'dark mode', 'light mode', 'night', 'black', 'colour scheme', 'skin', 'appearance'] },
   { id: 'fontSize', section: 'appearance', title: 'Text size', hint: 'Make text smaller or larger across the app', keywords: ['font', 'readability', 'large text'] },
-  { id: 'glass', section: 'appearance', title: 'Glass blur intensity', hint: 'How strongly frosted-glass cards blur what is behind them', keywords: ['blur', 'transparency', 'frosted', 'effects', 'performance'] },
   // Accessibility
   { id: 'performance', section: 'accessibility', title: 'Smoothness', hint: 'Full glass or a lighter mode for slower phones', keywords: ['lag', 'slow', 'stutter', 'fps', 'performance', 'battery', 'blur', 'glass', 'fast', 'smooth', 'freeze', 'hang'] },
   { id: 'diagnostics', section: 'accessibility', title: 'Diagnostics', hint: 'Device facts and the last problems the app hit', keywords: ['crash', 'crashed', 'error', 'log', 'report', 'bug', 'diagnose', 'support', 'memory', 'storage', 'why', 'lag'] },
@@ -75,6 +74,8 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'reportEmail', section: 'notifications', title: 'Report email', hint: 'Where email reports and weekly summaries are sent', keywords: ['email', 'mail', 'address', 'inbox', 'weekly'] },
   { id: 'weeklyEmail', section: 'notifications', title: 'Weekly progress email', hint: 'A weekly summary of your progress, sent to your report email', keywords: ['summary', 'digest', 'newsletter', 'report'] },
   { id: 'reminder', section: 'notifications', title: 'Daily study reminder', hint: 'A notification on chosen days at a set time', keywords: ['notification', 'alarm', 'alert', 'push', 'remind', 'time', 'days'] },
+  // Integrations
+  { id: 'androidWidgets', section: 'integrations', title: 'Android Widgets', hint: 'Pin quiz progress, subject and exam widgets to your home screen', keywords: ['widget', 'widgets', 'home screen', 'homescreen', 'launcher', 'pin', 'android', 'integration'] },
   // Gestures
   { id: 'haptics', section: 'gestures', title: 'Vibration feedback', hint: 'Subtle vibrations on taps, swipes and actions', keywords: ['haptic', 'vibrate', 'buzz', 'feedback'] },
   { id: 'gestureGuide', section: 'gestures', title: 'Gesture & keyboard guide', hint: 'Swipe, shake, pinch and keyboard shortcuts', keywords: ['swipe', 'shake', 'pinch', 'keyboard', 'shortcut', 'undo', 'long press'] },

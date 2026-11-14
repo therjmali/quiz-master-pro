@@ -42,6 +42,8 @@ interface Props {
   onReturnToQuiz?: () => void;
   /** Feature visibility toggles from settings */
   featureVisibility?: FeatureVisibility;
+  /** Opens Profile → API Keys */
+  onOpenApiKeys?: () => void;
 }
 
 const QUIZ_TYPES = [
@@ -244,7 +246,7 @@ export default function SetupScreen({
   hasSavedSession, onResumeSession, onDiscardSession,
   aiPrefs, onAiPrefsChange,
   rationalePrefs, onRationalePrefsChange, onReportHelperChange,
-  isEditingActiveQuiz, onReturnToQuiz, featureVisibility,
+  isEditingActiveQuiz, onReturnToQuiz, featureVisibility, onOpenApiKeys,
 }: Props) {
   const [text, setText] = useState(() => localStorage.getItem('qmp_input') || '');
   const hasSavedDraft = !text.trim() && !!(localStorage.getItem('qmp_input')?.trim());
@@ -679,7 +681,7 @@ export default function SetupScreen({
       <div className="space-y-2 px-1">
         <div className="cq-rail flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
           {/* ── Left: AI & Controls ── */}
-          <AISourceControls prefs={aiPrefs} onChange={(p) => { onAiPrefsChange(p); if (p.reportHelper !== aiPrefs.reportHelper) onReportHelperChange(p.reportHelper); }} />
+          <AISourceControls prefs={aiPrefs} onChange={(p) => { onAiPrefsChange(p); if (p.reportHelper !== aiPrefs.reportHelper) onReportHelperChange(p.reportHelper); }} onAddKey={onOpenApiKeys} />
           <ShuffleControlsButton
             shuffleQuestions={settings.shuffleQuestions}
             shuffleOptions={settings.shuffleOptions}

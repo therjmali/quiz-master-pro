@@ -49,8 +49,13 @@ async function run(label, w, h) {
   ok(`[${label}] preview opens full screen with pages`, await page.locator('[data-screen="report-preview"]').isVisible() && (await page.locator('[data-page]').count()) >= 1);
   const svgText = async () => page.evaluate(() => Array.from(document.querySelectorAll('[data-page] svg text')).map(t => t.textContent).join('|'));
   const t1 = await svgText();
-  ok(`[${label}] preview shows the questions and the "Ans." lines in the new format`, /Q1\./.test(t1) && /Ans\.1\. :/.test(t1) && /\(B\)/.test(t1) && t1.includes('Beta blocker'));
-  ok(`[${label}] explanations are shown (book rationale on)`, /Explanation:/.test(t1));
+  ok(`[${label}] preview shows the questions and options, with no "Ans." / "Explanation" text labels`, /Q1\./.test(t1) && /\(B\)/.test(t1) && t1.includes('Beta blocker') && !/Ans\.|Explanation|Rationale/.test(t1));
+  ok(`[${label}] rationale bullets are shown (book rationale on)`, /Beta blockers reduce heart rate \(case 1\)/.test(t1));
+  const count = (sel) => page.evaluate(s => document.querySelectorAll('[data-page] svg ' + s).length, sel);
+  // status-tinted cards: 5 correct (green), 4 wrong (red), 3 skipped (yellow) - all on the pages
+  ok(`[${label}] cards are tinted by status (5 green, 4 red, 3 yellow)`, (await count('rect[fill="#f0fdf4"]')) === 5 && (await count('rect[fill="#fef2f2"]')) === 4 && (await count('rect[fill="#fefce8"]')) === 3, `${await count('rect[fill="#f0fdf4"]')}/${await count('rect[fill="#fef2f2"]')}/${await count('rect[fill="#fefce8"]')}`);
+  ok(`[${label}] a green check on the right of the answer for the 9 attempted questions (none for skipped)`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 18, String(await count('line[stroke="#16a34a"][stroke-linecap="round"]')));
+  ok(`[${label}] the 4 wrong picks are crossed`, (await count('line[stroke="#dc2626"][stroke-linecap="round"]')) >= 8);
   ok(`[${label}] footer has page numbers and the brand`, /Page 1 of \d+/.test(t1) && /R\.J QUIZ/.test(t1));
   const total = await page.getByTestId('page-indicator').innerText();
   ok(`[${label}] page indicator`, /1 \/ \d+/.test(total), total);
@@ -67,13 +72,13 @@ async function run(label, w, h) {
   await page.getByRole('button', { name: /Answers: after each/ }).click(); await page.waitForTimeout(250);
   await page.getByRole('button', { name: /Answers: key at end/ }).click(); await page.waitForTimeout(250);
   await page.waitForSelector('[data-testid="report-pages"]'); await page.waitForTimeout(700);
-  ok(`[${label}] answers can be hidden`, !/Ans\.1\. :/.test(await svgText()));
+  { const hid = await svgText(); ok(`[${label}] answers can be hidden: no check marks and no rationale, the status tint stays`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 0 && !/Beta blockers reduce heart rate/.test(hid) && (await count('rect[fill="#f0fdf4"]')) === 5); }
   await page.getByRole('tab', { name: /Mistakes/ }).click(); await page.waitForTimeout(1200);
   const mist = await svgText();
   const qCount = (mist.match(/Q\d+\./g) || []).length;
-  ok(`[${label}] Mistakes tab shows only the 4 wrong questions`, qCount === 4 && /Your answer: \(A\) Alpha drug/.test(mist), `Q labels: ${qCount}`);
+  ok(`[${label}] Mistakes tab shows only the 4 wrong questions`, qCount >= 4 && (await count('rect[fill="#fef2f2"]')) === 4 && (await count('rect[fill="#f0fdf4"]')) === 0, `Q labels: ${qCount}`);
   await page.getByRole('tab', { name: /Skipped/ }).click(); await page.waitForTimeout(1200);
-  ok(`[${label}] Skipped tab shows the 3 skipped questions`, ((await svgText()).match(/Q\d+\./g) || []).length === 3);
+  ok(`[${label}] Skipped tab shows the 3 skipped questions`, (await count('rect[fill="#fefce8"]')) === 3 && (await count('rect[fill="#f0fdf4"]')) === 0);
   await page.getByRole('tab', { name: /Full report/ }).click(); await page.waitForTimeout(1200);
 
   // PDF download from the top bar
@@ -84,7 +89,7 @@ async function run(label, w, h) {
   ok(`[${label}] downloaded file is a PDF named like RJQuiz_Report_…`, bytes.subarray(0, 5).toString() === '%PDF-' && /^RJQuiz_Report_.*\.pdf$/.test(dl.suggestedFilename()), dl.suggestedFilename() + ` (${bytes.length} bytes)`);
   let txt = ''; try { txt = execFileSync('pdftotext', ['-layout', file, '-'], { encoding: 'utf8' }); } catch { /* pdftotext missing */ }
   if (txt) {
-    ok(`[${label}] PDF text has questions, answers, explanations, special characters`, /Q1\./.test(txt) && /Ans\.1\. :/.test(txt) && /Explanation:/.test(txt) && /Page 1 of/.test(txt) && /β/.test(txt) && /µg/.test(txt));
+    ok(`[${label}] PDF text has questions, rationale, special characters`, /Q1\./.test(txt) && /Beta blockers reduce heart rate/.test(txt) && !/Ans\.1\. :/.test(txt) && /Page 1 of/.test(txt) && /β/.test(txt) && /µg/.test(txt));
     ok(`[${label}] PDF has no blank-box / replacement characters`, !/\uFFFD|□/.test(txt));
   }
   // other formats

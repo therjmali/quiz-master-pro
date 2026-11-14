@@ -10,11 +10,12 @@ import { docToHtml, docToText } from '../src/utils/reports/pdf/formats';
 import { markdownToBlocks, parseInline } from '../src/utils/reports/pdf/markdown';
 import { DEFAULT_STYLE, type ReportDoc } from '../src/utils/reports/pdf/types';
 import { sanitizePrefs } from '../src/utils/reports/reportPrefs';
+import { CARD_TONES, DIFF_EMOJI, STATUS_EMOJI, isCardItem, levelOf, markedOptions, rationaleBullets } from '../src/utils/reports/pdf/cardModel';
 import { nodeFontSource } from './helpers/nodeFonts';
 
 /** Fake fonts: every glyph is 0.5em wide; the "greek" face only covers Greek. */
 const mk = (id: string, bold: boolean, covers: (cp: number) => boolean): Face => ({ id, bold, covers, width: (t, s) => [...t].length * s * 0.5 });
-const latin = (cp: number) => (cp >= 0x20 && cp < 0x250);
+const latin = (cp: number) => (cp >= 0x20 && cp < 0x250) || cp === 0x2022;
 const greek = (cp: number) => cp >= 0x370 && cp <= 0x3ff;
 const fakeSet: FontSet = { regular: [mk('l', false, latin), mk('g', false, greek)], bold: [mk('lb', true, latin), mk('gb', true, greek)] };
 
@@ -77,11 +78,12 @@ test('layoutReport: two columns fill left then right, answers stay with their qu
     assert.equal(footer.length, 1);
     const qOps = p.ops.filter((o): o is Extract<typeof o, { t: 'text' }> => o.t === 'text' && /^Q\d+\.$/.test(o.text));
     for (const q of qOps) {
-      const n = q.text.slice(1, -1);
-      const ans = p.ops.find(o => o.t === 'text' && o.text === `Ans.${n}. : `);
-      assert.ok(ans && ans.t === 'text', `Ans.${n} is on the same page as Q${n}`);
-      assert.equal(colOf(ans.x, p.width), colOf(q.x, p.width), `Ans.${n} is in the same column as Q${n}`);
-      assert.ok(ans.y > q.y, 'answer is below the question');
+      // the card of a question keeps its last option on the same page and in the same column, below the question
+      const after = p.ops.slice(p.ops.indexOf(q));
+      const lastOpt = after.find((o): o is Extract<typeof o, { t: 'text' }> => o.t === 'text' && o.text === '(D)');
+      assert.ok(lastOpt, `${q.text} keeps its options on the same page`);
+      assert.equal(colOf(lastOpt.x, p.width), colOf(q.x, p.width), `${q.text} options are in the same column`);
+      assert.ok(lastOpt.y > q.y, 'options are below the question');
     }
   }
   const page1Cols = new Set(report.pages[0].ops.filter(o => o.t === 'text' && /^Q\d+\.$/.test(o.text)).map(o => (o as any).x > 297 ? 1 : 0));
@@ -118,13 +120,76 @@ test('generatePdf (real fonts): valid PDF with the right page count, Hindi + Gre
 });
 
 test('docToText / docToHtml follow the same settings and escape markup', () => {
-  const doc = buildQuestionDoc([result([Q(1, { question: 'Is <b>x</b> & y?', rationale: 'Because' })], ['Alpha'])], { ...BUILD, kind: 'all' });
+  const doc = buildQuestionDoc([result([Q(1, { question: 'Is <b>x</b> & y?', rationale: '• Because\n• Second point' })], ['Alpha'])], { ...BUILD, kind: 'all' });
   const t = docToText(doc, styleFor('all'));
-  assert.match(t, /Q1\. Is <b>x<\/b> & y\?/); assert.match(t, /Ans\.1\. : \(B\) Beta/); assert.match(t, /Your answer: \(A\) Alpha - Incorrect/); assert.match(t, /Explanation: Because/);
+  assert.match(t, /^❌ Q1\. 🟡 Is <b>x<\/b> & y\?$/m);
+  assert.match(t, /^ {2}\(B\) Beta {2}✓$/m, 'the correct option carries the green check');
+  assert.match(t, /^ {2}\(A\) Alpha {2}✗$/m, 'the wrong pick is marked');
+  assert.match(t, /^ {2}📖 • Because$/m); assert.match(t, /^ {5}• Second point$/m);
+  assert.ok(!/Explanation|Rationale|Answer|Ans\./i.test(t), 'no text labels in the card format');
   const noAns = docToText(doc, { ...styleFor('all'), answers: 'none' });
-  assert.ok(!/Ans\.1/.test(noAns));
+  assert.ok(!/✓|📖/.test(noAns), 'answers hidden: no check, no rationale');
   const h = docToHtml(doc, styleFor('all'));
   assert.ok(h.includes('Is &lt;b&gt;x&lt;/b&gt; &amp; y?') && !h.includes('<b>x</b>'));
+  assert.match(h, /class="card wrong"/); assert.match(h, /prefers-color-scheme:dark/);
+  // the exam paper (a blank test) keeps the plain numbered layout
+  const exam = docToText(buildQuestionDoc([result([Q(1, { rationale: 'Because' })], [null])], { ...BUILD, kind: 'exam' }), styleFor('exam', {}, true));
+  assert.match(exam, /Ans\.1\. : \(B\) Beta/);
+});
+
+test('card model: status icons, difficulty emoji, check marks and rationale bullets map correctly', () => {
+  assert.deepEqual([STATUS_EMOJI.correct, STATUS_EMOJI.wrong, STATUS_EMOJI.skipped], ['✅', '❌', '⏭️']);
+  assert.deepEqual([DIFF_EMOJI.easy, DIFF_EMOJI.medium, DIFF_EMOJI.hard], ['🟢', '🟡', '🔴']);
+  assert.equal(levelOf('Hard'), 'hard'); assert.equal(levelOf(undefined), null); assert.equal(levelOf('mixed'), null);
+  assert.equal(CARD_TONES.correct.fill, '#f0fdf4'); assert.equal(CARD_TONES.wrong.fill, '#fef2f2'); assert.equal(CARD_TONES.skipped.fill, '#fefce8');
+  assert.deepEqual(rationaleBullets('• One\n- Two\n\n3) Three'), ['One', 'Two', 'Three']);
+  assert.deepEqual(rationaleBullets('• First • Second'), ['First', 'Second'], 'inline bullets become separate lines');
+  assert.deepEqual(rationaleBullets('Plain sentence.'), ['Plain sentence.']);
+  assert.deepEqual(rationaleBullets(''), []); assert.deepEqual(rationaleBullets(undefined), []);
+  const base = { n: 1, question: 'q', options: ['A1', 'B1', 'C1', 'D1'], correct: ['B1'] } as const;
+  const on = { inlineAnswers: true, showUserAnswer: true };
+  assert.deepEqual(markedOptions({ ...base, user: 'B1', status: 'correct' }, on), { ok: [false, true, false, false], no: [false, false, false, false] });
+  assert.deepEqual(markedOptions({ ...base, user: 'D1', status: 'wrong' }, on), { ok: [false, true, false, false], no: [false, false, false, true] });
+  assert.deepEqual(markedOptions({ ...base, user: 'D1', status: 'wrong' }, { ...on, showUserAnswer: false }).no, [false, false, false, false]);
+  assert.deepEqual(markedOptions({ ...base, user: null, status: 'skipped' }, on).ok, [false, false, false, false], 'not attempted: no check');
+  assert.deepEqual(markedOptions({ ...base, user: 'B1', status: 'correct' }, { ...on, inlineAnswers: false }).ok, [false, false, false, false], 'answers at the end / hidden: no check');
+  assert.equal(isCardItem({ ...base, user: null, status: 'skipped' }, 'all'), true);
+  assert.equal(isCardItem({ ...base, user: null, status: 'skipped' }, 'exam'), false);
+  assert.equal(isCardItem({ ...base, user: null, status: 'unknown' }, 'all'), false);
+});
+
+test('layoutReport: status cards - tinted background per status, icons, difficulty dot, check marks, 📖 rationale without labels', () => {
+  const qs = [
+    Q(1, { difficulty: 'easy', rationale: '• Point A\n• Point B' }),
+    Q(2, { difficulty: 'hard', rationale: 'Because it is.' }),
+    Q(3, { difficulty: undefined, rationale: 'Skipped note' }),
+  ];
+  const doc = buildQuestionDoc([result(qs, ['Beta', 'Alpha', null])], { ...BUILD, kind: 'all' });
+  const rep = layoutReport(doc, { ...DEFAULT_STYLE, columns: 1 }, fakeSet);
+  const ops = rep.pages.flatMap(p => p.ops);
+  const cards = ops.filter((o): o is Extract<typeof o, { t: 'rect' }> => o.t === 'rect' && !!o.r && o.r === 6);
+  assert.deepEqual(cards.map(c => c.fill), ['#f0fdf4', '#fef2f2', '#fefce8'], 'green / red / yellow cards in question order');
+  assert.ok(cards.every(c => c.w > 100 && c.h > 40));
+  const circles = ops.filter((o): o is Extract<typeof o, { t: 'rect' }> => o.t === 'rect' && !!o.r && o.w === o.h && o.r === o.w / 2);
+  const fills = circles.map(c => c.fill);
+  for (const f of ['#16a34a', '#dc2626', '#ca8a04']) assert.ok(fills.includes(f), `status icon ${f}`);
+  assert.ok(fills.includes('#22c55e') && fills.includes('#ef4444'), 'easy (green) and hard (red) dots');
+  assert.ok(!fills.includes('#eab308'), 'no yellow dot: no question here is medium');
+  assert.equal(fills.filter(f => f === '#22c55e' || f === '#eab308' || f === '#ef4444').length, 2, 'no dot for the question without difficulty');
+  const texts = ops.filter(o => o.t === 'text').map(o => (o as any).text as string);
+  assert.ok(texts.includes('Q1.') && texts.includes('Q2.') && texts.includes('Q3.'));
+  assert.ok(!texts.some(t => /Ans\.|Explanation|Rationale|Answer/i.test(t)), 'no text labels');
+  assert.ok(texts.includes('• ') && texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')));
+  // green check marks: Q1 (correct) and Q2 (the correct option C2 'Beta') only, none on the skipped Q3
+  const greenChecks = ops.filter(o => o.t === 'line' && o.color === '#16a34a' && o.cap === 'round' && o.w < 2 && o.x1 > 400);
+  assert.equal(greenChecks.length, 4, 'two lines per check, two attempted questions');
+  const redMarks = ops.filter(o => o.t === 'line' && o.color === '#dc2626' && o.cap === 'round' && o.x1 > 400 && o.w < 2);
+  assert.equal(redMarks.length, 2, 'the wrong pick of Q2 gets a cross');
+  // answers hidden: tint stays, marks and rationale go
+  const hidden = layoutReport(doc, { ...DEFAULT_STYLE, columns: 1, answers: 'none' }, fakeSet).pages.flatMap(p => p.ops);
+  assert.equal(hidden.filter(o => o.t === 'rect' && o.r === 6).length, 3);
+  assert.ok(!hidden.some(o => o.t === 'text' && o.text.includes('Point A')));
+  assert.equal(hidden.filter(o => o.t === 'line' && o.color === '#16a34a' && o.cap === 'round' && o.x1 > 400).length, 0);
 });
 
 test('markdown: headings, bullets, quotes, bold spans, tables', () => {

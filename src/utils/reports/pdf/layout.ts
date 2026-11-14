@@ -6,12 +6,16 @@
  */
 import { measureText, type FontSet } from './fontSet';
 import { parseInline, type Block } from './markdown';
-import type { LaidOutReport, Op, Page, ReportDoc, ReportItem, ReportStyle } from './types';
+import type { LaidOutReport, Op, Page, ReportDoc, ReportItem, ReportKind, ReportStyle } from './types';
+import { CARD_TONES, isCardItem, levelOf, markedOptions, rationaleBullets, type CardStatus } from './cardModel';
+import { decorOps, type Decor } from './icons';
 
 export interface Span { text: string; bold: boolean; color?: string; size?: number }
-interface TextRow { kind: 'text'; spans: Span[]; x: number; size: number; lh: number; bar?: string }
-interface RuleRow { kind: 'rule'; h: number; color: string; dash?: [number, number] }
-interface GapRow { kind: 'gap'; h: number }
+/** A tinted rounded card drawn behind consecutive rows that share the same tone object. */
+interface CardTone { fill: string; line: string }
+interface TextRow { kind: 'text'; spans: Span[]; x: number; size: number; lh: number; bar?: string; card?: CardTone; decor?: Decor[] }
+interface RuleRow { kind: 'rule'; h: number; color: string; dash?: [number, number]; x?: number; w?: number; card?: CardTone }
+interface GapRow { kind: 'gap'; h: number; card?: CardTone }
 type Row = TextRow | RuleRow | GapRow;
 interface Group { rows: Row[]; keep: boolean; keepNext?: boolean }
 
@@ -79,9 +83,12 @@ const sumH = (rows: Row[]) => rows.reduce((a, r) => a + rowH(r), 0);
 /* ───────────────────────────── groups ───────────────────────────── */
 
 const letter = (i: number) => String.fromCharCode(65 + (i % 26));
-const trimGapEdges = (rows: Row[]) => { while (rows.length && rows[0].kind === 'gap') rows.shift(); return rows; };
+const trimGapEdges = (rows: Row[]) => { while (rows.length && rows[0].kind === 'gap' && !rows[0].card) rows.shift(); return rows; };
 
-function itemGroups(it: ReportItem, ctx: { colW: number; size: number; set: FontSet; style: ReportStyle; multiSource: boolean; maxKeep: number }): Group[] {
+type ItemCtx = { colW: number; size: number; set: FontSet; style: ReportStyle; multiSource: boolean; maxKeep: number; kind: ReportKind };
+
+function itemGroups(it: ReportItem, ctx: ItemCtx): Group[] {
+  if (isCardItem(it, ctx.kind)) return cardGroups(it, ctx);
   const { colW, size, set, style } = ctx;
   const rows: Row[] = [];
   rows.push(...rowsFor([{ text: `Q${it.n}.`, bold: true, color: C.ink }, { text: ' ' + (it.question.trim() || '(no question text)'), bold: false, color: C.text }], { colW, size, set }));
@@ -117,6 +124,87 @@ function itemGroups(it: ReportItem, ctx: { colW: number; size: number; set: Font
     }
   }
   groups.push({ rows: [gap(size * 1.1)], keep: false });
+  return groups;
+}
+
+
+/* ───────────────────────── status cards ───────────────────────── */
+
+const CARD_PAD = 7;
+
+/**
+ * One question as a status-tinted card (green = correct, red = incorrect, yellow = skipped):
+ *   [status icon] Q1. [difficulty dot] question text
+ *   (A) option            (B) option  ✓
+ *   ── divider ──
+ *   📖 • bullet 1 / • bullet 2     (original rationale; no text label)
+ */
+function cardGroups(it: ReportItem & { status: CardStatus }, ctx: ItemCtx): Group[] {
+  const { colW, size, set, style } = ctx;
+  const tone: CardTone = { fill: CARD_TONES[it.status].fill, line: CARD_TONES[it.status].line };
+  const inner = colW - CARD_PAD * 2;
+  const R = size * 0.62;                         // status icon radius
+  const iconW = R * 2 + 5;                       // icon column
+  const textX = CARD_PAD + iconW;
+  const inline = style.answers === 'inline';
+  const withCard = <T extends Row>(rs: T[]): T[] => rs.map(r => ({ ...r, card: tone }));
+  const padRow = (h = CARD_PAD * 0.9): GapRow => ({ kind: 'gap', h, card: tone });
+
+  /* header: [status] Q1. [difficulty] question */
+  const lvl = levelOf(it.difficulty);
+  const label = `Q${it.n}.`;
+  const labelW = measureText(label, true, size, set);
+  const dotR = size * 0.3, dotGap = size * 0.32;
+  const spaceW = Math.max(0.1, measureText(' ', false, size, set));
+  const spacer = ' '.repeat(lvl ? Math.max(1, Math.ceil((dotR * 2 + dotGap * 2) / spaceW)) : 1);
+  const head = rowsFor(
+    [{ text: label, bold: true, color: C.ink }, { text: spacer + (it.question.trim() || '(no question text)'), bold: false, color: C.text }],
+    { colW: inner, size, set, indent: textX - CARD_PAD },
+  ).map(r => ({ ...r, x: r.x + CARD_PAD }));
+  const decor: Decor[] = [{ k: 'status', status: it.status, cx: CARD_PAD + R, r: R }];
+  if (lvl) decor.push({ k: 'diff', level: lvl, cx: textX + labelW + dotGap + dotR, r: dotR });
+  head[0].decor = decor;
+
+  /* options (a green check on the right of the answer) */
+  const marks = markedOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
+  const markR = size * 0.5, markW = (marks.ok.some(Boolean) || marks.no.some(Boolean)) ? markR * 2 + 8 : 0;
+  const hangW = measureText('(A) ', false, size, set);
+  const optRows: Row[] = [];
+  it.options.forEach((opt, i) => {
+    const rs = rowsFor([{ text: `(${letter(i)})`, bold: true, color: C.ink }, { text: ' ' + opt, bold: false, color: C.text }],
+      { colW: inner - markW, size, set, indent: textX - CARD_PAD + 3, hang: hangW }).map(r => ({ ...r, x: r.x + CARD_PAD }));
+    if (marks.ok[i] || marks.no[i]) rs[0].decor = [{ k: 'mark', mark: marks.ok[i] ? 'ok' : 'no', cx: colW - CARD_PAD - markR, r: markR }];
+    optRows.push(...rs);
+  });
+
+  const top: Row[] = [padRow(), ...head, { kind: 'gap', h: size * 0.4 }, ...optRows];
+  if (ctx.multiSource && it.source) top.push({ kind: 'gap', h: size * 0.25 }, ...rowsFor([{ text: it.source, bold: false, color: C.faint, size: size * 0.82 }], { colW: inner, size, set, indent: textX }));
+
+  /* rationale: icon + the original bullets, nothing else */
+  const rat: Row[] = [];
+  const addBullets = (k: 'book' | 'robot', bullets: string[]) => {
+    if (!bullets.length) return;
+    const bs = size * 0.95, bw = measureText('• ', false, bs, set);
+    rat.push({ kind: 'gap', h: size * 0.3 });
+    bullets.forEach((b, i) => {
+      const rs = rowsFor([{ text: '• ', bold: false, color: C.accent }, { text: b, bold: false, color: '#374151' }],
+        { colW: inner, size: bs, set, indent: textX - CARD_PAD, hang: bw, lh: 1.38 }).map(r => ({ ...r, x: r.x + CARD_PAD }));
+      if (i === 0) rs[0].decor = [{ k, cx: CARD_PAD + R, r: R * 0.9 }];
+      rat.push(...rs);
+      if (i < bullets.length - 1) rat.push({ kind: 'gap', h: size * 0.12 });
+    });
+  };
+  if (inline) { addBullets('book', rationaleBullets(it.book)); addBullets('robot', rationaleBullets(it.ai)); }
+  const divider: Row[] = rat.length ? [{ kind: 'gap', h: size * 0.45 }, { kind: 'rule', h: 1, color: tone.line, x: CARD_PAD, w: colW - CARD_PAD * 2 }] : [];
+
+  const whole = withCard([...top, ...divider, ...rat, padRow()]);
+  const groups: Group[] = [];
+  if (sumH(whole) <= ctx.maxKeep || !rat.length) groups.push({ rows: whole, keep: true });
+  else {
+    groups.push({ rows: withCard([...top, padRow()]), keep: true });
+    groups.push({ rows: withCard([padRow(CARD_PAD * 0.5), ...divider, ...rat, padRow()]), keep: false });
+  }
+  groups.push({ rows: [gap(size * 0.8)], keep: false });
   return groups;
 }
 
@@ -229,7 +317,7 @@ export function layoutReport(doc: ReportDoc, style: ReportStyle, set: FontSet): 
   const colBottom = paper.h - MARGIN.b;
 
   const multiSource = new Set((doc.items ?? []).map(i => i.source).filter(Boolean)).size > 1;
-  const ctx = { colW, size, set, style, multiSource, maxKeep: (colBottom - MARGIN.t) * 0.42 };
+  const ctx: ItemCtx = { colW, size, set, style, multiSource, maxKeep: (colBottom - MARGIN.t) * 0.42, kind: doc.kind };
   const groups: Group[] = [];
   if (doc.items) {
     for (const it of doc.items) groups.push(...itemGroups(it, ctx));
@@ -253,6 +341,14 @@ export function layoutReport(doc: ReportDoc, style: ReportStyle, set: FontSet): 
   };
   const draw = (rows: Row[]) => {
     const x0 = MARGIN.l + col * (colW + GUTTER);
+    // card backgrounds first (one rounded rect per run of rows with the same tone)
+    let yy = y, runStart = -1, runTone: CardTone | undefined;
+    const flush = (end: number) => { if (runTone && end > runStart) page.ops.push({ t: 'rect', x: x0, y: runStart, w: colW, h: end - runStart, fill: runTone.fill, stroke: runTone.line, sw: 0.7, r: 6 }); runTone = undefined; };
+    for (const r of rows) {
+      if (r.card !== runTone) { flush(yy); if (r.card) { runTone = r.card; runStart = yy; } }
+      yy += rowH(r);
+    }
+    flush(yy);
     for (const r of rows) {
       if (r.kind === 'text') {
         let x = x0 + r.x;
@@ -264,8 +360,10 @@ export function layoutReport(doc: ReportDoc, style: ReportStyle, set: FontSet): 
           page.ops.push({ t: 'text', x, y: base, text: s.text, bold: s.bold, size: sz, color: s.color ?? C.text });
           x += measureText(s.text, s.bold, sz, set);
         }
+        if (r.decor) for (const d of r.decor) page.ops.push(...decorOps(d, x0, y + r.lh / 2));
       } else if (r.kind === 'rule') {
-        page.ops.push({ t: 'line', x1: x0, y1: y + r.h / 2, x2: x0 + colW, y2: y + r.h / 2, w: 0.7, color: r.color, dash: r.dash });
+        const rx = x0 + (r.x ?? 0), rw = r.w ?? colW;
+        page.ops.push({ t: 'line', x1: rx, y1: y + r.h / 2, x2: rx + rw, y2: y + r.h / 2, w: 0.7, color: r.color, dash: r.dash });
       }
       y += rowH(r);
     }

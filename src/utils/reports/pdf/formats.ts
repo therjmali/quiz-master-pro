@@ -1,6 +1,7 @@
 /** The same ReportDoc as plain text and as Word-friendly HTML, so every format follows the same settings. */
 import { parseInline } from './markdown';
 import { docToMasterHtml } from './masterHtml';
+import { AI_EMOJI, BOOK_EMOJI, CARD_TONES, DIFF_EMOJI, STATUS_EMOJI, isCardItem, levelOf, markedOptions, rationaleBullets } from './cardModel';
 import type { ReportDoc, ReportItem, ReportStyle } from './types';
 
 const L = (i: number) => String.fromCharCode(65 + (i % 26));
@@ -16,6 +17,21 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
     out.push(`Questions: ${s.questions}   Correct: ${s.correct}   Wrong: ${s.wrong}   Skipped: ${s.skipped}   Accuracy: ${s.accuracy}%${s.scorePct !== undefined ? `   Score: ${s.scorePct}%` : ''}`, '');
   }
   for (const it of doc.items ?? []) {
+    if (isCardItem(it, doc.kind)) {
+      // status card: `✅ Q1. 🟡 question`, options with a ✓, then 📖 + the original bullets (no text labels)
+      const lvl = levelOf(it.difficulty);
+      out.push(`${STATUS_EMOJI[it.status]} Q${it.n}. ${lvl ? DIFF_EMOJI[lvl] + ' ' : ''}${it.question}`);
+      const m = markedOptions(it, { inlineAnswers: style.answers === 'inline', showUserAnswer: style.showUserAnswer });
+      it.options.forEach((o, i) => out.push(`  (${L(i)}) ${o}${m.ok[i] ? '  ✓' : m.no[i] ? '  ✗' : ''}`));
+      if (style.answers === 'inline') {
+        const lines = [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const;
+        const any = lines.some(([, b]) => b.length);
+        if (any) out.push('  ' + '-'.repeat(30));
+        for (const [icon, bullets] of lines) bullets.forEach((b, i) => out.push(i === 0 ? `  ${icon} • ${b}` : `     • ${b}`));
+      }
+      out.push('', '');
+      continue;
+    }
     out.push(`Q${it.n}. ${it.question}`);
     it.options.forEach((o, i) => out.push(`  (${L(i)}) ${o}`));
     if (style.answers === 'inline') {
@@ -53,7 +69,14 @@ function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
 .q{margin:14px 0 4px}.q b{color:#111827}.opt{margin:2px 0 2px 10px}.rule{border-top:1px dashed #cbd2dc;margin:8px 0 6px}
 .ans{font-weight:700;color:#0f6b3f}.you{font-size:9.5pt}.ok{color:#0f6b3f}.no{color:#b42318}.sk{color:#b45309}.rat{color:#6b7280;font-size:9.5pt;margin:4px 0}
 .rat b{color:#6d28d9}.rat.ai b{color:#0e7490}h2{font-size:14pt;margin:18px 0 6px}h3{font-size:11.5pt;margin:12px 0 4px}li{margin:2px 0}blockquote{border-left:3px solid #4f46e5;margin:8px 0;padding-left:10px;color:#4b5563}
-.foot{margin-top:24px;color:#9ca3af;font-size:8pt;text-align:center}`;
+.foot{margin-top:24px;color:#9ca3af;font-size:8pt;text-align:center}
+.card{border:1px solid;border-radius:12px;padding:10px 12px;margin:12px 0;break-inside:avoid}
+.card .qh{font-weight:400}.card .qh b{margin-right:2px}.card .opt{display:flex;justify-content:space-between;gap:10px;margin:3px 0 3px 22px}
+.card .opt .tick{color:#16a34a;font-weight:700}.card .opt .cross{color:#dc2626;font-weight:700}
+.card hr.div{border:0;border-top:1px solid;margin:8px 0 6px;opacity:.9}.card .rat2{font-size:9.5pt;color:#374151;margin:2px 0 2px 22px;position:relative}.card .rat2 .ic{position:absolute;left:-22px}
+.card.correct{background:${CARD_TONES.correct.fill};border-color:${CARD_TONES.correct.line}}.card.wrong{background:${CARD_TONES.wrong.fill};border-color:${CARD_TONES.wrong.line}}.card.skipped{background:${CARD_TONES.skipped.fill};border-color:${CARD_TONES.skipped.line}}
+@media (prefers-color-scheme:dark){body{background:#0b0b10;color:#e5e7eb}h1,.q b{color:#f3f4f6}.chips span{background:#15151c;border-color:#2a2a35}.card .rat2{color:#d1d5db}
+.card.correct{background:${CARD_TONES.correct.darkFill};border-color:${CARD_TONES.correct.darkLine}}.card.wrong{background:${CARD_TONES.wrong.darkFill};border-color:${CARD_TONES.wrong.darkLine}}.card.skipped{background:${CARD_TONES.skipped.darkFill};border-color:${CARD_TONES.skipped.darkLine}}}`;
   const parts: string[] = [];
   parts.push(`<h1>${esc(doc.title)}</h1><div class="meta">${esc(style.brand)} · ${esc(doc.meta.join(' · '))}</div>`);
   if (doc.summary && doc.items) {
@@ -61,6 +84,19 @@ function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
     parts.push(`<div class="chips"><span>Questions <b>${s.questions}</b></span><span>Correct <b>${s.correct}</b></span><span>Wrong <b>${s.wrong}</b></span><span>Skipped <b>${s.skipped}</b></span><span>Accuracy <b>${s.accuracy}%</b></span></div>`);
   }
   for (const it of doc.items ?? []) {
+    if (isCardItem(it, doc.kind)) {
+      const lvl = levelOf(it.difficulty);
+      const m = markedOptions(it, { inlineAnswers: style.answers === 'inline', showUserAnswer: style.showUserAnswer });
+      const rows: string[] = [`<div class="qh">${STATUS_EMOJI[it.status]} <b>Q${it.n}.</b> ${lvl ? DIFF_EMOJI[lvl] + ' ' : ''}${esc(it.question)}</div>`];
+      it.options.forEach((o, i) => rows.push(`<div class="opt"><span><b>(${L(i)})</b> ${esc(o)}</span>${m.ok[i] ? '<span class="tick" aria-label="Correct answer">✓</span>' : m.no[i] ? '<span class="cross" aria-label="Your answer">✗</span>' : ''}</div>`));
+      if (style.answers === 'inline') {
+        const groups = [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const;
+        if (groups.some(([, b]) => b.length)) rows.push('<hr class="div">');
+        for (const [icon, bullets] of groups) bullets.forEach((b, i) => rows.push(`<div class="rat2">${i === 0 ? `<span class="ic">${icon}</span>` : ''}• ${esc(b)}</div>`));
+      }
+      parts.push(`<div class="card ${it.status}">${rows.join('')}</div>`);
+      continue;
+    }
     parts.push(`<div class="q"><b>Q${it.n}.</b> ${esc(it.question)}</div>`);
     it.options.forEach((o, i) => parts.push(`<div class="opt"><b>(${L(i)})</b> ${esc(o)}</div>`));
     if (style.answers === 'inline') {

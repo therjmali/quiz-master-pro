@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.2.0] - 2026-11-14
+
+Two display modes, widgets out of the header, status-card reports and a single AI switch.
+
+### Changed
+- **Android Widgets** moved out of the top bar into *Settings → Integrations → Android Widgets* (its own page; searchable in Settings).
+- **Appearance** is exactly two modes, ☀️ Light and 🌙 Dark, plus text size. Parchment / Ink / Papyrus / Liquid Glass, the accent palette and the glass blur slider are gone (accent and blur are fixed to tuned defaults). Saved `amoled` / `ancient` / `glass` values are mapped to Dark / Light / the phone's setting. Dark mode now also sets Tailwind's `dark` class; faint secondary labels were raised to about 3:1 in both modes.
+- **Reports** (PDF, full-page preview, HTML, text) use status cards: green ✅ correct, red ❌ incorrect, yellow ⏭️ skipped; header `Q1.` with a 🟢/🟡/🔴 dot when the question has a difficulty; options below with a green ✓ on the answer of attempted questions (a red ✗ on a wrong pick when "Your answer" is on); a divider and the 📖 rationale bullets, with no "Rationale / Explanation / Answer" labels. The exam paper keeps its plain layout. HTML reports follow the phone's dark setting.
+- **Create Quiz → AI** is one *AI Generation* ON/OFF switch. OFF hides everything else; ON lists only the API keys saved in Profile → API Keys (`🔑 Gemini`, `🔑 OpenAI`, …) or a prompt to add one. The switch drives both quiz and rationale AI.
+- **Create Quiz preview** hides the correct answers until the eye button is tapped.
+
+### Added
+- `test:ui:v211` (real Chrome), unit tests for the theme mapping, AI key choices and the report card rules, and `verify-repo` contract checks.
+
+### Removed
+- Unused `useTheme` hook and the Liquid Glass / Papyrus / Ink theme code.
 ## [3.1.1] - 2026-11-13
 
 Follow-up to 3.1.0, published the same day: everything that still assumed a working cloud is gone from

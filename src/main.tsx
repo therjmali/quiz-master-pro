@@ -23,11 +23,15 @@ import { initPlatform } from './platform/runtime';
 import { applyPerfMode, watchFrameRate } from './platform/perfMode';
 import { installDiagnostics, recordError } from './platform/diagnostics';
 import { initBackButton } from './platform/backButton';
+import { loadTheme, applyThemeToDocument } from './utils/theme';
 import { initNativeInsets } from './platform/insets';
 import App from "./App";
 import { ErrorBoundary } from 'react-error-boundary';
 import { HammerIcon } from 'lucide-react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Paint the saved mode before React mounts (no flash of the wrong theme)
+applyThemeToDocument(loadTheme());
 
 const queryClient = new QueryClient();
 

@@ -11,108 +11,45 @@ import type { SectionId } from './settingsSearch';
 export interface SectionProps { open: boolean; onToggle: (id: SectionId) => void }
 
 /* ═════════ Appearance ═════════ */
-const ACCENT_PALETTES = [
-  { id: 'default', name: 'Scholar', emoji: '📚', value: '#2D1B33' },
-  { id: 'ocean', name: 'Ocean', emoji: '🌊', value: '#2D6A8F' },
-  { id: 'emerald', name: 'Sage', emoji: '🍃', value: '#3D7A5C' },
-  { id: 'sunset', name: 'Terracotta', emoji: '🏺', value: '#A0522D' },
-  { id: 'rose', name: 'Wine', emoji: '🍷', value: '#722F37' },
-  { id: 'purple', name: 'Plum', emoji: '🍇', value: '#5B3256' },
-  { id: 'ancient', name: 'Ancient', emoji: '⚱️', value: '#D4A843' },
-];
-const DEFAULT_ACCENT = '#2D1B33';
 const FONT_PX: Record<string, string> = { small: '14px', medium: '16px', large: '18px' };
 
-function hexToHsl(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0; const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6; else if (max === g) h = ((b - r) / d + 2) / 6; else h = ((r - g) / d + 4) / 6;
-  }
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
-}
-function applyAccent(hex: string, paletteId?: string) {
-  const hsl = hexToHsl(hex);
-  document.documentElement.style.setProperty('--primary', hsl);
-  try {
-    localStorage.setItem('qmp_accent_hsl', hsl);
-    localStorage.setItem('qmp_accent_hex', hex);
-    if (paletteId) localStorage.setItem('qmp_theme_accent', paletteId);
-  } catch {}
-}
 function applyFontSize(size: string) {
   document.documentElement.style.setProperty('--font-size-base', FONT_PX[size] || '16px');
   try { localStorage.setItem('qmp_font_size', size); } catch {}
 }
-function applyGlass(val: number) {
-  document.documentElement.style.setProperty('--glass-blur', `${val}px`);
-  document.documentElement.style.setProperty('--glass-opacity', `${Math.min(0.95, 0.5 + val / 100)}`);
-  try { localStorage.setItem('qmp_glass_intensity', String(val)); } catch {}
-}
 const readLS = (k: string, d: string) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 
-export const AppearanceSection = memo(function AppearanceSection({ open, onToggle, theme, onThemeChange }: SectionProps & { theme: AppTheme; onThemeChange: (t: AppTheme) => void }) {
-  const { profile, update } = useProfileStore();
-  const [fontSize, setFontSize] = useState(() => readLS('qmp_font_size', 'medium'));
-  const [glass, setGlass] = useState(() => Number(readLS('qmp_glass_intensity', '40')));
-  const accent = profile.accentColor || DEFAULT_ACCENT;
+const MODE_OPTIONS = [
+  { value: 'light', emoji: '☀️', label: 'Light' },
+  { value: 'dark', emoji: '🌙', label: 'Dark' },
+] as const;
 
-  const setAccent = (hex: string, name?: string, id?: string) => {
-    update({ accentColor: hex });
-    applyAccent(hex, id);
-    if (name) toast.success(`Palette: ${name}`);
-  };
+export const AppearanceSection = memo(function AppearanceSection({ open, onToggle, theme, onThemeChange }: SectionProps & { theme: AppTheme; onThemeChange: (t: AppTheme) => void }) {
+  const [fontSize, setFontSize] = useState(() => readLS('qmp_font_size', 'medium'));
   const reset = () => {
-    onThemeChange('amoled');
-    setAccent(DEFAULT_ACCENT, 'Scholar', 'default');
+    onThemeChange('light');
     setFontSize('medium'); applyFontSize('medium');
-    setGlass(40); applyGlass(40);
     toast.success('Appearance reset to defaults');
   };
 
   return (
     <SettingsSection id="appearance" icon={<Palette className="w-4 h-4" />} open={open} onToggle={onToggle} onReset={reset}>
       <SubHeading>Display Mode</SubHeading>
-      <SettingRow id="theme" title="Display Mode" hint="Parchment, Ink, Papyrus or Liquid Glass" inline={false}
+      <SettingRow id="theme" title="Display Mode" hint="Light or Dark. Styles the whole app, quiz and reports" inline={false}
         control={
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              ['light', '☀️', 'Parchment', 'Warm cream paper'],
-              ['amoled', '🌙', 'Ink', 'Pure OLED black'],
-              ['ancient', '🏺', 'Papyrus', 'Warm antique sepia'],
-              ['glass', '🫧', 'Liquid Glass', 'Aurora frosted glass'],
-            ] as const).map(([v, e, l, d]) => (
-              <button key={v} type="button" aria-pressed={theme === v}
-                onClick={() => { onThemeChange(v); toast.success(`${e} ${l} mode applied`); }}
-                className={`relative flex items-center gap-2.5 p-3 rounded-2xl border-2 text-left transition-all ${theme === v ? 'border-primary bg-primary/10 shadow-sm' : 'border-border bg-card/60 hover:border-foreground/25'}`}>
-                <span className="text-xl">{e}</span>
-                <span className="min-w-0">
-                  <span className="block text-xs font-black text-foreground">{l}</span>
-                  <span className="block text-[10px] text-foreground/45 truncate">{d}</span>
-                </span>
-                {theme === v && <Check className="absolute top-2.5 right-2.5 w-4 h-4 text-primary" />}
-              </button>
-            ))}
-          </div>
-        } />
-      <SettingRow id="accent" title="Accent palette" hint="Highlight color used across cards, badges, and controls" inline={false}
-        control={
-          <div className="flex flex-wrap items-center gap-2.5">
-            {ACCENT_PALETTES.map(c => (
-              <button key={c.id} type="button" title={`${c.emoji} ${c.name}`} aria-label={c.name}
-                onClick={() => setAccent(c.value, c.name, c.id)}
-                className={`relative w-9 h-9 rounded-full transition-all active:scale-90 flex items-center justify-center text-xs shadow-sm ${accent === c.value ? 'ring-2 ring-offset-2 ring-offset-background ring-primary scale-110' : ''}`}
-                style={{ background: c.value }}>
-                {accent === c.value ? <Check className="w-4 h-4 text-white" /> : <span className="opacity-75">{c.emoji}</span>}
-              </button>
-            ))}
-            <label title="Custom colour" className="relative w-9 h-9 rounded-full border-2 border-dashed border-foreground/25 flex items-center justify-center cursor-pointer hover:border-foreground/50">
-              <Plus className="w-4 h-4 text-foreground/50" />
-              <input type="color" value={accent} onChange={e => setAccent(e.target.value, 'Custom')} aria-label="Custom accent colour" className="absolute inset-0 opacity-0 cursor-pointer" />
-            </label>
+          <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Display mode">
+            {MODE_OPTIONS.map(m => {
+              const active = theme === m.value;
+              return (
+                <button key={m.value} type="button" role="radio" aria-checked={active} data-testid={`theme-${m.value}`}
+                  onClick={() => { onThemeChange(m.value); toast.success(`${m.emoji} ${m.label} mode applied`); }}
+                  className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[88px] rounded-3xl border-2 transition-all active:scale-[0.97] ${active ? 'border-primary bg-primary/10 shadow-sm' : 'border-border bg-card/60 hover:border-foreground/25'}`}>
+                  <span className="text-3xl leading-none">{m.emoji}</span>
+                  <span className="text-sm font-black text-foreground">{m.label}</span>
+                  {active && <Check className="absolute top-2.5 right-2.5 w-4 h-4 text-primary" />}
+                </button>
+              );
+            })}
           </div>
         } />
       <SubHeading>Display</SubHeading>
@@ -120,15 +57,6 @@ export const AppearanceSection = memo(function AppearanceSection({ open, onToggl
         control={<Segmented label="Text size" value={fontSize as 'small' | 'medium' | 'large'}
           options={[{ value: 'small', label: 'Small' }, { value: 'medium', label: 'Default' }, { value: 'large', label: 'Large' }]}
           onChange={v => { setFontSize(v); applyFontSize(v); }} />} />
-      <SettingRow id="glass" title="Glass blur intensity" hint="Lower values feel crisper and run faster on older phones" inline={false}
-        control={
-          <div className="flex items-center gap-3">
-            <input type="range" min={0} max={80} step={5} value={glass} aria-label="Glass blur intensity"
-              onChange={e => { const v = Number(e.target.value); setGlass(v); applyGlass(v); }}
-              className="settings-range flex-1" />
-            <span className="w-11 text-right text-xs font-black text-primary tabular-nums">{glass}px</span>
-          </div>
-        } />
     </SettingsSection>
   );
 });

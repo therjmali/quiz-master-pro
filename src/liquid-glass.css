@@ -50,8 +50,8 @@ body::before {
   --qmp-glass-shadow: 0 18px 48px rgba(42, 49, 74, 0.09);
 }
 
-.theme-mode-amoled,
-.app-amoled {
+.theme-mode-dark,
+.app-dark {
   --qmp-glass-edge: rgba(255, 255, 255, 0.075);
   --qmp-glass-highlight: rgba(255, 255, 255, 0.045);
   --qmp-glass-shadow: 0 18px 54px rgba(0, 0, 0, 0.52);

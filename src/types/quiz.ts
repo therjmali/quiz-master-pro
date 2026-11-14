@@ -30,10 +30,8 @@ export const DEFAULT_RATIONALE_PREFS: RationalePrefs = {
   showAi: true,
 };
 
-export type ThemeMode = 'light' | 'amoled' | 'ancient' | 'glass';
-export type ThemeId = 'default' | 'ocean' | 'emerald' | 'sunset' | 'rose' | 'purple' | 'ancient';
-export type GlassTone = 'auto' | 'light' | 'dark';
-/** Theme mode (Parchment light, Ink amoled, Papyrus ancient, Liquid Glass). Keeps backward compatibility with AppTheme. */
+/** The app has exactly two display modes. */
+export type ThemeMode = 'light' | 'dark';
 export type AppTheme = ThemeMode;
 
 /**

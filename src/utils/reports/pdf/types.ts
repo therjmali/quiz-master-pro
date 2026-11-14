@@ -70,7 +70,7 @@ export const DEFAULT_STYLE: ReportStyle = { template: 'master', columns: 2, font
 /* ───────── layout output ───────── */
 export type Op =
   | { t: 'text'; x: number; y: number; text: string; bold: boolean; size: number; color: string; opacity?: number }
-  | { t: 'line'; x1: number; y1: number; x2: number; y2: number; w: number; color: string; dash?: [number, number] }
+  | { t: 'line'; x1: number; y1: number; x2: number; y2: number; w: number; color: string; dash?: [number, number]; cap?: 'round' }
   | { t: 'rect'; x: number; y: number; w: number; h: number; fill?: string; stroke?: string; sw?: number; r?: number; opacity?: number }
   /** Filled circle — status dots and the summary icons of the master template. */
   | { t: 'circle'; x: number; y: number; r: number; fill?: string; stroke?: string; sw?: number; opacity?: number };

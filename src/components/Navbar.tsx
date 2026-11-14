@@ -9,9 +9,7 @@ import {
   Loader2,
   Sun,
   Moon,
-  Sparkles,
   Bell,
-  Smartphone,
   UserRound,
   ShieldCheck,
 } from 'lucide-react';
@@ -51,7 +49,6 @@ interface NavbarProps {
   onOpenChatbot?: () => void;
   onOpenNotifications?: () => void;
   unreadNotificationCount?: number;
-  onOpenWidgets?: () => void;
   onOpenSyncCenter?: () => void;
 }
 
@@ -96,10 +93,8 @@ function SyncBadge({ status, onClick, deviceMode = false }: { status: SyncStatus
 }
 
 const THEME_CONFIGS: Record<AppTheme, { label: string; nextLabel: string }> = {
-  amoled: { label: 'Ink', nextLabel: 'Switch to Parchment theme' },
-  light: { label: 'Parchment', nextLabel: 'Switch to Papyrus theme' },
-  ancient: { label: 'Papyrus', nextLabel: 'Switch to Liquid Glass theme' },
-  glass: { label: 'Glass', nextLabel: 'Switch to Ink theme' },
+  light: { label: 'Light', nextLabel: 'Switch to Dark mode' },
+  dark: { label: 'Dark', nextLabel: 'Switch to Light mode' },
 };
 
 function NavbarInner({
@@ -114,7 +109,6 @@ function NavbarInner({
   profileAvatarUrl,
   onOpenNotifications,
   unreadNotificationCount,
-  onOpenWidgets,
   onOpenSyncCenter,
 }: NavbarProps) {
   const account = useAccount();
@@ -202,18 +196,6 @@ function NavbarInner({
                 onClick={onOpenSyncCenter || (() => { onOpenSettings(); triggerOpenSettings('cloud'); })}
               />
 
-              {/* Widgets shortcut */}
-              {onOpenWidgets && (
-                <button
-                  type="button"
-                  onClick={onOpenWidgets}
-                  title="Android Home Screen Widgets"
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/70 shadow-sm transition-all hover:border-foreground/20 hover:text-foreground active:scale-95 shrink-0"
-                  aria-label="Widgets"
-                >
-                  <Smartphone className="h-4 w-4" />
-                </button>
-              )}
 
               {/* Notifications with badge */}
               {onOpenNotifications && (
@@ -241,7 +223,7 @@ function NavbarInner({
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/70 shadow-sm transition-all hover:border-foreground/20 hover:text-foreground active:scale-95 shrink-0"
                 aria-label="Toggle theme"
               >
-                {theme === 'glass' ? <Sparkles className="h-4 w-4" /> : theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
               </button>
 
               {/* Profile photo: opens Settings (account, updates, backup, cloud, everything else) */}
