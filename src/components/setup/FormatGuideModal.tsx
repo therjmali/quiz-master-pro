@@ -130,7 +130,7 @@ export default function FormatGuideModal({ open, onClose }: Props) {
   const currentSection = SECTIONS.find(s => s.id === activeSection) || SECTIONS[0];
 
   return (
-    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Quiz format guide">
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Quiz format guide" hideClose>
       <div className="flex min-h-0 flex-col">
         {/* Header */}
         <div className="flex flex-shrink-0 items-center justify-between border-b border-border/50 px-5 pb-3 pt-5">

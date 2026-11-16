@@ -38,7 +38,7 @@ export default function GestureShortcutsPanel() {
       </button>
 
       {/* Panel overlay */}
-      <Overlay open={open} onClose={() => setOpen(false)} kind="sheet" layer="sheet" className="max-w-sm" label="Gesture shortcuts">
+      <Overlay open={open} onClose={() => setOpen(false)} kind="sheet" layer="sheet" className="max-w-sm" label="Gesture shortcuts" hideClose>
             {/* Header */}
             <div className="flex items-center justify-between px-5 pb-3 pt-5">
               <div className="flex items-center gap-2">

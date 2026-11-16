@@ -29,7 +29,7 @@ export default function NegativeMarkingCompare({
   const withPct = simResult.percentage;
 
   return (
-    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-2xl" label="Score comparison">
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-2xl" label="Score comparison" hideClose>
       <div className="qmp-panel-body">
         {/* Header */}
         <div className="sticky top-0 bg-card/95 backdrop-blur-md z-10 px-5 pt-4 pb-3 border-b border-border/50">

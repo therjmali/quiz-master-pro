@@ -227,8 +227,8 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
       {/* pages */}
       <main
         ref={scroller}
-        className="relative min-h-0 flex-1 overflow-auto bg-muted/60 px-3 pb-28 pt-4 [scroll-behavior:smooth] [overscroll-behavior:contain]"
-        style={{ touchAction: 'pan-x pan-y', scrollBehavior: 'smooth', overscrollBehavior: 'contain' }}
+        className="relative min-h-0 flex-1 overflow-auto bg-muted/60 px-3 pb-36 sm:pb-44 pt-4 [scroll-behavior:smooth] [overscroll-behavior:contain]"
+        style={{ touchAction: 'pan-x pan-y pinch-zoom', scrollBehavior: 'smooth', overscrollBehavior: 'contain' }}
       >
         {built.status === 'loading' && (
           <div className="mx-auto mt-6 flex max-w-sm flex-col items-center gap-3 text-center" role="status">
@@ -280,6 +280,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
                 transformOrigin: 'top center',
                 transition: 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)',
                 willChange: zoom !== 1 ? 'transform' : 'auto',
+                backfaceVisibility: 'hidden',
               }}
               data-testid="report-pages"
             >

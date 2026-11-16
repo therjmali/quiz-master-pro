@@ -54,7 +54,7 @@ export default function DisputeModal({ question, onClose, onFixed }: Props) {
   const verdictIcon = result?.verdict === 'confirmed' ? '✅' : result?.verdict === 'disputed' ? '⚠️' : '❌';
 
   return (
-    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-lg" label="Dispute question">
+    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-lg" label="Dispute question" hideClose>
       <div className="qmp-panel-body p-5 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="flex items-center gap-2 text-base font-black text-foreground">

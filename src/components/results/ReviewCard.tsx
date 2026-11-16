@@ -98,11 +98,11 @@ function ReviewCardInner({
   const shortOpts = opts.every(o => String(o).length <= 14);
   const disputeDot = existingDispute ? (existingDispute.verdict === 'confirmed' ? 'bg-emerald-500' : existingDispute.verdict === 'disputed' ? 'bg-amber-500' : 'bg-red-500') : '';
 
-  const act = 'relative flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-[11px] font-bold transition-all active:scale-95 whitespace-nowrap';
+  const act = 'relative flex h-10 min-w-0 items-center justify-center gap-1 rounded-xl border px-1 text-[11px] font-bold transition-all duration-200 ease-in-out active:scale-95 whitespace-nowrap cursor-pointer';
 
   return (
     <div
-      className={`${tint} rounded-3xl border p-4 md:p-6 shadow-[0_4px_15px_rgba(0,0,0,0.04)] transition-colors relative`}
+      className={`${tint} rounded-3xl border p-4 md:p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 ease-in-out relative`}
       data-review-status={status}
       onClick={handleDoubleTap}
     >
@@ -217,7 +217,7 @@ function ReviewCardInner({
       <div className="grid grid-cols-4 gap-1.5" role="group" aria-label="Question actions" data-testid="review-card-actions">
         <button type="button" aria-pressed={ratOpen} aria-label="Rationale" onClick={(e) => { e.stopPropagation(); hapticTap(); setRatOverride(ratOpen ? false : true); }}
           className={`${act} ${ratOpen ? 'border-[#7c3aed]/40 bg-[#7c3aed]/12 text-[#7c3aed]' : 'border-border bg-background/60 text-foreground/65'}`}>
-          <span className="text-sm leading-none">📖</span><span>Rational</span>
+          <span className="text-sm leading-none">📖</span><span>Rationale</span>
         </button>
         <button type="button" aria-label="Dispute this question" onClick={(e) => { e.stopPropagation(); setShowDispute(true); }}
           className={`${act} border-border bg-background/60 text-foreground/65`}>

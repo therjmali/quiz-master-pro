@@ -88,7 +88,7 @@ export default function PromptTool() {
       )}
 
       {/* ── Modal ── */}
-      <Overlay open={open} onClose={close} kind="center" layer="sheet" className="max-w-lg" label="Quick actions">
+      <Overlay open={open} onClose={close} kind="center" layer="sheet" className="max-w-lg" label="Quick actions" hideClose>
             {/* Header */}
             <div className="flex flex-shrink-0 items-center justify-between border-b border-border px-5 py-4">
               <div className="flex items-center gap-3">

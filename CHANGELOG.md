@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.6.0] - 2026-11-16
+
+Tablet responsiveness, modal close fixes, unclickable filter resolution, zero-lag report zoom & virtualization, and ultra-premium visual polish.
+
+### Fixed
+- **Doubled "X" (Close) Icon**: Eliminated doubled close buttons across all modal overlays by passing `hideClose` to `<Overlay>` when an inline close button or `<OverlayHeader>` is rendered (`MobilePopover.tsx`, `RevisionSheetModal.tsx`, `DisputeModal.tsx`, `ShareResultCard.tsx`, `FormatGuideModal.tsx`, `GestureShortcutsPanel.tsx`, `PromptTool.tsx`, `LifetimeNegMarkingPanel.tsx`, `NegativeMarkingCompare.tsx`, `NegativeMarkingPanel.tsx`). Removed `relative` override in `Overlay.tsx` to restore standard absolute positioning.
+- **Unclickable Status & Filter Buttons**: In `ReviewSection.tsx`, adjusted the sticky view options bar from `sticky top-0` to `sticky top-[60px] sm:top-[68px]`, preventing it from sliding underneath the sticky `Navbar` (`top-0 z-50`). Added explicit `pointer-events-auto`, `cursor-pointer`, and touch handling to status filters and options capsules.
+- **Review Card Typo**: Fixed button label typo from "Rational" to "Rationale" in the question action bar (`ReviewCard.tsx`).
+
+### Added & Optimized
+- **Tablet Responsiveness & Container Fluidity**:
+  - Enforced `max-w-full overflow-x-hidden` on the application root shell (`App.tsx`, `index.css`) to prevent horizontal bleeding on tablet screens.
+  - Increased bottom scroll clearance in `ReportPreviewPage.tsx` to `pb-36 sm:pb-44`, ensuring the floating pagination and zoom toolbar (`< 1/4 >`) never obscures report content or answer keys on tablet landscape viewports.
+- **Zero-Lag Smooth Zoom & Virtualized Report Engine**:
+  - Added `touch-action: pan-x pan-y pinch-zoom` to the report preview scroller for native, silky-smooth pinch-to-zoom.
+  - Implemented bidirectional off-screen virtualization in `PageView` (`PdfPages.tsx`), unmounting distant SVG DOM nodes while preserving exact page heights to eradicate memory bloat and scrolling lag.
+  - Applied `backface-visibility: hidden` and GPU transforms (`transform: translateZ(0)`) to eliminate repainting flicker.
+- **Ultra-Premium Visual Polish**:
+  - Modernized `.qmp-panel-close` and `.qmp-panel-close-inline` close buttons with soft borders, multi-layered shadows (`shadow-sm`), subtle hover magnification, and active tap feedback.
+  - Enhanced capsule buttons and review cards with smooth `transition-all duration-200 ease-in-out` and multi-layered elevation shadows (`shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)]`).
+
 ## [3.5.0] - 2026-11-16
 
 UI/UX modernization, modal close fixes, toggle switch redesign, notes formatting overhaul, and report engine upgrades.

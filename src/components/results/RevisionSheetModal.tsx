@@ -91,7 +91,7 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
   return (
     <>
     <GenerationProgressOverlay visible={loading} label="Generating Revision Sheet" sublabel={`Analyzing ${wrongCount} wrong answer${wrongCount !== 1 ? 's' : ''}`} />
-    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-2xl" label="Revision sheet">
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-2xl" label="Revision sheet" hideClose>
         {/* ── Sticky Header ── */}
         <div className="flex-shrink-0 border-b border-border bg-card px-5 pb-4 pt-5">
           {/* Top bar */}

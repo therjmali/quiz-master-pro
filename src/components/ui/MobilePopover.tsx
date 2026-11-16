@@ -20,7 +20,15 @@ interface Props {
 
 export default function MobilePopover({ open, onClose, children, title, subtitle, icon }: Props) {
   return (
-    <Overlay open={open} onClose={onClose} kind="sheet" layer="sheet" labelledBy={title ? 'qmp-popover-title' : undefined} label={title ? undefined : 'Options'}>
+    <Overlay
+      open={open}
+      onClose={onClose}
+      kind="sheet"
+      layer="sheet"
+      labelledBy={title ? 'qmp-popover-title' : undefined}
+      label={title ? undefined : 'Options'}
+      hideClose={Boolean(title)}
+    >
       {title ? (
         <OverlayHeader title={title} subtitle={subtitle} icon={icon} onClose={onClose} titleId="qmp-popover-title" />
       ) : null}

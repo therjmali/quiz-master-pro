@@ -201,36 +201,36 @@ export default function ReviewSection({
       </div>
 
       {/* Status filters: capsules, one line, swipe sideways */}
-      <div className="qmp-capsules mb-2" role="tablist" aria-label="Filter questions" data-testid="review-filters">
+      <div className="qmp-capsules mb-2 pointer-events-auto" role="tablist" aria-label="Filter questions" data-testid="review-filters">
         {FILTER_BTNS.map(({ key, label, icon }) => {
           const n = key === 'all' ? result.quizData.length : key === 'bookmarked' ? bookmarkedCount : counts[key];
           return (
             <button key={key} type="button" role="tab" aria-selected={activeFilter === key} aria-pressed={activeFilter === key}
               aria-label={`${label}${n !== undefined ? ` (${n})` : ''}`} title={label}
               onClick={() => { hapticTap(); onFilterChange(key); }}
-              className={`qmp-capsule ${key === 'all' ? '' : 'qmp-capsule--emoji'}`}>
+              className={`qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95 ${key === 'all' ? '' : 'qmp-capsule--emoji'}`}>
               <span className="leading-none">{icon}</span>{key === 'all' && <span>All</span>}
             </button>
           );
         })}
       </div>
 
-      {/* View options: capsules, one line, swipe sideways */}
-      <div className="sticky top-0 z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md">
-        <div className="qmp-capsules" data-testid="review-options">
+      {/* View options: capsules, one line, swipe sideways (sticks cleanly below navbar) */}
+      <div className="sticky top-[60px] sm:top-[68px] z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md pointer-events-auto shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
+        <div className="qmp-capsules pointer-events-auto" data-testid="review-options">
           {/* Answers / Include open a small window (nothing changes by a bare tap) */}
-          <button type="button" className="qmp-capsule" data-on={showAnswersInline} aria-haspopup="dialog" data-testid="review-opt-answers" onClick={() => setReviewPopup('answers')}>
+          <button type="button" className="qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95" data-on={showAnswersInline} aria-haspopup="dialog" data-testid="review-opt-answers" onClick={() => setReviewPopup('answers')}>
             <span className="leading-none">{showAnswersInline ? '👁️' : '🙈'}</span> Answers <span className="text-[9px] opacity-50">▾</span>
           </button>
-          <button type="button" className="qmp-capsule" data-on={rationalePrefs.showBook || rationalePrefs.showAi} aria-haspopup="dialog" data-testid="review-opt-include" onClick={() => setReviewPopup('include')}>
+          <button type="button" className="qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95" data-on={rationalePrefs.showBook || rationalePrefs.showAi} aria-haspopup="dialog" data-testid="review-opt-include" onClick={() => setReviewPopup('include')}>
             <span className="leading-none">📖</span> Rationale <span className="text-[9px] opacity-50">▾</span>
           </button>
-          <label className="qmp-capsule relative cursor-pointer gap-1 pr-2" data-on={explainDifficulty !== 'all'}>
+          <label className="qmp-capsule relative cursor-pointer gap-1 pr-2 pointer-events-auto transition-all duration-200" data-on={explainDifficulty !== 'all'}>
             <span className="sr-only">Difficulty</span>
             <select
               value={explainDifficulty}
               onChange={e => preserveScroll(() => setExplainDifficulty(e.target.value))}
-              className="cursor-pointer appearance-none bg-transparent pr-4 text-[0.8rem] font-bold outline-none"
+              className="relative z-10 cursor-pointer appearance-none bg-transparent pr-4 text-[0.8rem] font-bold outline-none pointer-events-auto"
               aria-label="Difficulty filter"
             >
               <option value="all">All levels</option>
@@ -244,7 +244,7 @@ export default function ReviewSection({
             type="button"
             onClick={handleExplainAll}
             disabled={explainAllLoading || difficultyFiltered.length === 0}
-            className="qmp-capsule disabled:opacity-40"
+            className="qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95 disabled:opacity-40"
             data-on={explainAllLoading}
           >
             {explainAllLoading
@@ -276,7 +276,7 @@ export default function ReviewSection({
             .filter(({ q }) => !showBookmarked || bookmarkedSet.has(q.question))
             .map(({ q, userAnswer, attemptIdx }, displayIdx) => (
             <ReviewCard
-              key={`${attemptIdx}-${displayIdx}`}
+              key={`${q.id || q.question}-${attemptIdx}-${displayIdx}`}
               q={q}
               index={attemptIdx}
               userAnswer={userAnswer}

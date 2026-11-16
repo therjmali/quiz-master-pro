@@ -2856,6 +2856,8 @@ html:not(.app-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--dest
 .qmp-app-root {
   min-height: var(--qmp-app-h);
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 .qmp-shell {
   width: 100%;
@@ -2864,6 +2866,7 @@ html:not(.app-dark) .text-destructive { color: color-mix(in srgb, hsl(var(--dest
   padding-left: max(0.75rem, var(--qmp-inset-left));
   padding-right: max(0.75rem, var(--qmp-inset-right));
   padding-top: max(0.5rem, var(--qmp-inset-top));
+  overflow-x: hidden;
 }
 @media (min-width: 768px) {
   .qmp-shell {
@@ -3330,6 +3333,7 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + var(--qmp-inset-
   scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scroll-behavior: smooth;
   scrollbar-width: none; -ms-overflow-style: none;
   padding: 0.25rem 0.75rem; margin-left: -0.75rem; margin-right: -0.75rem;
+  position: relative; z-index: 10; pointer-events: auto; touch-action: pan-x pan-y;
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 0.75rem, #000 calc(100% - 1.25rem), transparent 100%);
           mask-image: linear-gradient(90deg, transparent 0, #000 0.75rem, #000 calc(100% - 1.25rem), transparent 100%);
 }
@@ -3340,13 +3344,20 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + var(--qmp-inset-
   height: 2.25rem; min-width: 2.5rem; padding: 0 0.875rem; border-radius: 9999px;
   border: 1px solid hsl(var(--border)); background: hsl(var(--card) / 0.75);
   font-size: 0.8rem; font-weight: 700; line-height: 1; white-space: nowrap; color: hsl(var(--foreground) / 0.62);
+  cursor: pointer; pointer-events: auto; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
   transition: transform 0.12s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+}
+.qmp-capsule:hover {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border) / 0.9);
 }
 .qmp-capsule:active { transform: scale(0.94); }
 .qmp-capsule[aria-pressed='true'], .qmp-capsule[data-on='true'] {
   background: hsl(var(--primary) / 0.14); border-color: hsl(var(--primary) / 0.45); color: hsl(var(--primary));
-  box-shadow: 0 2px 10px hsl(var(--primary) / 0.18);
+  box-shadow: 0 2px 12px hsl(var(--primary) / 0.22);
 }
 .qmp-capsule--emoji { padding: 0 0.75rem; font-size: 1.05rem; }
 @media (prefers-reduced-motion: reduce) { .qmp-capsules { scroll-behavior: auto; } .qmp-capsule { transition: none; } }
@@ -3427,12 +3438,16 @@ html.qmp-scroll-locked body { overscroll-behavior: none; }
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  border: 1px solid hsl(var(--destructive) / 0.25);
-  background: hsl(var(--destructive) / 0.12);
+  border: 1px solid hsl(var(--destructive) / 0.2);
+  background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
-  transition: background-color 0.15s ease, transform 0.12s ease;
+  box-shadow: 0 2px 8px -2px hsl(var(--destructive) / 0.2);
+  transition: all 0.2s ease-in-out;
 }
-.qmp-panel-close:hover { background: hsl(var(--destructive) / 0.22); }
+.qmp-panel-close:hover {
+  background: hsl(var(--destructive) / 0.2);
+  transform: scale(1.05);
+}
 .qmp-panel-close:active { transform: scale(0.92); }
 .qmp-panel-close-inline {
   position: relative;
@@ -3445,12 +3460,16 @@ html.qmp-scroll-locked body { overscroll-behavior: none; }
   height: 34px;
   flex-shrink: 0;
   border-radius: 11px;
-  border: 1px solid hsl(var(--destructive) / 0.25);
-  background: hsl(var(--destructive) / 0.12);
+  border: 1px solid hsl(var(--destructive) / 0.2);
+  background: hsl(var(--destructive) / 0.1);
   color: hsl(var(--destructive));
-  transition: background-color 0.15s ease, transform 0.12s ease;
+  box-shadow: 0 2px 8px -2px hsl(var(--destructive) / 0.2);
+  transition: all 0.2s ease-in-out;
 }
-.qmp-panel-close-inline:hover { background: hsl(var(--destructive) / 0.22); }
+.qmp-panel-close-inline:hover {
+  background: hsl(var(--destructive) / 0.2);
+  transform: scale(1.05);
+}
 .qmp-panel-close-inline:active { transform: scale(0.92); }
 
 .qmp-panel-header {

@@ -84,7 +84,7 @@ export default function NegativeMarkingPanel({
     : { color: '#FF3B5C' };
 
   return (
-    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Negative marking calculator">
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Negative marking calculator" hideClose>
       <div className="qmp-panel-body">
         {/* Header */}
         <div className="sticky top-0 bg-card/95 backdrop-blur-md z-10 px-5 pt-5 pb-3 border-b border-border/50">

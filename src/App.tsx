@@ -797,7 +797,7 @@ function AppScreens({
       )}
 
       <div
-        className={`qmp-shell ${screen === 'quiz' ? 'qmp-shell-quiz' : ''} ${showBottomNav ? 'qmp-has-nav' : ''}`}
+        className={`qmp-shell max-w-full overflow-x-hidden ${screen === 'quiz' ? 'qmp-shell-quiz' : ''} ${showBottomNav ? 'qmp-has-nav' : ''}`}
         style={{ touchAction: 'pan-y' }}
       >
         {screen !== 'quiz' && screen !== 'report-preview' && (

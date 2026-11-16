@@ -106,7 +106,7 @@ export default function LifetimeNegMarkingPanel({
   const zone = getZoneColor(simResult.percentage);
 
   return (
-    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Lifetime negative marking">
+    <Overlay open onClose={onClose} kind="sheet" layer="sheet" className="max-w-lg" label="Lifetime negative marking" hideClose>
       <div className="qmp-panel-body">
         {/* Header */}
         <div className="sticky top-0 bg-card/95 backdrop-blur-md z-10 px-5 pt-5 pb-3 border-b border-border/50">

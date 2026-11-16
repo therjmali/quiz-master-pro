@@ -150,7 +150,7 @@ export default function Overlay({
         {dismissable && !hideClose && (
           <button
             type="button"
-            className="qmp-panel-close relative z-20 cursor-pointer"
+            className="qmp-panel-close z-20 cursor-pointer"
             onClick={e => {
               e.preventDefault();
               e.stopPropagation();
@@ -195,7 +195,7 @@ export function OverlayHeader({ title, subtitle, icon, onClose, titleId }: {
             onClose();
           }}
           aria-label="Close"
-          className="qmp-panel-close-inline relative z-20 cursor-pointer"
+          className="qmp-panel-close-inline z-20 cursor-pointer"
         >
           <X className="h-4 w-4" />
         </button>

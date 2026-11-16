@@ -386,7 +386,7 @@ export default function ShareResultCard({ result, onClose }: Props) {
   }, [result]);
 
   return (
-    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-md" label="Share results">
+    <Overlay open onClose={onClose} kind="center" layer="sheet" className="max-w-md" label="Share results" hideClose>
       <div className="qmp-panel-body thin-scrollbar p-5 sm:p-6">
         {/* Header */}
         <div className="mb-5 flex items-center justify-between gap-3">
