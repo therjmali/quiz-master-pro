@@ -4,6 +4,57 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.4.0] - 2026-11-16
+
+Cross-device synchronisation overhaul: real-time push, offline outbox, UUID-safe IDs, and a resilient sync UI.
+
+### Added
+- **Realtime WebSocket sync.** The app now subscribes to Supabase Realtime channels for
+  `quiz_sync_sections`, `quiz_sync_docs`, `quiz_attempts`, `reports`, `notes` and `bookmarks`
+  (filtered by `user_id`). Changes made on another device appear within seconds — no manual
+  refresh or polling delay (`src/platform/cloud/realtimeSync.ts`).
+- **Persistent outbox queue with exponential backoff.** Every mutation that cannot be pushed
+  immediately (no network, Supabase unavailable) is written to `localStorage` under the key
+  `qm_sync_outbox_v2`. The queue is drained automatically on reconnection with backoff delays
+  of 2 s → 4 s → 8 s → 16 s (capped at 60 s + jitter) so a flaky connection never causes a
+  flood of retries (`src/platform/cloud/syncQueue.ts`).
+- **RFC 4122 UUID v4 generator** (`src/platform/cloud/uuid.ts`). IDs created while offline
+  (`QuizResult`, `BookmarkFolder`, `NoteEntry`) are now globally unique UUIDs, eliminating
+  the collision risk of the previous timestamp-based patterns when two devices write
+  simultaneously without a network connection.
+- **`SyncStatusIndicator` component** (`src/components/cloud/SyncStatusIndicator.tsx`) — a
+  four-state sync badge (🟢 Synced / 🔄 Syncing / 🔴 Offline (N pending) / ⚠️ Error — tap to
+  retry), a **Force Sync / Backup Now** button that triggers an immediate full push, and an
+  `OfflineFallbackCard` for resilient degraded-state UIs.
+- **Foreground lifecycle sync hooks.** `syncFromCloud` is now triggered on every app-to-foreground
+  transition: `visibilitychange` (web tab), `window.focus` (desktop), Capacitor `appStateChange`
+  (`isActive: true`) and Capacitor `resume`. Changes made on a second device are picked up the
+  moment you switch back to the app (`src/platform/runtime.ts`, `src/App.tsx`).
+- **Two new unit tests** in `tests/syncEngine.test.ts`:
+  - *Offline disconnected state queues local records and pushes to cloud upon reconnection.*
+  - *Realtime subscription cleanly unsubscribes on logout to prevent memory leaks or
+    cross-account data bleeding.*
+
+### Changed
+- **`syncEngine.ts` rewritten** to integrate the outbox queue, Realtime subscription lifecycle
+  (subscribe on attach, unsubscribe on detach/logout), LWW (Last-Write-Wins) timestamp
+  enforcement on merge, and a 5 s queue-worker timer alongside the existing 45 s poll cycle.
+  The `isSyncWriteGuarded` guard and all existing `EngineDeps` injection points are preserved
+  for test isolation.
+- **`ReportPreviewPage`** error state replaced with a resilient offline fallback: an amber
+  "Showing offline data" card with a **Retry Sync** button, plus a dismissible toast —
+  instead of the previous hard red error screen that required a full page reload.
+- **"Force Sync / Backup Now"** button label in *Settings → Cloud → Sync Center* (previously
+  "Sync now") to match the new explicit-trigger semantics.
+
+### Fixed
+- `BookmarkFolder` and `NoteEntry` IDs were generated with `bm_${Date.now()}_${Math.random()}`
+  patterns; these are replaced with `generateUUID()` to prevent ID clashes when two devices
+  create entries while both are offline and later push to the same account.
+- `QuizResult` objects built in `useQuizSession` were missing a client-side `id` field;
+  the sync engine could not reliably deduplicate them. They now carry a UUID from the moment
+  the result is built, before any cloud write occurs.
+
 ## [3.3.0] - 2026-11-15
 
 One report vocabulary everywhere, a black & white exam paper, and no more tap-to-cycle settings.
