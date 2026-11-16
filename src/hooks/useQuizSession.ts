@@ -6,6 +6,7 @@ import { saveConfidenceRecord } from '../utils/confidenceTracker';
 import { addWrongQuestionsToSR } from '../utils/spacedRepetition';
 import { toast } from 'sonner';
 import { getDraft, removeDraftForQuiz, upsertDraft, type SessionBlob } from '../utils/drafts';
+import { generateUUID } from '../platform/cloud/uuid';
 
 const SESSION_KEY = 'qmp_active_session';
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -280,6 +281,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     });
 
     const result: QuizResult = {
+      id: generateUUID(),
       ...scored, totalQuestions: qd.length, quizData: qd, userAnswers: ua,
       flaggedQuestions: fq, score: scored.netScore, timeTaken: accTimeRef.current,
       difficulty: s.difficulty, timestamp: Date.now(),

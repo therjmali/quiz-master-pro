@@ -6,7 +6,7 @@
  */
 import { installStorageHook } from './storageHook';
 import { initCloudAuth, onAuthChange } from './cloud/authStore';
-import { DATA_APPLIED_EVENT, detachCloudAccount, refreshEngineForAccount } from './cloud/syncEngine';
+import { DATA_APPLIED_EVENT, detachCloudAccount, refreshEngineForAccount, syncFromCloud } from './cloud/syncEngine';
 import { isCloudConfigured } from './cloud/config';
 import { runAutoBackupIfDue } from './autoBackup';
 import { purgeExpiredHistoryTrash } from '../utils/historyTrash';
@@ -65,15 +65,30 @@ export function initPlatform(): void {
     rescheduleTimer = setTimeout(() => { void rescheduleAll().catch(() => undefined); }, 5000);
   });
 
-  // Back up / refresh reminders whenever the app is left or comes back.
+  // Back up / refresh reminders and sync from cloud whenever the app is left or comes back.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') void runAutoBackupIfDue().catch(() => undefined);
-    else void rescheduleAll().catch(() => undefined);
+    if (document.visibilityState === 'hidden') {
+      void runAutoBackupIfDue().catch(() => undefined);
+    } else {
+      void rescheduleAll().catch(() => undefined);
+      if (isCloudConfigured()) void syncFromCloud('visibility-foreground').catch(() => undefined);
+    }
   });
+
   if (isNative()) {
     import('@capacitor/app').then(({ App }) => {
-      App.addListener('resume', () => { void rescheduleAll().catch(() => undefined); });
-      App.addListener('pause', () => { void runAutoBackupIfDue().catch(() => undefined); });
+      App.addListener('resume', () => {
+        void rescheduleAll().catch(() => undefined);
+        if (isCloudConfigured()) void syncFromCloud('capacitor-resume').catch(() => undefined);
+      });
+      App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive && isCloudConfigured()) {
+          void syncFromCloud('capacitor-app-active').catch(() => undefined);
+        }
+      });
+      App.addListener('pause', () => {
+        void runAutoBackupIfDue().catch(() => undefined);
+      });
     }).catch(() => undefined);
   }
 }

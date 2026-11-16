@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 import { FakeCloud, FakeDevice } from './helpers';
 import { CloudError } from '../src/platform/cloud/http';
 import { __setEngineDepsForTests, __resetEngineForTests, syncNow, noteLocalChange, resolveFirstSync, getSyncState, restoreRevision, fetchRevisions, wipeCloudCopy, DATA_APPLIED_EVENT, pushDeviceOverCloud, pullCloudOverDevice, isSyncWriteGuarded } from '../src/platform/cloud/syncEngine';
+import { getOutbox, clearOutbox } from '../src/platform/cloud/syncQueue';
+import { subscribeToRealtime, unsubscribeFromRealtime } from '../src/platform/cloud/realtimeSync';
+import { generateUUID } from '../src/platform/cloud/uuid';
 import { __restoreIdbForTests, __snapshotIdbForTests, idbGet, STORE } from '../src/platform/idb';
 import { __resetBaseCacheForTests, loadMeta } from '../src/platform/cloud/sections';
 
@@ -279,4 +282,72 @@ test('sync write guard is active during applyLocal and always released afterward
     assert.equal(guardedDuringApply, true, 'write guard suppresses local change loop while applying remote data');
     assert.equal(isSyncWriteGuarded(), false, 'write guard is released immediately after applyLocal finishes');
   });
+});
+
+test('offline disconnected state queues local records and pushes to cloud upon reconnection', async () => {
+  const a = new Phone('A');
+  a.dev.edit('qmp_settings', settings());
+  // 1. Initial sync while online
+  await on(a, () => syncNow('initial'));
+  assert.equal(getSyncState().phase, 'synced');
+
+  // 2. Simulate offline disconnected state
+  (globalThis as any).navigator = { onLine: false };
+  const quizId = generateUUID();
+  a.dev.edit('hist:2026-11', { items: { [quizId]: { id: quizId, score: 95, timestamp: Date.now() } } });
+
+  await on(a, async () => {
+    noteLocalChange('hist:2026-11', a.dev.data['hist:2026-11']);
+    const offlineRes = await syncNow('try-while-offline');
+    assert.equal(offlineRes.ok, false);
+    assert.equal(offlineRes.error, 'Offline');
+  });
+
+  // Verify record is parked in persistent outbox queue
+  assert.ok(getOutbox().some(item => item.sectionKey === 'hist:2026-11'), 'mutation is parked in outbox');
+
+  // 3. Simulate reconnection
+  (globalThis as any).navigator = { onLine: true };
+  const reconnectRes = await on(a, () => syncNow('online-reconnect'));
+  assert.equal(reconnectRes.ok, true);
+  assert.equal(getSyncState().phase, 'synced');
+
+  // Verify pushed to Supabase cloud
+  const cloudHistory = cloud.data()['hist:2026-11'] as { items: Record<string, any> };
+  assert.ok(cloudHistory?.items?.[quizId], 'record was pushed to cloud after reconnection');
+  assert.equal(cloudHistory.items[quizId].score, 95);
+});
+
+test('Realtime subscription cleanly unsubscribes on logout to prevent memory leaks or cross-account data bleeding', async () => {
+  let unsubCalled = false;
+  let subscribedUser: string | null = null;
+  const mockSupabase = {
+    channel: (name: string) => {
+      subscribedUser = name;
+      const ch: any = {
+        on: () => ch,
+        subscribe: (cb: any) => { cb?.('SUBSCRIBED'); return ch; },
+      };
+      return ch;
+    },
+    removeChannel: () => {
+      unsubCalled = true;
+      subscribedUser = null;
+    },
+  };
+
+  const { __setSupabaseForTests } = await import('../src/platform/cloud/supabase');
+  __setSupabaseForTests(mockSupabase as any);
+
+  try {
+    subscribeToRealtime('user-123', { onRemoteChange: () => {} });
+    assert.ok(subscribedUser?.includes('user-123'), 'subscribed with user ID');
+
+    // Simulate logout
+    unsubscribeFromRealtime();
+    assert.equal(unsubCalled, true, 'channel was removed from Supabase client');
+    assert.equal(subscribedUser, null, 'user ID cleared');
+  } finally {
+    __setSupabaseForTests(null);
+  }
 });

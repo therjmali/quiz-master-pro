@@ -4,6 +4,7 @@
  */
 
 import { idbGet, idbSet } from './indexedDB';
+import { generateUUID } from '../platform/cloud/uuid';
 
 export interface BookmarkedQuestion {
   question: string;
@@ -40,7 +41,7 @@ const IDB_KEY = 'qmp_bookmarks_idb';
 let _cache: BookmarkStore | null = null;
 
 function genId(): string {
-  return `bm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return generateUUID();
 }
 
 /** Initialize from IDB, falling back to localStorage */

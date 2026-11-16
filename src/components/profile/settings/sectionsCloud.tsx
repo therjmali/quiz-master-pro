@@ -195,9 +195,9 @@ function SignedIn() {
             </div>
             <Btn tone="primary" small icon={<RefreshCw className="w-3.5 h-3.5" />} busy={sync.phase === 'syncing'} onClick={() => void run('sync', async () => {
               const r = await syncNow('manual');
-              if (r.ok) toast.success(r.pulled?.length ? 'Synced - updating this screen' : 'Everything is up to date');
+              if (r.ok) toast.success(r.pulled?.length ? 'Synced & backed up to cloud' : 'Everything is up to date and backed up');
               else if (!r.skipped || r.error) toast.error(r.error ?? 'Sync did not finish');
-            })}>Sync now</Btn>
+            })}>Force Sync / Backup Now</Btn>
           </div>
           {sync.error && sync.phase !== 'not-set-up' && <p role="alert" className="text-[12px] font-semibold text-destructive mt-2">{sync.error}</p>}
         </Card>

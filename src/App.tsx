@@ -26,6 +26,7 @@ import SignInWindow from './components/cloud/SignInWindow';
 import ZoomShortcuts from './components/accessibility/ZoomShortcuts';
 import { openSignIn } from './platform/cloud/signInWindow';
 import { useAccount } from './platform/cloud/useAccount';
+import { syncFromCloud } from './platform/cloud/syncEngine';
 import { DashboardSkeleton, LibrarySkeleton } from './components/ScreenSkeleton';
 import type { ReportPreviewData } from './components/reports/ReportPreviewPage';
 
@@ -1237,6 +1238,42 @@ function AppContent() {
     let alive = true;
     initLocalStores().finally(() => { if (alive) setStoresReady(true); });
     return () => { alive = false; };
+  }, []);
+
+  // ── Foreground Lifecycle Sync (App Resume) ──
+  useEffect(() => {
+    const triggerForegroundSync = () => {
+      void syncFromCloud('app-foreground-resume');
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        triggerForegroundSync();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', triggerForegroundSync);
+
+    let removeCapacitorListener: (() => void) | undefined;
+    try {
+      import('@capacitor/app').then(({ App }) => {
+        const listenerPromise = App.addListener('appStateChange', (state) => {
+          if (state.isActive) {
+            triggerForegroundSync();
+          }
+        });
+        removeCapacitorListener = () => {
+          listenerPromise.then(h => h.remove()).catch(() => {});
+        };
+      }).catch(() => {});
+    } catch {}
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', triggerForegroundSync);
+      removeCapacitorListener?.();
+    };
   }, []);
 
   // ── History ──

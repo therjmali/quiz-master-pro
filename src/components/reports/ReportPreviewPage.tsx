@@ -15,6 +15,8 @@ import { ChoiceList, PopupSection, PopupShell, PopupTrigger, SwitchRow } from '.
 import { shareSavedReport } from '../../platform/reportFiles';
 import type { ReportFonts } from '../../utils/reports/pdf/reportFonts';
 
+import { syncFromCloud } from '../../platform/cloud/syncEngine';
+
 export type { ReportPreviewData } from './reportSession';
 
 const TABS: { key: ReportKind; label: string; icon: string }[] = [
@@ -84,7 +86,18 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
         await ensureFontFaces(fonts.set.regular.concat(fonts.set.bold).map(f => f.id));
         if (!cancelled) { setBuilt({ status: 'ready', report, fonts, doc, style }); setPage(1); scroller.current?.scrollTo({ top: 0 }); }
       } catch (e) {
-        if (!cancelled) setBuilt({ status: 'error', message: friendlyError(e) });
+        if (!cancelled) {
+          setBuilt({ status: 'error', message: friendlyError(e) });
+          toast('Showing offline data. Tap to retry sync.', {
+            action: {
+              label: 'Retry',
+              onClick: () => {
+                void syncFromCloud('report-retry');
+                patch({ rev: opts.rev + 1 });
+              },
+            },
+          });
+        }
       }
     }, 140);
     return () => { cancelled = true; clearTimeout(t); };
@@ -221,11 +234,22 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
           </div>
         )}
         {built.status === 'error' && (
-          <div className="mx-auto mt-10 max-w-sm rounded-3xl border border-destructive/30 bg-destructive/10 p-5 text-center" role="alert">
-            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-destructive" />
-            <p className="text-sm font-black">Could not build this report</p>
-            <p className="mt-1 text-[12px] text-foreground/60">{built.message}</p>
-            <button type="button" onClick={() => patch({ rev: opts.rev + 1 })} className="mt-3 rounded-2xl bg-primary px-4 py-2 text-[12px] font-black text-primary-foreground active:scale-95">Try again</button>
+          <div className="mx-auto mt-10 max-w-sm rounded-3xl border border-amber-500/30 bg-amber-500/10 p-5 text-center" role="alert">
+            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-amber-600 dark:text-amber-400" />
+            <p className="text-sm font-black text-amber-900 dark:text-amber-200">Showing offline data</p>
+            <p className="mt-1 text-[12px] text-foreground/70">
+              {built.message || 'Remote data not yet synchronized. Operating in offline resilience mode.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void syncFromCloud('report-fallback-retry');
+                patch({ rev: opts.rev + 1 });
+              }}
+              className="mt-3 rounded-2xl bg-primary px-4 py-2 text-[12px] font-black text-primary-foreground active:scale-95 shadow-sm"
+            >
+              Retry Sync
+            </button>
           </div>
         )}
         {built.status === 'empty' && (

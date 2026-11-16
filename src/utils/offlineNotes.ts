@@ -1,7 +1,9 @@
 // Offline premium notes generator — converts MCQ data into textbook-style study notes
 import { QuizQuestion } from '../types/quiz';
+import { generateUUID } from '../platform/cloud/uuid';
 
 export type NoteEntry = {
+  id?: string;
   number: number;
   heading: string;       // declarative statement derived from question + answer
   bullets: string[];     // 1–3 bullet points from rationale
@@ -63,6 +65,7 @@ export function generateOfflineNotes(
   title?: string
 ): NoteEntry[] {
   return questions.map((q, i) => ({
+    id: generateUUID(),
     number: i + 1,
     heading: buildHeading(q.question, q.correctAnswer),
     bullets: buildBullets(q),
