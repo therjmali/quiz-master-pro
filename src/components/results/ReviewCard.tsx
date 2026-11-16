@@ -152,7 +152,7 @@ function ReviewCardInner({
           return (
             <div key={i} className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${cls}`}>
               <span className="text-sm leading-snug text-foreground/85">
-                <span className="mr-1.5 text-xs font-bold text-foreground/35">({String.fromCharCode(97 + i)})</span>
+                <span className="mr-1.5 text-xs font-bold text-foreground">({String.fromCharCode(65 + i)})</span>
                 {opt}
               </span>
               {badge}
@@ -161,11 +161,17 @@ function ReviewCardInner({
         })}
       </div>
 
-      {/* Wrong answer note */}
-      {showAnswersInline && !isSkipped && !isCorrect && (
-        <div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs text-foreground/50">
-          <span>You answered:</span>
-          <span className="font-bold text-red-500">{userAnswer}</span>
+      {/* Inline Answer Line: immediately below options, bold, color-coded */}
+      {showAnswersInline && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs">
+          <span className={`font-bold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+            Ans. - ({String.fromCharCode(65 + Math.max(0, opts.indexOf(q.correctAnswer)))}) {q.correctAnswer}.
+          </span>
+          {!isCorrect && !isSkipped && (
+            <span className="text-[11px] text-foreground/50 ml-auto">
+              (You answered: <span className="font-semibold text-red-500">{userAnswer}</span>)
+            </span>
+          )}
         </div>
       )}
 

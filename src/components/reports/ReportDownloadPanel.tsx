@@ -36,15 +36,16 @@ interface Props {
   onDiffFilterChange?: (v: Difficulty) => void;
 }
 
+import { formatNotesForReadability } from '../../utils/notesFormatter';
+
 interface Card { type: ReportKind; label: string; desc: string; Icon: React.FC<{ className?: string }>; tone: string }
 const CARDS: Card[] = [
   { type: 'all', label: 'Full Report', desc: 'Every question with answers, your choices and explanations', Icon: BarChart2, tone: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
   { type: 'correct', label: 'Correct Answers', desc: 'Only what you got right', Icon: CheckSquare, tone: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
   { type: 'wrong', label: 'Mistakes', desc: 'Wrong answers to review and fix', Icon: XSquare, tone: 'text-red-400 bg-red-500/10 border-red-500/20' },
   { type: 'skipped', label: 'Skipped', desc: 'Questions you did not attempt', Icon: SkipForward, tone: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  { type: 'notes', label: 'Study Notes', desc: 'Question, answer and explanation, ready to revise', Icon: BookOpen, tone: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
   { type: 'exam', label: 'Exam Paper', desc: 'Clean paper with an answer key at the end', Icon: ClipboardList, tone: 'text-teal-400 bg-teal-500/10 border-teal-500/20' },
-  { type: 'revision', label: 'Revision Sheet', desc: 'AI revision notes from your mistakes', Icon: FileEdit, tone: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+  { type: 'revision', label: 'Notes', desc: 'High-yield revision notes and key concepts from your mistakes', Icon: FileEdit, tone: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
 ];
 const DIFFS: { v: Difficulty; l: string }[] = [{ v: 'all', l: 'All levels' }, { v: 'easy', l: '🟢 Easy' }, { v: 'medium', l: '🟡 Medium' }, { v: 'hard', l: '🔴 Hard' }];
 
@@ -70,7 +71,7 @@ export default function ReportDownloadPanel({
   const filtered = useMemo(() => results.filter(r => (!controlledSubject || r.subject === controlledSubject) && (!controlledUnit || r.quizTitle === controlledUnit)), [results, controlledSubject, controlledUnit]);
   const counts = useMemo(() => {
     const c = filtered.reduce((a, r) => ({ correct: a.correct + (r.correct || 0), wrong: a.wrong + (r.wrong || 0), skipped: a.skipped + (r.skipped || 0) }), { correct: 0, wrong: 0, skipped: 0 });
-    return { all: c.correct + c.wrong + c.skipped, correct: c.correct, wrong: c.wrong, skipped: c.skipped, notes: c.correct + c.wrong + c.skipped, exam: c.correct + c.wrong + c.skipped, revision: c.wrong } as Record<ReportKind, number>;
+    return { all: c.correct + c.wrong + c.skipped, correct: c.correct, wrong: c.wrong, skipped: c.skipped, exam: c.correct + c.wrong + c.skipped, revision: c.wrong } as Record<ReportKind, number>;
   }, [filtered]);
 
   const makeSession = (full: QuizResult[], kind: ReportKind): ReportSession => {
@@ -85,12 +86,21 @@ export default function ReportDownloadPanel({
       getRevisionMarkdown: async () => {
         const wrong = full.flatMap(r => (r.quizData || []).map((q, i) => ({ q, ua: r.userAnswers?.[i] ?? null })).filter(x => x.ua && x.ua.trim() !== x.q.correctAnswer.trim())
           .map(x => ({ question: x.q.question, correctAnswer: x.q.correctAnswer, userAnswer: x.ua ?? undefined, rationale: x.q.rationale || rationaleCache[x.q.question] || undefined })));
-        if (!wrong.length) return '## 🎉 Perfect Score!\n\nYou answered every question correctly. Amazing work — no revision needed!\n\n> Keep up the momentum and challenge yourself with harder quizzes.';
+        if (!wrong.length) return '## 🎉 Perfect Score!\n\n• **All Correct** — You answered every question correctly. Amazing work — no revision needed!\n\n> Keep up the momentum and challenge yourself with harder quizzes.';
         const cacheKey = full.length === 1 ? full[0].timestamp : null;
-        if (cacheKey) { const cached = await getRevisionCache(cacheKey); if (cached) return cached; }
-        const data = await generateRevisionSheet({ wrongQuestions: wrong.slice(0, 40), subject: subject || undefined, quizTitle: title || undefined });
-        if (cacheKey && data.revisionSheet) await setRevisionCache(cacheKey, data.revisionSheet).catch(() => undefined);
-        return data.revisionSheet;
+        if (cacheKey) { const cached = await getRevisionCache(cacheKey); if (cached) return formatNotesForReadability(cached); }
+        try {
+          const data = await generateRevisionSheet({ wrongQuestions: wrong.slice(0, 40), subject: subject || undefined, quizTitle: title || undefined });
+          const formatted = formatNotesForReadability(data.revisionSheet);
+          if (cacheKey && formatted) await setRevisionCache(cacheKey, formatted).catch(() => undefined);
+          return formatted;
+        } catch {
+          const lines = ['## Quick Notes & Key Takeaways\n'];
+          wrong.slice(0, 30).forEach((w, i) => {
+            lines.push(`• **Q${i + 1} (${w.correctAnswer})** — ${w.rationale || w.question}`);
+          });
+          return formatNotesForReadability(lines.join('\n'));
+        }
       },
     };
   };
@@ -136,9 +146,9 @@ export default function ReportDownloadPanel({
     correct: { short: 'Correct', grad: 'from-emerald-500/20 to-emerald-500/5', ring: 'border-emerald-500/30', text: 'text-emerald-500' },
     wrong: { short: 'Mistakes', grad: 'from-red-500/20 to-red-500/5', ring: 'border-red-500/30', text: 'text-red-500' },
     skipped: { short: 'Skipped', grad: 'from-amber-500/20 to-amber-500/5', ring: 'border-amber-500/30', text: 'text-amber-500' },
-    notes: { short: 'Notes', grad: 'from-purple-500/20 to-purple-500/5', ring: 'border-purple-500/30', text: 'text-purple-500' },
+    notes: { short: 'Full', grad: 'from-purple-500/20 to-purple-500/5', ring: 'border-purple-500/30', text: 'text-purple-500' },
     exam: { short: 'Exam', grad: 'from-teal-500/20 to-teal-500/5', ring: 'border-teal-500/30', text: 'text-teal-500' },
-    revision: { short: 'Revise', grad: 'from-orange-500/20 to-orange-500/5', ring: 'border-orange-500/30', text: 'text-orange-500' },
+    revision: { short: 'Notes', grad: 'from-purple-500/20 to-purple-500/5', ring: 'border-purple-500/30', text: 'text-purple-500' },
     custom: { short: 'Report', grad: 'from-slate-500/20 to-slate-500/5', ring: 'border-slate-500/30', text: 'text-slate-500' },
   };
 

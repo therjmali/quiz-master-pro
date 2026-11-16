@@ -6,15 +6,16 @@ export type Block =
 
 export interface InlineSpan { text: string; bold: boolean }
 
-/** **bold** / __bold__ -> spans; other markdown marks (`, *, _) are dropped. */
+/** **bold** / __bold__ / <mark> -> spans; other markdown marks (`, *, _) are dropped. */
 export function parseInline(text: string): InlineSpan[] {
   const spans: InlineSpan[] = [];
-  const re = /(\*\*|__)(.+?)\1/g;
+  const re = /(?:(\*\*|__)(.+?)\1|<mark>(.+?)<\/mark>)/g;
   let last = 0, m: RegExpExecArray | null;
-  const clean = (s: string) => s.replace(/`([^`]*)`/g, '$1').replace(/(^|[^*])\*([^*\s][^*]*)\*(?!\*)/g, '$1$2').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  const clean = (s: string) => s.replace(/`([^`]*)`/g, '$1').replace(/(^|[^*])\*([^*\s][^*]*)\*(?!\*)/g, '$1$2').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/<\/?mark>/g, '');
   while ((m = re.exec(text))) {
     if (m.index > last) spans.push({ text: clean(text.slice(last, m.index)), bold: false });
-    spans.push({ text: clean(m[2]), bold: true });
+    const content = m[2] !== undefined ? m[2] : m[3];
+    spans.push({ text: clean(content), bold: true });
     last = m.index + m[0].length;
   }
   if (last < text.length) spans.push({ text: clean(text.slice(last)), bold: false });

@@ -92,13 +92,10 @@ function itemGroups(it: ReportItem, ctx: ItemCtx): Group[] {
   if (isCardItem(it, ctx.kind)) return cardGroups(it, ctx);
   const { colW, size, set, style } = ctx;
   const rows: Row[] = [];
-  // Exam paper (black & white): no question numbers unless asked for (they are always printed when the answers are in a key at the end).
+  // Always prefix the question text with the question number in all reports and exam papers
   const exam = ctx.kind === 'exam';
-  const showNum = !exam || style.examNumbers === true || style.answers === 'key';
   const qText = it.question.trim() || '(no question text)';
-  rows.push(...rowsFor(showNum
-    ? [{ text: exam ? `${it.n}.` : `Q${it.n}.`, bold: true, color: C.ink }, { text: ' ' + qText, bold: false, color: C.text }]
-    : [{ text: qText, bold: false, color: C.text }], { colW, size, set }));
+  rows.push(...rowsFor([{ text: `Q${it.n}.`, bold: true, color: C.ink }, { text: ' ' + qText, bold: false, color: C.text }], { colW, size, set }));
   rows.push(gap(size * 0.35));
   const hangW = measureText('(A) ', false, size, set);
   it.options.forEach((opt, i) => {
@@ -109,14 +106,11 @@ function itemGroups(it: ReportItem, ctx: ItemCtx): Group[] {
   const answerText = it.correct.map(c => { const i = idxOf(c); return i >= 0 ? `(${letter(i)}) ${c}` : c; }).join(',  ');
   if (style.answers === 'inline') {
     rows.push(gap(size * 0.4), { kind: 'rule', h: 1, color: C.rule, dash: [3, 3] }, gap(size * 0.4));
-    if (exam) {
-      // old exam format: "Ans. 1 (C) text" in plain bold black
-      const lab = `Ans. ${it.n} `;
-      rows.push(...rowsFor([{ text: lab + (answerText || '-'), bold: true, color: C.ink }], { colW, size, set, hang: measureText(lab, true, size, set) }));
-    } else {
-      const ansLabel = `Ans.${it.n}. : `;
-      rows.push(...rowsFor([{ text: ansLabel, bold: true, color: C.ink }, { text: answerText || '-', bold: true, color: C.good }], { colW, size, set, hang: measureText(ansLabel, true, size, set) }));
-    }
+    const ansColor = it.status === 'correct' ? C.good : it.status === 'wrong' ? C.bad : (exam ? C.ink : C.good);
+    const lab = 'Ans. - ';
+    const ansFormatted = answerText ? `${answerText}.` : '-';
+    rows.push(...rowsFor([{ text: lab + ansFormatted, bold: true, color: ansColor }], { colW, size, set, hang: measureText(lab, true, size, set) }));
+
     if (!exam && style.showUserAnswer && it.status !== 'unknown') {
       const ui = it.user ? idxOf(it.user) : -1;
       const label = it.status === 'skipped' ? 'Not attempted' : `Your answer: ${ui >= 0 ? `(${letter(ui)}) ` : ''}${it.user ?? ''}`;
@@ -271,8 +265,9 @@ function keyGroups(items: ReportItem[], ctx: { colW: number; size: number; set: 
     groups.push({ rows: [gap(size * 1.1), { kind: 'rule', h: 1, color: C.rule }, gap(size * 0.7)], keep: true, keepNext: true });
     for (const it of withRat) {
       const rat = rationaleRows(it, { colW, size, set, emoji: true });
-      const lab = `Ans. ${it.n} `;
-      const head = rowsFor([{ text: lab + it.correct.map(c => { const i = idxOf(it, c); return i >= 0 ? `(${letter(i)}) ${c}` : c; }).join(',  '), bold: true, color: C.ink }], { colW, size, set, hang: measureText(lab, true, size, set) });
+      const lab = 'Ans. - ';
+      const ansVal = it.correct.map(c => { const i = idxOf(it, c); return i >= 0 ? `(${letter(i)}) ${c}` : c; }).join(',  ');
+      const head = rowsFor([{ text: lab + ansVal + '.', bold: true, color: C.ink }], { colW, size, set, hang: measureText(lab, true, size, set) });
       groups.push({ rows: [...head, ...rat, gap(size * 0.9)], keep: false });
     }
   } else if (withRat.length) {

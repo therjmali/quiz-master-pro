@@ -266,6 +266,15 @@ function questionCard(it: ReportItem, style: ReportStyle): string {
   const opts = options.length
     ? `<div class="opts">${options.map((o, i) => `<div class="opt"><span class="ot"><b>(${L(i)})</b> ${esc(o)}</span>${m.ok[i] ? '<span class="mk ok" aria-label="Correct answer">✓</span>' : m.no[i] ? '<span class="mk no" aria-label="Your answer">✗</span>' : ''}</div>`).join('')}</div>`
     : '';
+  let inlineAnsHtml = '';
+  if (inline) {
+    const ansSummary = (it.correct ?? []).map(c => {
+      const i = options.findIndex(o => o.trim() === c.trim());
+      return i >= 0 ? `(${L(i)}) ${c}` : c;
+    }).join(', ');
+    const ansColor = it.status === 'correct' ? '#15803d' : it.status === 'wrong' ? '#b91c1c' : '#15803d';
+    inlineAnsHtml = `<div class="ans-line" style="font-weight:700;color:${ansColor};margin:4px 0 6px 0;font-size:12px;">Ans. - ${esc(ansSummary)}.</div>`;
+  }
   const rat = (emoji: string, text: string | undefined) => {
     const bullets = rationaleBullets(text);
     return bullets.length ? `<div class="rat"><span class="ic" aria-hidden="true">${emoji}</span><ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : '';
@@ -274,6 +283,7 @@ function questionCard(it: ReportItem, style: ReportStyle): string {
   return `<article class="card ${st.cls}">
   ${head}
   ${opts}
+  ${inlineAnsHtml}
   ${rationale ? `<hr class="div">${rationale}` : ''}
 </article>`;
 }

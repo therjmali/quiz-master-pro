@@ -21,7 +21,7 @@ export type { ReportPreviewData } from './reportSession';
 
 const TABS: { key: ReportKind; label: string; icon: string }[] = [
   { key: 'all', label: 'Full report', icon: '📊' }, { key: 'correct', label: 'Correct', icon: '✅' }, { key: 'wrong', label: 'Mistakes', icon: '❌' },
-  { key: 'skipped', label: 'Skipped', icon: '⏭️' }, { key: 'notes', label: 'Study notes', icon: '📒' }, { key: 'exam', label: 'Exam paper', icon: '📝' }, { key: 'revision', label: 'Revision', icon: '✏️' },
+  { key: 'skipped', label: 'Skipped', icon: '⏭️' }, { key: 'exam', label: 'Exam paper', icon: '📝' }, { key: 'revision', label: 'Notes', icon: '📒' },
 ];
 const FORMATS: { fmt: ExportFormat; label: string; sub: string; Icon: typeof FileText }[] = [
   { fmt: 'pdf', label: 'PDF', sub: 'Best for printing and sharing', Icon: FileText },
@@ -75,7 +75,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
         } else if (session) {
           if (!session.getRevisionMarkdown) { setBuilt({ status: 'empty', why: 'Revision sheets are not available here.' }); return; }
           const md = await session.getRevisionMarkdown();
-          doc = buildMarkdownDoc('revision', `Revision Sheet — ${session.results[0]?.quizTitle || 'Profile Analysis'}`, md, [new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })]);
+          doc = buildMarkdownDoc('revision', `Notes — ${session.results[0]?.quizTitle || 'Profile Analysis'}`, md, [new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })]);
         } else {
           doc = { kind: 'custom', title: data.title, meta: [new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })], blocks: htmlToBlocks(data.html || '') };
           if (!doc.blocks?.length) { setBuilt({ status: 'empty', why: 'There is nothing to show in this report.' }); return; }
@@ -165,7 +165,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
   const showUserToggle = !!items && (opts.kind === 'all' || opts.kind === 'wrong');
   const answerMode = built.status === 'ready' ? built.style.answers : (opts.answers ?? 'inline');
   const isExam = opts.kind === 'exam';
-  const includeCount = (showUserToggle && prefs.showUserAnswer ? 1 : 0) + (opts.book ? 1 : 0) + (opts.ai ? 1 : 0) + (isExam && prefs.examNumbers ? 1 : 0);
+  const includeCount = (showUserToggle && prefs.showUserAnswer ? 1 : 0) + (opts.book ? 1 : 0) + (opts.ai ? 1 : 0);
 
   return (
     <OverlayLayer layer="panel">
@@ -225,7 +225,11 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
       )}
 
       {/* pages */}
-      <main ref={scroller} className="relative min-h-0 flex-1 overflow-auto bg-muted/60 px-3 pb-28 pt-4 [overscroll-behavior:contain]" style={{ touchAction: 'pan-x pan-y' }}>
+      <main
+        ref={scroller}
+        className="relative min-h-0 flex-1 overflow-auto bg-muted/60 px-3 pb-28 pt-4 [scroll-behavior:smooth] [overscroll-behavior:contain]"
+        style={{ touchAction: 'pan-x pan-y', scrollBehavior: 'smooth', overscrollBehavior: 'contain' }}
+      >
         {built.status === 'loading' && (
           <div className="mx-auto mt-6 flex max-w-sm flex-col items-center gap-3 text-center" role="status">
             <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -261,8 +265,35 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
           </div>
         )}
         {built.status === 'ready' && (
-          <div style={{ width: Math.max(pageWidth, 0), margin: '0 auto' }} data-testid="report-pages">
-            {built.report.pages.map((p, i) => <PageView key={`${opts.rev}-${i}-${built.report.pages.length}`} page={p} set={built.fonts.set} width={pageWidth} index={i} onVisible={onVisible} />)}
+          <div
+            className="flex justify-center transition-all duration-150"
+            style={{
+              minWidth: '100%',
+              width: zoom > 1 ? `${Math.round(fitWidth * zoom)}px` : '100%',
+              paddingBottom: zoom > 1 ? `${Math.round((built.report.pages.length * fitWidth * 1.414) * (zoom - 1))}px` : undefined,
+            }}
+          >
+            <div
+              style={{
+                width: fitWidth,
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top center',
+                transition: 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)',
+                willChange: zoom !== 1 ? 'transform' : 'auto',
+              }}
+              data-testid="report-pages"
+            >
+              {built.report.pages.map((p, i) => (
+                <PageView
+                  key={`${opts.rev}-${i}-${built.report.pages.length}`}
+                  page={p}
+                  set={built.fonts.set}
+                  width={fitWidth}
+                  index={i}
+                  onVisible={onVisible}
+                />
+              ))}
+            </div>
           </div>
         )}
       </main>
@@ -302,7 +333,6 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
         {showUserToggle && <SwitchRow label="Your answer" hint="Marks the option you picked" icon="🙋" checked={prefs.showUserAnswer} onChange={v => setPrefs({ showUserAnswer: v })} />}
         <SwitchRow label="Book rationale" hint="The explanation from your notes" icon="📖" checked={opts.book} onChange={v => { patch({ book: v }); session?.onRationalePrefsChange?.({ showBook: v, showAi: opts.ai }); }} />
         <SwitchRow label="AI rationale" hint="Explanations written by your AI key" icon="💡" checked={opts.ai} onChange={v => { patch({ ai: v }); session?.onRationalePrefsChange?.({ showBook: opts.book, showAi: v }); }} />
-        {isExam && <SwitchRow label="Question numbers" hint="Always on when the answers are at the end" icon="🔢" checked={prefs.examNumbers} onChange={v => setPrefs({ examNumbers: v })} />}
       </PopupShell>
       <PopupShell open={popup === 'layout'} onClose={() => setPopup(null)} title="Layout" subtitle="Columns and text size" icon="▥" testId="popup-layout">
         <PopupSection title="Columns">

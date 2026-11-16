@@ -62,8 +62,8 @@ export default function AISourceControls({ prefs, onChange, onAddKey }: Props) {
           <button type="button" role="switch" aria-checked={on} aria-label="AI Generation" data-testid="ai-switch"
             onClick={() => onChange(withAiOn(prefs, !on))}
             style={{ minHeight: 0, minWidth: 0 }}
-            className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${on ? 'bg-primary' : 'bg-foreground/20'}`}>
-            <span className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200 ${on ? 'translate-x-5' : 'translate-x-0'}`} />
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 ${on ? 'bg-primary' : 'bg-foreground/20'}`}>
+            <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${on ? 'translate-x-5' : 'translate-x-0'}`} />
           </button>
         </div>
 

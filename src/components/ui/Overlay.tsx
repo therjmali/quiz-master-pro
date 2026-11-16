@@ -148,7 +148,16 @@ export default function Overlay({
         onClick={e => e.stopPropagation()}
       >
         {dismissable && !hideClose && (
-          <button type="button" className="qmp-panel-close" onClick={() => closeRef.current?.()} aria-label="Close">
+          <button
+            type="button"
+            className="qmp-panel-close relative z-20 cursor-pointer"
+            onClick={e => {
+              e.preventDefault();
+              e.stopPropagation();
+              closeRef.current?.();
+            }}
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         )}
@@ -170,15 +179,24 @@ export function OverlayHeader({ title, subtitle, icon, onClose, titleId }: {
 }) {
   return (
     <div className="qmp-panel-header">
-      <div className="flex min-w-0 items-center gap-2.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 pr-2">
         {icon && <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-primary/25 bg-primary/15 text-primary">{icon}</div>}
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p id={titleId} className="truncate text-[13px] font-black leading-tight text-foreground">{title}</p>
           {subtitle && <p className="mt-0.5 truncate text-[9.5px] font-bold uppercase tracking-[0.12em] text-foreground/40">{subtitle}</p>}
         </div>
       </div>
       {onClose && (
-        <button type="button" onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+        <button
+          type="button"
+          onClick={e => {
+            e.preventDefault();
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="Close"
+          className="qmp-panel-close-inline relative z-20 cursor-pointer"
+        >
           <X className="h-4 w-4" />
         </button>
       )}

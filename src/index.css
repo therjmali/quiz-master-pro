@@ -3419,7 +3419,9 @@ html.qmp-scroll-locked body { overscroll-behavior: none; }
   position: absolute;
   top: 10px;
   right: 10px;
-  z-index: 3;
+  z-index: 20;
+  cursor: pointer;
+  pointer-events: auto;
   display: grid;
   place-items: center;
   width: 36px;
@@ -3433,6 +3435,10 @@ html.qmp-scroll-locked body { overscroll-behavior: none; }
 .qmp-panel-close:hover { background: hsl(var(--destructive) / 0.22); }
 .qmp-panel-close:active { transform: scale(0.92); }
 .qmp-panel-close-inline {
+  position: relative;
+  z-index: 20;
+  cursor: pointer;
+  pointer-events: auto;
   display: grid;
   place-items: center;
   width: 34px;
@@ -3713,10 +3719,10 @@ html.qmp-scroll-locked [role="alertdialog"] { touch-action: pan-y; }
 .qmp-choice-label { font-size: 13px; font-weight: 800; line-height: 1.25; }
 .qmp-choice-hint { font-size: 10.5px; line-height: 1.3; color: hsl(var(--foreground) / .55); }
 .qmp-choice-tick { flex: none; width: 20px; display: grid; place-items: center; color: hsl(var(--primary)); }
-.qmp-switch { flex: none; position: relative; width: 40px; height: 24px; border-radius: 999px; background: hsl(var(--foreground) / .2); transition: background-color .18s ease; }
-.qmp-switch > span { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 999px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .35); transition: transform .18s ease; }
+.qmp-switch { flex: none; position: relative; width: 44px; height: 24px; border-radius: 9999px; background: hsl(var(--foreground) / .2); transition: background-color .2s ease-in-out; }
+.qmp-switch > span { position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 9999px; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .35); transition: transform .2s ease-in-out; }
 .qmp-switch.is-on { background: hsl(var(--primary)); }
-.qmp-switch.is-on > span { transform: translateX(16px); }
+.qmp-switch.is-on > span { transform: translateX(20px); }
 .qmp-popup-trigger { display: inline-flex; align-items: center; gap: 6px; flex: none; white-space: nowrap; padding: 7px 11px; border-radius: 999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card) / .7); color: hsl(var(--foreground) / .75); font-size: 11px; transition: transform .12s ease, border-color .15s ease; }
 .qmp-popup-trigger:active { transform: scale(.96); }
 .qmp-popup-trigger.is-active { border-color: hsl(var(--primary) / .4); background: hsl(var(--primary) / .12); color: hsl(var(--primary)); }

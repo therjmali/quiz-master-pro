@@ -19,10 +19,10 @@ export interface BuildOptions {
 
 export const KIND_TITLES: Record<ReportKind, string> = {
   all: 'Full Report', correct: 'Correct Answers', wrong: 'Mistakes Report', skipped: 'Skipped Questions',
-  notes: 'Study Notes', exam: 'Exam Paper', revision: 'Revision Sheet', custom: 'Report',
+  notes: 'Full Report', exam: 'Exam Paper', revision: 'Notes', custom: 'Report',
 };
 export const KIND_FILE: Record<ReportKind, string> = {
-  all: 'Report', correct: 'Correct', wrong: 'Mistakes', skipped: 'Skipped', notes: 'StudyNotes', exam: 'ExamPaper', revision: 'Revision', custom: 'Report',
+  all: 'Report', correct: 'Correct', wrong: 'Mistakes', skipped: 'Skipped', notes: 'FullReport', exam: 'ExamPaper', revision: 'Notes', custom: 'Report',
 };
 
 const clean = (s: string) => String(s ?? '').replace(/[<>:"/\\|?*\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim();
@@ -40,8 +40,8 @@ export function styleFor(kind: ReportKind, base: Partial<ReportStyle> = {}, exam
   const answers: AnswerMode = kind === 'exam' ? (examInline ? 'inline' : 'key') : 'inline';
   // An exam paper keeps the classic two-column paper look; every other report gets the premium dashboard.
   const template = base.template ?? (kind === 'exam' ? 'classic' : 'master');
-  // The exam paper is a black & white print-style paper: no colour, no question numbers unless asked for.
-  return { ...s, template, answers, showUserAnswer: kind === 'all' || kind === 'wrong' ? s.showUserAnswer : false, mono: kind === 'exam' ? true : undefined, examNumbers: kind === 'exam' ? base.examNumbers === true : undefined };
+  // Always prefix question text with question number in all reports and exam papers
+  return { ...s, template, answers, showUserAnswer: kind === 'all' || kind === 'wrong' ? s.showUserAnswer : false, mono: kind === 'exam' ? true : undefined, examNumbers: true };
 }
 
 const correctOf = (q: QuizQuestion): string[] => (q.correctAnswers && q.correctAnswers.length ? q.correctAnswers : [q.correctAnswer]).filter(Boolean);

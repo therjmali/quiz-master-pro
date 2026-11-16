@@ -7,6 +7,7 @@ import { exportMarkdownReport } from '../../utils/reports/exportReport';
 import { Markdown } from '@project/components/markdown';
 import GenerationProgressOverlay from '../GenerationProgressOverlay';
 import Overlay from '../ui/Overlay';
+import { formatNotesForReadability } from '../../utils/notesFormatter';
 
 interface Props {
   result: QuizResult;
@@ -27,7 +28,7 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
 
   useEffect(() => {
     const cached = localStorage.getItem(cacheKey);
-    if (cached) { setContent(cached); return; }
+    if (cached) { setContent(formatNotesForReadability(cached)); return; }
     generate();
   }, []); // eslint-disable-line
 
@@ -45,8 +46,8 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
         }));
 
       if (wrongQs.length === 0) {
-        const perfect = '## 🎉 Perfect Score!\n\nYou answered every question correctly. Amazing work — no revision needed!\n\n> Keep up the momentum and challenge yourself with harder quizzes.';
-        setContent(perfect);
+        const perfect = '## 🎉 Perfect Score!\n\n• **All Correct** — You answered every question correctly. Amazing work — no revision needed!\n\n> Keep up the momentum and challenge yourself with harder quizzes.';
+        setContent(formatNotesForReadability(perfect));
         return;
       }
 
@@ -55,8 +56,9 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
         subject: result.subject,
         quizTitle: result.quizTitle,
       });
-      setContent(data.revisionSheet);
-      try { localStorage.setItem(cacheKey, data.revisionSheet); } catch { /* */ }
+      const formatted = formatNotesForReadability(data.revisionSheet);
+      setContent(formatted);
+      try { localStorage.setItem(cacheKey, formatted); } catch { /* */ }
     } catch {
       toast.error('Failed to generate revision sheet');
       setContent('## ⚠️ Generation Failed\n\nCould not generate the revision sheet. Please try again.');
@@ -117,7 +119,16 @@ export default function RevisionSheetModal({ result, onClose }: Props) {
                   </button>
                 </>
               )}
-              <button onClick={onClose} aria-label="Close" className="qmp-panel-close-inline">
+              <button
+                type="button"
+                onClick={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onClose();
+                }}
+                aria-label="Close"
+                className="qmp-panel-close-inline relative z-20 cursor-pointer"
+              >
                 <X className="h-4 w-4" />
               </button>
             </div>

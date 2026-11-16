@@ -35,11 +35,11 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
       continue;
     }
     if (exam) {
-      // black & white exam paper: plain question (numbers only when asked for / when the answers are in a key), "Ans. 1 (C) text", 📖 bullets
-      out.push(showNum ? `${it.n}. ${it.question}` : it.question);
+      // black & white exam paper: plain question (prefixed with Q${it.n}.), "Ans. - (C) text.", 📖 bullets
+      out.push(`Q${it.n}. ${it.question}`);
       it.options.forEach((o, i) => out.push(`  (${L(i)}) ${o}`));
       if (style.answers === 'inline') {
-        out.push(`Ans. ${it.n} ${ansText(it)}`);
+        out.push(`Ans. - ${ansText(it)}.`);
         for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => out.push(i === 0 ? `  ${icon} • ${b}` : `     • ${b}`));
       }
       out.push('-'.repeat(40), '');
@@ -48,7 +48,7 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
     out.push(`Q${it.n}. ${it.question}`);
     it.options.forEach((o, i) => out.push(`  (${L(i)}) ${o}`));
     if (style.answers === 'inline') {
-      out.push(`Ans.${it.n}. : ${ansText(it)}`);
+      out.push(`Ans. - ${ansText(it)}.`);
       if (style.showUserAnswer && it.status !== 'unknown') out.push(`  ${userText(it)}`);
       if (it.book) out.push(`  Explanation: ${it.book}`);
       if (it.ai) out.push(`  AI explanation: ${it.ai}`);
@@ -60,7 +60,7 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
     if (exam) {
       out.push((doc.items).map(it => `Ans. ${it.n} (${it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/')})`).join('   '), '');
       for (const it of doc.items) if (it.book || it.ai) {
-        out.push(`Ans. ${it.n} ${ansText(it)}`);
+        out.push(`Ans. - ${ansText(it)}.`);
         for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => out.push(i === 0 ? `  ${icon} • ${b}` : `     • ${b}`));
         out.push('');
       }
@@ -122,10 +122,10 @@ body.mono,body.mono *{color:#111 !important;border-color:#888 !important}body.mo
       continue;
     }
     if (exam) {
-      parts.push(`<div class="q">${showNum ? `<b>${it.n}.</b> ` : ''}${esc(it.question)}</div>`);
+      parts.push(`<div class="q"><b>Q${it.n}.</b> ${esc(it.question)}</div>`);
       it.options.forEach((o, i) => parts.push(`<div class="opt"><b>(${L(i)})</b> ${esc(o)}</div>`));
       if (style.answers === 'inline') {
-        parts.push(`<div class="rule"></div><div><span class="ans">Ans. ${it.n} ${esc(ansText(it))}</span></div>`);
+        parts.push(`<div class="rule"></div><div><span class="ans" style="font-weight:700">Ans. - ${esc(ansText(it))}.</span></div>`);
         for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => parts.push(`<div class="rat2 x">${i === 0 ? `<span class="ic">${icon}</span>` : ''}• ${esc(b)}</div>`));
       }
       continue;
@@ -133,7 +133,8 @@ body.mono,body.mono *{color:#111 !important;border-color:#888 !important}body.mo
     parts.push(`<div class="q"><b>Q${it.n}.</b> ${esc(it.question)}</div>`);
     it.options.forEach((o, i) => parts.push(`<div class="opt"><b>(${L(i)})</b> ${esc(o)}</div>`));
     if (style.answers === 'inline') {
-      parts.push(`<div class="rule"></div><div><span class="ans"><b style="color:#111827">Ans.${it.n}. :</b> ${esc(ansText(it))}</span></div>`);
+      const color = it.status === 'correct' ? '#16a34a' : it.status === 'wrong' ? '#dc2626' : '#16a34a';
+      parts.push(`<div class="rule"></div><div><span class="ans" style="font-weight:700;color:${color}"><b style="color:${color}">Ans. - </b> ${esc(ansText(it))}.</span></div>`);
       if (style.showUserAnswer && it.status !== 'unknown') parts.push(`<div class="you ${it.status === 'correct' ? 'ok' : it.status === 'wrong' ? 'no' : 'sk'}">${esc(userText(it))}</div>`);
       if (it.book) parts.push(`<div class="rat"><b>Explanation:</b> ${esc(it.book).replace(/\n/g, '<br>')}</div>`);
       if (it.ai) parts.push(`<div class="rat ai"><b>AI explanation:</b> ${esc(it.ai).replace(/\n/g, '<br>')}</div>`);
@@ -143,7 +144,7 @@ body.mono,body.mono *{color:#111 !important;border-color:#888 !important}body.mo
     if (exam) {
       parts.push(`<h2>Answer Key</h2><p>${doc.items.map(it => `<b>Ans. ${it.n} (${esc(it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/'))})</b>`).join(' &nbsp; ')}</p><hr>`);
       for (const it of doc.items) if (it.book || it.ai) {
-        parts.push(`<div class="q"><span class="ans">Ans. ${it.n} ${esc(ansText(it))}</span></div>`);
+        parts.push(`<div class="q"><span class="ans" style="font-weight:700">Ans. - ${esc(ansText(it))}.</span></div>`);
         for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => parts.push(`<div class="rat2 x">${i === 0 ? `<span class="ic">${icon}</span>` : ''}• ${esc(b)}</div>`));
       }
     } else {

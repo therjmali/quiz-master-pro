@@ -100,15 +100,23 @@ function Presets({ values, current, onSelect, isCustom, onCustom, format = (v: n
   );
 }
 
-// ─── Toggle ───────────────────────────────────────────────────────────────────
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
-    <button onClick={() => onChange(!checked)} role="switch" aria-checked={checked}
-      className={`relative w-12 h-6 rounded-full border-2 transition-all flex-shrink-0 focus:outline-none ${
-        checked ? 'bg-primary border-primary/70 shadow-lg shadow-primary/30' : 'bg-foreground/10 border-foreground/20'
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+        checked ? 'bg-primary shadow-sm shadow-primary/25' : 'bg-foreground/20'
       }`}
     >
-      <span className={`absolute w-4 h-4 bg-white rounded-full top-0.5 shadow-md transition-all ${checked ? 'left-[26px]' : 'left-0.5'}`} />
+      <span
+        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+          checked ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
     </button>
   );
 }

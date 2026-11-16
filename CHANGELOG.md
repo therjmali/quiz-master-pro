@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.5.0] - 2026-11-16
+
+UI/UX modernization, modal close fixes, toggle switch redesign, notes formatting overhaul, and report engine upgrades.
+
+### Added
+- **Notes formatting engine** (`src/utils/notesFormatter.ts`): Transforms raw markdown and question rationales into structured, high-readability bullet points, automatically bolding key terms and applying highlight accents (`<mark>` styling).
+- **Inline `<mark>` highlight parser** (`src/utils/reports/pdf/markdown.ts`): Recognizes `<mark>` tags in markdown to render highlighted text spans in PDF and HTML report outputs.
+- **Hardware-accelerated report viewer zoom**: Smooth CSS-transformed zooming (`transform: scale()`, `will-change: transform`) with a fixed layout width, eliminating DOM re-render lag and layout thrashing (`src/components/reports/ReportPreviewPage.tsx`).
+
+### Changed
+- **Toggle switch redesign**: Replaced bulky legacy toggle switches with modern, sleek pill-shaped switches (`rounded-full h-6 w-11` with smooth `h-5 w-5` sliding circle thumb) across `ChoicePopup.tsx`, `SettingsPanel.tsx`, `AISourceControls.tsx`, and `index.css`.
+- **Navigation & tabs**:
+  - Completely removed "Study Notes" tab and download card (1:1 duplicate of Full Report).
+  - Renamed "Revise" to **"Notes"** in the Reports & Downloads section and Report Preview tabs.
+- **Report Engine & formatting**:
+  - Answer line format updated across all reports, review cards, and exam papers to `Ans. - (C) [Option Text].` (stripped question number prefix, added trailing period).
+  - Hardcoded question numbers: removed "Question numbers" toggle from the Include modal; questions are now consistently prefixed with `Q1.` by default in all reports.
+  - Option letters (A, B, C, D) are explicitly bolded across all PDF and HTML reports and review cards.
+  - Inline answer lines ("After each question") styled with bold weight and color-coding: green for correct picks, red for incorrect picks.
+- **Scroll container smoothness**: Added `scroll-behavior: smooth` and `overscroll-behavior: contain` to the report preview container.
+
+### Fixed
+- **Modal close button bug**: Fixed unclickable "X" close buttons in "Rationale" and "Include" modals (`Overlay.tsx`, `RevisionSheetModal.tsx`, `index.css`) by ensuring proper event propagation (`e.stopPropagation()`, `e.preventDefault()`), pointer events, and elevated z-index positioning.
+
 ## [3.4.0] - 2026-11-16
 
 Cross-device synchronisation overhaul: real-time push, offline outbox, UUID-safe IDs, and a resilient sync UI.

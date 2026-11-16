@@ -68,7 +68,18 @@ export function SwitchRow({ label, hint, icon, checked, onChange, disabled }: {
         <span className="qmp-choice-label">{label}</span>
         {hint && <span className="qmp-choice-hint">{hint}</span>}
       </span>
-      <span className={`qmp-switch ${checked ? 'is-on' : ''}`} aria-hidden="true"><span /></span>
+      <span
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+          checked ? 'bg-primary' : 'bg-foreground/20'
+        }`}
+        aria-hidden="true"
+      >
+        <span
+          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+            checked ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </span>
     </button>
   );
 }

@@ -99,10 +99,10 @@ test('layoutReport: exam paper puts an answer key at the end; "none" prints no a
   assert.ok(texts().includes('Answer Key')); assert.ok(!texts().includes('Explanations'), 'no "Explanations" title: a rule and the 📖 icon instead');
   assert.ok(texts().some(t => /^Ans\. 1 \(B\)$/.test(t)), 'key entries read "Ans. 1 (B)"');
   assert.ok(!texts({ ...styleFor('exam'), answers: 'none' }).includes('Answer Key'));
-  assert.ok(texts({ ...styleFor('exam'), answers: 'inline' }).some(t => /^Ans\. 1 \(B\)/.test(t)));
+  assert.ok(texts({ ...styleFor('exam'), answers: 'inline' }).some(t => /^Ans\. - \(B\)/.test(t)));
 });
 
-test('exam paper: black & white, no question numbers by default, "Ans. 1 (C)", 📖 bullets without an "Explanation" label', () => {
+test('exam paper: black & white, question numbers prefixed by default, "Ans. - (C)", 📖 bullets without an "Explanation" label', () => {
   const qs = [Q(1, { rationale: '• Point A\n• Point B' }), Q(2, { rationale: 'Second' })];
   const doc = buildQuestionDoc([result(qs, [null, null])], { ...BUILD, kind: 'exam' });
   const run = (s: any) => layoutReport(doc, s, fakeSet).pages.flatMap(p => p.ops);
@@ -113,13 +113,13 @@ test('exam paper: black & white, no question numbers by default, "Ans. 1 (C)", �
   assert.equal(base.mono, true);
   assert.ok(ops.every(o => o.t === 'line' || o.t === 'text' ? isGray(o.color) : isGray((o as any).fill) && isGray((o as any).stroke)), 'every colour is black or grey');
   const texts = ops.filter(o => o.t === 'text').map(o => (o as any).text as string);
-  assert.ok(!texts.some(t => /^\d+\.$/.test(t) || /^Q\d+\.$/.test(t)), 'no question numbers by default');
-  assert.ok(texts.some(t => /^Ans\. 1 \(B\) /.test(t)) && texts.some(t => /^Ans\. 2 \(B\) /.test(t)), '"Ans. 1 (C)" style answer lines');
+  assert.ok(texts.some(t => /^Q\d+\.$/.test(t)), 'question numbers prefixed by default');
+  assert.ok(texts.some(t => /^Ans\. - \(B\) /.test(t)) && texts.some(t => /^Ans\. - \(B\) /.test(t)), '"Ans. - (C)" style answer lines');
   assert.ok(!texts.some(t => /Explanation|Rationale|Your answer|Correct$/.test(t)) && texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')), 'bullets, no label');
   assert.ok(ops.some(o => o.t === 'rect' && o.stroke === '#111111'), 'the 📖 icon is drawn (outline in black)');
-  // numbers on request, and always when the answers are in a key at the end
-  assert.ok(run({ ...base, examNumbers: true }).some(o => o.t === 'text' && /^1\.$/.test(o.text)));
-  assert.ok(run({ ...base, answers: 'key' }).some(o => o.t === 'text' && /^1\.$/.test(o.text)), 'a key needs numbers');
+  // question numbers always present
+  assert.ok(run(base).some(o => o.t === 'text' && /^Q1\.$/.test(o.text)));
+  assert.ok(run({ ...base, answers: 'key' }).some(o => o.t === 'text' && /^Q1\.$/.test(o.text)), 'a key needs numbers');
   assert.ok(!run({ ...base, answers: 'none' }).some(o => o.t === 'text' && /^Ans\./.test(o.text)), 'hidden: no answers');
   // other reports keep their colours
   assert.equal(styleFor('all').mono, undefined);
@@ -159,11 +159,11 @@ test('docToText / docToHtml follow the same settings and escape markup', () => {
   assert.ok(docToHtml(doc, styleFor('all')).includes('Is &lt;b&gt;x&lt;/b&gt; &amp; y?'), 'the default (master) web page escapes too');
   // the exam paper (a blank test) keeps the plain numbered layout
   const exam = docToText(buildQuestionDoc([result([Q(1, { rationale: 'Because' })], [null])], { ...BUILD, kind: 'exam' }), styleFor('exam', {}, true));
-  assert.match(exam, /^Ans\. 1 \(B\) Beta$/m, 'exam paper: "Ans. 1 (C) text"');
+  assert.match(exam, /^Ans\. - \(B\) Beta\.$/m, 'exam paper: "Ans. - (C) text."');
   assert.match(exam, /^ {2}📖 • Because$/m); assert.ok(!/Explanation|Ans\.1\./.test(exam));
-  assert.ok(!/^(\d+\.|Q\d+\.) /m.test(exam), 'no question numbers in the exam text');
+  assert.ok(/^Q1\. /m.test(exam), 'question numbers in the exam text');
   const examHtml = docToHtml(buildQuestionDoc([result([Q(1, { rationale: 'Because' })], [null])], { ...BUILD, kind: 'exam' }), styleFor('exam', {}, true));
-  assert.ok(examHtml.includes('<body class="mono">') && examHtml.includes('Ans. 1 ') && examHtml.includes('📖') && !examHtml.includes('Explanation:'), 'exam web page: black & white, same format');
+  assert.ok(examHtml.includes('<body class="mono">') && examHtml.includes('Ans. - ') && examHtml.includes('📖') && !examHtml.includes('Explanation:'), 'exam web page: black & white, same format');
 });
 
 test('card model: status icons, difficulty emoji, check marks and rationale bullets map correctly', () => {
@@ -248,5 +248,5 @@ test('bookmark exam paper: built from saved questions by the same engine (black 
   assert.ok(doc.meta.some(m => /1 bookmarked question$/.test(m)));
   const style = { ...styleFor('exam'), answers: 'inline' as const };
   const texts = layoutReport(doc, style, fakeSet).pages.flatMap(p => p.ops).filter(o => o.t === 'text').map(o => (o as any).text as string);
-  assert.ok(texts.some(t => /^Ans\. 1 \(B\) b$/.test(t)) && texts.some(t => t.includes('Because')));
+  assert.ok(texts.some(t => /^Ans\. - \(B\) b\.$/.test(t)) && texts.some(t => t.includes('Because')));
 });

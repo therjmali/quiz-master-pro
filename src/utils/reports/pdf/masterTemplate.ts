@@ -321,6 +321,22 @@ function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: nu
     y += Math.max(1, lines.length) * optLH + 1.5 * sc;
   });
 
+  /* inline answer line: bold, color logic (green if correct, red if wrong, green if skipped) */
+  if (inline) {
+    const idxOf = (txt: string) => (it.options ?? []).findIndex(o => o.trim() === txt.trim());
+    const ansSummary = (it.correct ?? []).map(c => {
+      const i = idxOf(c);
+      return i >= 0 ? `(${LETTER(i)}) ${c}` : c;
+    }).join(', ');
+    const ansColor = it.status === 'correct' ? T.okInk : it.status === 'wrong' ? T.noInk : T.okInk;
+    const ansLine = `Ans. - ${ansSummary}.`;
+    const ansLines = wrap(set, ansLine, Math.max(20, rightEdge - optX), fOpt, true, 4);
+    ansLines.forEach((ln, li) => {
+      ops.push(txt(optX, y + fOpt * 0.95 + li * optLH, ln, { bold: true, size: fOpt, color: ansColor }));
+    });
+    y += Math.max(1, ansLines.length) * optLH + 2 * sc;
+  }
+
   /* rationale: divider + 📖 (and 🤖) bullets, no text labels */
   if (inline) {
     const groups: { k: 'book' | 'robot'; bullets: string[] }[] = [{ k: 'book', bullets: rationaleBullets(it.book) }, { k: 'robot', bullets: rationaleBullets(it.ai) }];
