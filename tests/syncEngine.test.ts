@@ -292,7 +292,11 @@ test('offline disconnected state queues local records and pushes to cloud upon r
   assert.equal(getSyncState().phase, 'synced');
 
   // 2. Simulate offline disconnected state
-  (globalThis as any).navigator = { onLine: false };
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { onLine: false },
+    writable: true,
+    configurable: true,
+  });
   const quizId = generateUUID();
   a.dev.edit('hist:2026-11', { items: { [quizId]: { id: quizId, score: 95, timestamp: Date.now() } } });
 
@@ -307,7 +311,11 @@ test('offline disconnected state queues local records and pushes to cloud upon r
   assert.ok(getOutbox().some(item => item.sectionKey === 'hist:2026-11'), 'mutation is parked in outbox');
 
   // 3. Simulate reconnection
-  (globalThis as any).navigator = { onLine: true };
+  Object.defineProperty(globalThis, 'navigator', {
+    value: { onLine: true },
+    writable: true,
+    configurable: true,
+  });
   const reconnectRes = await on(a, () => syncNow('online-reconnect'));
   assert.equal(reconnectRes.ok, true);
   assert.equal(getSyncState().phase, 'synced');
@@ -336,6 +344,11 @@ test('Realtime subscription cleanly unsubscribes on logout to prevent memory lea
     },
   };
 
+  const oldUrl = process.env.VITE_SUPABASE_URL;
+  const oldKey = process.env.VITE_SUPABASE_ANON_KEY;
+  process.env.VITE_SUPABASE_URL = 'https://fake-project.supabase.co';
+  process.env.VITE_SUPABASE_ANON_KEY = 'anon-key-that-is-longer-than-20-chars';
+
   const { __setSupabaseForTests } = await import('../src/platform/cloud/supabase');
   __setSupabaseForTests(mockSupabase as any);
 
@@ -348,6 +361,8 @@ test('Realtime subscription cleanly unsubscribes on logout to prevent memory lea
     assert.equal(unsubCalled, true, 'channel was removed from Supabase client');
     assert.equal(subscribedUser, null, 'user ID cleared');
   } finally {
+    process.env.VITE_SUPABASE_URL = oldUrl;
+    process.env.VITE_SUPABASE_ANON_KEY = oldKey;
     __setSupabaseForTests(null);
   }
 });

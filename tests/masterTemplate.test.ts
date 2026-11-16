@@ -104,7 +104,8 @@ test('master template: answer modes — inline prints answers, key prints a key,
   const inlineRep = layoutMasterReport(doc(items), style, set);
   const inline = flat(inlineRep.pages, 'text').map(o => o.text);
   assert.ok(inline.some(t => t.includes('Because the enzyme')), 'inline: the rationale bullets follow each question');
-  assert.ok(!inline.some(t => /Ans\.|Explanation|Rationale|Your answer/.test(t)), 'no text labels in the card format');
+  assert.ok(inline.some(t => /^Ans\. - /.test(t)), 'inline: answer line formatted as Ans. - (C)');
+  assert.ok(!inline.some(t => /^(Explanation|Rationale|Your answer):/.test(t)), 'no text labels in the card format');
   assert.equal(lines(inlineRep, '#16a34a'), 4, 'a green check (two strokes) on the answer of each of the 2 attempted questions');
   assert.equal(lines(inlineRep, '#dc2626'), 2, 'the wrong pick of question 2 is crossed');
 
@@ -226,5 +227,6 @@ test('master template: status cards - tints, icons, difficulty dots, ✓ on the 
   const texts = ops.filter(o => o.t === 'text').map((o: any) => o.text as string);
   for (const q of ['Q1.', 'Q2.', 'Q3.']) assert.ok(texts.includes(q));
   assert.ok(texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')) && texts.some(t => t.includes('One paragraph.')));
-  assert.ok(!texts.some(t => /^(Ans\.|Explanation|AI explanation|Rationale)/.test(t)), 'no text labels on the cards');
+  assert.ok(texts.some(t => /^Ans\. - /.test(t)), 'inline answer line on card');
+  assert.ok(!texts.some(t => /^(Explanation|AI explanation|Rationale):/.test(t)), 'no explanation labels on the cards');
 });
