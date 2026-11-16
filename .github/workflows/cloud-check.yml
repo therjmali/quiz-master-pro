@@ -25,4 +25,11 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
-        run: node scripts/check-cloud.mjs
+        shell: bash
+        run: node scripts/check-cloud.mjs | tee cloud-check.txt
+      # Findings as annotations: visible on the run page (and through the API) without opening the log
+      - name: Show findings as annotations
+        if: always()
+        shell: bash
+        run: |
+          [ -f cloud-check.txt ] && while IFS= read -r line; do [ -n "$line" ] && echo "::notice title=Cloud check::${line}"; done < cloud-check.txt || true
