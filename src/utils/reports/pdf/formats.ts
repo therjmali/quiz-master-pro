@@ -11,6 +11,8 @@ const userText = (it: ReportItem) => it.status === 'skipped' ? 'Not attempted' :
 const esc = (s: string) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 export function docToText(doc: ReportDoc, style: ReportStyle): string {
+  const exam = doc.kind === 'exam';
+  const showNum = !exam || style.examNumbers === true || style.answers === 'key';
   const out: string[] = [`${style.brand} - ${doc.title}`, doc.meta.join('  |  '), '='.repeat(60), ''];
   if (doc.summary && doc.items) {
     const s = doc.summary;
@@ -32,6 +34,17 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
       out.push('', '');
       continue;
     }
+    if (exam) {
+      // black & white exam paper: plain question (numbers only when asked for / when the answers are in a key), "Ans. 1 (C) text", 📖 bullets
+      out.push(showNum ? `${it.n}. ${it.question}` : it.question);
+      it.options.forEach((o, i) => out.push(`  (${L(i)}) ${o}`));
+      if (style.answers === 'inline') {
+        out.push(`Ans. ${it.n} ${ansText(it)}`);
+        for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => out.push(i === 0 ? `  ${icon} • ${b}` : `     • ${b}`));
+      }
+      out.push('-'.repeat(40), '');
+      continue;
+    }
     out.push(`Q${it.n}. ${it.question}`);
     it.options.forEach((o, i) => out.push(`  (${L(i)}) ${o}`));
     if (style.answers === 'inline') {
@@ -44,8 +57,15 @@ export function docToText(doc: ReportDoc, style: ReportStyle): string {
   }
   if (style.answers === 'key' && doc.items?.length) {
     out.push('ANSWER KEY');
-    out.push((doc.items).map(it => `${it.n}-${it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/')}`).join('   '), '');
-    for (const it of doc.items) { if (it.book || it.ai) out.push(`Q${it.n}. ${ansText(it)}`, ...(it.book ? [`  Explanation: ${it.book}`] : []), ...(it.ai ? [`  AI explanation: ${it.ai}`] : []), ''); }
+    if (exam) {
+      out.push((doc.items).map(it => `Ans. ${it.n} (${it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/')})`).join('   '), '');
+      for (const it of doc.items) if (it.book || it.ai) {
+        out.push(`Ans. ${it.n} ${ansText(it)}`);
+        for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => out.push(i === 0 ? `  ${icon} • ${b}` : `     • ${b}`));
+        out.push('');
+      }
+    } else out.push((doc.items).map(it => `${it.n}-${it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/')}`).join('   '), '');
+    if (!exam) for (const it of doc.items) { if (it.book || it.ai) out.push(`Q${it.n}. ${ansText(it)}`, ...(it.book ? [`  Explanation: ${it.book}`] : []), ...(it.ai ? [`  AI explanation: ${it.ai}`] : []), ''); }
   }
   for (const b of doc.blocks ?? []) {
     if (b.type === 'hr') out.push('-'.repeat(40));
@@ -63,6 +83,8 @@ export function docToHtml(doc: ReportDoc, style: ReportStyle): string {
 
 /** The plain, classic HTML page. Word shares it: Word understands simple block layout, not the dashboard grid. */
 function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
+  const exam = doc.kind === 'exam';
+  const showNum = !exam || style.examNumbers === true || style.answers === 'key';
   const css = `body{font-family:Inter,Arial,'Segoe UI',sans-serif;color:#1f2937;font-size:11pt;line-height:1.5;margin:0}
 .wrap{max-width:780px;margin:0 auto;padding:24px 20px}h1{font-size:20pt;margin:0 0 4px;color:#111827}.meta{color:#6b7280;font-size:9pt;margin-bottom:14px}
 .chips span{display:inline-block;border:1px solid #e2e8f0;background:#f8fafc;border-radius:6px;padding:4px 10px;margin:0 6px 6px 0;font-size:9pt}
@@ -76,7 +98,9 @@ function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
 .card hr.div{border:0;border-top:1px solid;margin:8px 0 6px;opacity:.9}.card .rat2{font-size:9.5pt;color:#374151;margin:2px 0 2px 22px;position:relative}.card .rat2 .ic{position:absolute;left:-22px}
 .card.correct{background:${CARD_TONES.correct.fill};border-color:${CARD_TONES.correct.line}}.card.wrong{background:${CARD_TONES.wrong.fill};border-color:${CARD_TONES.wrong.line}}.card.skipped{background:${CARD_TONES.skipped.fill};border-color:${CARD_TONES.skipped.line}}
 @media (prefers-color-scheme:dark){body{background:#0b0b10;color:#e5e7eb}h1,.q b{color:#f3f4f6}.chips span{background:#15151c;border-color:#2a2a35}.card .rat2{color:#d1d5db}
-.card.correct{background:${CARD_TONES.correct.darkFill};border-color:${CARD_TONES.correct.darkLine}}.card.wrong{background:${CARD_TONES.wrong.darkFill};border-color:${CARD_TONES.wrong.darkLine}}.card.skipped{background:${CARD_TONES.skipped.darkFill};border-color:${CARD_TONES.skipped.darkLine}}}`;
+.card.correct{background:${CARD_TONES.correct.darkFill};border-color:${CARD_TONES.correct.darkLine}}.card.wrong{background:${CARD_TONES.wrong.darkFill};border-color:${CARD_TONES.wrong.darkLine}}.card.skipped{background:${CARD_TONES.skipped.darkFill};border-color:${CARD_TONES.skipped.darkLine}}}
+.rat2.x{font-size:9.5pt;color:#374151;margin:2px 0 2px 22px;position:relative}.rat2.x .ic{position:absolute;left:-22px}
+body.mono,body.mono *{color:#111 !important;border-color:#888 !important}body.mono{background:#fff !important}body.mono .chips span{background:#fff !important}body.mono .rat2.x{color:#333 !important}`;
   const parts: string[] = [];
   parts.push(`<h1>${esc(doc.title)}</h1><div class="meta">${esc(style.brand)} · ${esc(doc.meta.join(' · '))}</div>`);
   if (doc.summary && doc.items) {
@@ -97,6 +121,15 @@ function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
       parts.push(`<div class="card ${it.status}">${rows.join('')}</div>`);
       continue;
     }
+    if (exam) {
+      parts.push(`<div class="q">${showNum ? `<b>${it.n}.</b> ` : ''}${esc(it.question)}</div>`);
+      it.options.forEach((o, i) => parts.push(`<div class="opt"><b>(${L(i)})</b> ${esc(o)}</div>`));
+      if (style.answers === 'inline') {
+        parts.push(`<div class="rule"></div><div><span class="ans">Ans. ${it.n} ${esc(ansText(it))}</span></div>`);
+        for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => parts.push(`<div class="rat2 x">${i === 0 ? `<span class="ic">${icon}</span>` : ''}• ${esc(b)}</div>`));
+      }
+      continue;
+    }
     parts.push(`<div class="q"><b>Q${it.n}.</b> ${esc(it.question)}</div>`);
     it.options.forEach((o, i) => parts.push(`<div class="opt"><b>(${L(i)})</b> ${esc(o)}</div>`));
     if (style.answers === 'inline') {
@@ -107,8 +140,16 @@ function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
     }
   }
   if (style.answers === 'key' && doc.items?.length) {
+    if (exam) {
+      parts.push(`<h2>Answer Key</h2><p>${doc.items.map(it => `<b>Ans. ${it.n} (${esc(it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/'))})</b>`).join(' &nbsp; ')}</p><hr>`);
+      for (const it of doc.items) if (it.book || it.ai) {
+        parts.push(`<div class="q"><span class="ans">Ans. ${it.n} ${esc(ansText(it))}</span></div>`);
+        for (const [icon, bullets] of [[BOOK_EMOJI, rationaleBullets(it.book)], [AI_EMOJI, rationaleBullets(it.ai)]] as const) bullets.forEach((b, i) => parts.push(`<div class="rat2 x">${i === 0 ? `<span class="ic">${icon}</span>` : ''}• ${esc(b)}</div>`));
+      }
+    } else {
     parts.push(`<h2>Answer Key</h2><p>${doc.items.map(it => `${it.n}-<b>${esc(it.correct.map(c => (idx(it, c) >= 0 ? L(idx(it, c)) : '?')).join('/'))}</b>`).join(' &nbsp; ')}</p>`);
     for (const it of doc.items) if (it.book || it.ai) parts.push(`<div class="q"><b>Q${it.n}.</b> <span class="ans">${esc(ansText(it))}</span></div>${it.book ? `<div class="rat"><b>Explanation:</b> ${esc(it.book)}</div>` : ''}${it.ai ? `<div class="rat ai"><b>AI explanation:</b> ${esc(it.ai)}</div>` : ''}`);
+    }
   }
   for (const b of doc.blocks ?? []) {
     const t = parseInline(b.type === 'hr' ? '' : b.text).map(s => (s.bold ? `<b>${esc(s.text)}</b>` : esc(s.text))).join('');
@@ -120,7 +161,7 @@ function docToClassicHtml(doc: ReportDoc, style: ReportStyle): string {
     else parts.push(`<p>${t}</p>`);
   }
   parts.push(`<div class="foot">${esc(style.brand)}</div>`);
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(doc.title)}</title><style>${css}</style></head><body><div class="wrap">${parts.join('\n')}</div></body></html>`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(doc.title)}</title><style>${css}</style></head><body class="${style.mono ? 'mono' : ''}"><div class="wrap">${parts.join('\n')}</div></body></html>`;
 }
 
 /** Word opens HTML saved as .doc; this adds the Office namespaces and page setup. */

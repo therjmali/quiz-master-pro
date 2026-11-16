@@ -452,9 +452,15 @@ export const AiProvidersPanel = memo(function AiProvidersPanel() {
       </ul>
       <div>
         <p className="text-[11px] font-bold text-foreground/55 mb-1.5">Try this provider first</p>
-        <Segmented label="Preferred AI provider" value={prefs.preferred ?? 'auto'} onChange={v => setPref({ ...prefs, preferred: v === 'auto' ? null : (v as ProviderId) })}
+        <Segmented label="Preferred AI provider" value={prefs.preferred ?? 'auto'} onChange={v => setPref({ ...prefs, preferred: v === 'auto' ? null : (v as ProviderId), only: v === 'auto' ? false : prefs.only })}
           options={[{ value: 'auto', label: 'Auto' }, ...PROVIDER_ORDER.map(p => ({ value: p, label: PROVIDERS[p].label.split(' ').pop() ?? p }))]} />
-        <p className="text-[10px] text-foreground/35 mt-1.5">If a provider is busy or rejects the request, the next one with a key is tried automatically.</p>
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-border bg-foreground/[0.03] px-3 py-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-foreground/70">Use only this provider</p>
+            <p className="text-[10px] text-foreground/40">Off: if it is busy or rejects a request, the next saved key is tried automatically.</p>
+          </div>
+          <Toggle label="Use only this provider" checked={prefs.only === true && prefs.preferred !== null} onChange={v => setPref({ ...prefs, only: v })} />
+        </div>
       </div>
     </div>
   );

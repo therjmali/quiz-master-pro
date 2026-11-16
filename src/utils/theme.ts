@@ -33,8 +33,13 @@ export function normalizeTheme(value: unknown): AppTheme {
   return DEFAULT_THEME;
 }
 
+/** The saved mode; a brand-new install (nothing saved yet) follows the phone's light / dark setting once, then keeps its own choice. */
 export function loadTheme(): AppTheme {
-  try { return normalizeTheme(localStorage.getItem(THEME_KEY)); } catch { return DEFAULT_THEME; }
+  try {
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved) return normalizeTheme(saved);
+    return systemPrefersDark() ? 'dark' : DEFAULT_THEME;
+  } catch { return DEFAULT_THEME; }
 }
 
 /** Quiz-screen skin id that matches a theme mode. */

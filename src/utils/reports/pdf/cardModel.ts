@@ -46,11 +46,13 @@ export function rationaleBullets(text: string | undefined | null): string[] {
   return out;
 }
 
-/** Which options get the green check: only for attempted questions (and only when answers are shown after each question). */
+/**
+ * Which options get the green check: the correct one on every card (so a skipped question still shows its answer),
+ * and a red cross on the wrong pick of an attempted question. Only when answers are shown after each question.
+ */
 export function markedOptions(it: ReportItem, opts: { inlineAnswers: boolean; showUserAnswer: boolean }): { ok: boolean[]; no: boolean[] } {
   const ok = it.options.map(() => false), no = it.options.map(() => false);
-  const attempted = it.status === 'correct' || it.status === 'wrong';
-  if (!opts.inlineAnswers || !attempted) return { ok, no };
+  if (!opts.inlineAnswers || it.status === 'unknown') return { ok, no };
   it.options.forEach((o, i) => {
     const t = o.trim();
     if (it.correct.some(c => c.trim() === t)) ok[i] = true;

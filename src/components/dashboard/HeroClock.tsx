@@ -1,3 +1,4 @@
+import { ChoiceList, PopupShell } from '../ui/ChoicePopup';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useClock } from '../../hooks/useClock';
@@ -300,7 +301,6 @@ function FlipClock({ now }: { now: Date }) {
 }
 
 type ClockStyle = 'digital' | 'flip' | 'analog';
-const CLOCK_ORDER: ClockStyle[] = ['digital', 'flip', 'analog'];
 const CLOCK_LABEL: Record<ClockStyle, string> = { digital: '🔢 digital', flip: '🎞️ flip', analog: '⌚ analog' };
 const CLOCK_MODE_KEY = 'qmp-clock-mode';
 
@@ -328,11 +328,13 @@ export default function HeroClock({ streak, todayCount, avgScore }: HeroClockPro
     } catch {}
   }, [style]);
 
-  const handleFlip = () => {
-    if (isFlipping) return;
+  const [pickOpen, setPickOpen] = useState(false);
+  /** Switch to a chosen clock style with the flip animation (the style is picked in a popup, not by cycling). */
+  const switchTo = (target: ClockStyle) => {
+    if (isFlipping || target === style) return;
     setIsFlipping(true);
     setTimeout(() => {
-      setStyle((p) => CLOCK_ORDER[(CLOCK_ORDER.indexOf(p) + 1) % CLOCK_ORDER.length]);
+      setStyle(target);
       setTimeout(() => setIsFlipping(false), 400);
     }, 300);
   };
@@ -343,7 +345,11 @@ export default function HeroClock({ streak, todayCount, avgScore }: HeroClockPro
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       className="relative w-full rounded-2xl overflow-hidden cursor-pointer select-none glass-card"
-      onClick={handleFlip}
+      onClick={() => setPickOpen(true)}
+      role="button"
+      aria-haspopup="dialog"
+      aria-label="Clock style"
+      data-testid="clock-card"
       style={{ perspective: 1000 }}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-card/70 to-secondary/10" />
@@ -385,9 +391,16 @@ export default function HeroClock({ streak, todayCount, avgScore }: HeroClockPro
 
       <div className="absolute bottom-2 right-3 z-20">
         <span className="text-[8px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-          {CLOCK_LABEL[style]} · tap to switch
+          {CLOCK_LABEL[style]} · tap to choose
         </span>
       </div>
+      <PopupShell open={pickOpen} onClose={() => setPickOpen(false)} title="Clock style" subtitle="Pick how the clock looks" icon="🕒" testId="popup-clock">
+        <ChoiceList label="Clock style" value={style} onSelect={v => { setPickOpen(false); switchTo(v); }} options={[
+          { value: 'digital', label: 'Digital', hint: 'Large numbers, seconds ticking', icon: '🔢' },
+          { value: 'flip', label: 'Flip', hint: 'Split-flap cards', icon: '🎞️' },
+          { value: 'analog', label: 'Analog', hint: 'A classic watch face', icon: '⌚' },
+        ]} />
+      </PopupShell>
     </motion.div>
   );
 }

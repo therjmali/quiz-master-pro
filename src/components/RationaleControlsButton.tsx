@@ -4,10 +4,13 @@
  * Blue-themed trigger button for consistency.
  */
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { BookOpen, Sparkles, ChevronDown, Zap, Brain } from 'lucide-react';
+import { BookOpen, Sparkles, ChevronDown, Zap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { RationalePrefs, AIMode } from '../types/quiz';
 import MobilePopover from './ui/MobilePopover';
+import { getUserApiKeys } from '../utils/apiKeys';
+import { getAiClientPrefs } from '../platform/ai/providers';
+import { KEY_PROVIDER_NAMES, resolveSelected, savedKeyChoices } from '../utils/aiChoices';
 
 interface Props {
   prefs: RationalePrefs;
@@ -29,24 +32,6 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
   );
 }
 
-function AISegment({ value, onChange }: { value: AIMode; onChange: (v: AIMode) => void }) {
-  const SEGS: { val: AIMode; label: string; active: string; base: string }[] = [
-    { val: 'local', label: 'Zite AI',    active: 'bg-emerald-500/20 border-emerald-500/30 text-emerald-600 dark:text-emerald-300', base: 'text-foreground/30 hover:text-emerald-500' },
-    { val: 'off',   label: 'Off',        active: 'bg-foreground/10 border-foreground/20 text-foreground/60',                       base: 'text-foreground/30 hover:text-foreground/60' },
-    { val: 'cloud', label: 'Custom Key', active: 'bg-blue-500/20 border-blue-500/30 text-blue-600 dark:text-blue-300',             base: 'text-foreground/30 hover:text-blue-500' },
-  ];
-  return (
-    <div className="flex gap-1 bg-foreground/5 rounded-xl p-0.5 border border-border mt-2">
-      {SEGS.map(s => (
-        <button key={s.val} onClick={() => onChange(s.val)}
-          className={`flex-1 py-1.5 rounded-lg text-[10px] font-black border transition-all leading-none ${
-            value === s.val ? s.active : `bg-transparent border-transparent ${s.base}`
-          }`}>{s.label}</button>
-      ))}
-    </div>
-  );
-}
-
 export default function RationaleControlsButton({ prefs, onChange, reportHelper, onReportHelperChange }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -64,10 +49,11 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
   const bothOff  = !prefs.showBook && !prefs.showAi;
   const bothOn   =  prefs.showBook &&  prefs.showAi;
 
-  const aiSourceBadge =
-    reportHelper === 'local' ? { label: 'Zite AI', cls: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/15 border-emerald-500/25' } :
-    reportHelper === 'cloud' ? { label: 'Custom Key', cls: 'text-blue-600 dark:text-blue-300 bg-blue-500/15 border-blue-500/25' } :
-    { label: 'AI Off', cls: 'text-foreground/35 bg-foreground/5 border-border' };
+  // AI explanations use the same switch + saved keys as Create Quiz → AI Generation (no Zite / Custom modes)
+  const keyChoices = savedKeyChoices(getUserApiKeys());
+  const chosenKey = resolveSelected(keyChoices, getAiClientPrefs().preferred);
+  const aiOn = reportHelper !== 'off';
+  const aiLine = !aiOn ? "Off · explanations won't generate" : chosenKey ? `🔑 ${KEY_PROVIDER_NAMES[chosenKey]}` : 'Add an API key in Profile → API Keys';
 
   return (
     <div ref={ref} className="relative z-30">
@@ -137,28 +123,19 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-black text-foreground/90">💡 AI Rationale</div>
-                  <div className="text-[9px] text-foreground/40 mt-0.5 leading-snug">Gemini / Claude explanations</div>
+                  <div className="text-[9px] text-foreground/40 mt-0.5 leading-snug">Explanations written by your AI key</div>
                 </div>
               </div>
               <Toggle checked={prefs.showAi} onChange={() => onChange({ ...prefs, showAi: !prefs.showAi })} />
             </div>
 
             {prefs.showAi && (
-              <div className="mt-3 pt-3 border-t border-border">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Brain className="w-3 h-3 text-foreground/30" />
-                  <span className="text-[9px] font-black text-foreground/35 uppercase tracking-wider">AI Source</span>
-                  <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border ${aiSourceBadge.cls}`}>
-                    {aiSourceBadge.label}
-                  </span>
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-black text-foreground/90">AI Generation</div>
+                  <div className="mt-0.5 text-[9px] leading-snug text-foreground/40" data-testid="rationale-ai-line">{aiLine}</div>
                 </div>
-                <AISegment value={reportHelper} onChange={onReportHelperChange} />
-                {reportHelper === 'off' && (
-                  <p className="text-[9px] text-amber-500/60 mt-1.5 px-0.5">⚠️ AI is off — explanations won't generate</p>
-                )}
-                {reportHelper === 'cloud' && (
-                  <p className="text-[9px] text-blue-500/60 mt-1.5 px-0.5">🔑 Using your API key from Profile → API Keys</p>
-                )}
+                <Toggle checked={aiOn} onChange={() => onReportHelperChange(aiOn ? 'off' : 'cloud')} />
               </div>
             )}
           </div>

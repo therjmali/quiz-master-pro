@@ -45,7 +45,7 @@ export default function GenerationErrorCard({
   const suggestion = isOffline
     ? 'Paste MCQs in standard format below and the offline parser will handle them — no internet needed!'
     : isQuota
-    ? 'Switch to "Zite AI" mode in AI settings, or paste MCQs in the required format for offline parsing.'
+    ? 'Pick another saved key under AI Generation, or paste MCQs in the required format for offline parsing.'
     : isTimeout
     ? 'Try with less text, or paste just the questions (not full notes).'
     : isOverloaded

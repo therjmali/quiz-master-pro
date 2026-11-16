@@ -87,21 +87,20 @@ async function run(label, w, h) {
   const ys = await fb.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y)));
   ok(`[${label}] status filters sit on one line, capsule shaped`, new Set(ys).size === 1 && await fb.first().evaluate(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 16));
   const ob = await page.getByTestId('review-options').locator('> *').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return Math.round(r.y + r.height / 2); }));
-  ok(`[${label}] view options (Answers, Book, AI, level, Explain) on one line`, Math.max(...ob) - Math.min(...ob) <= 3 && ob.length === 5, `${ob.length} items`);
+  ok(`[${label}] view options (Answers, Rationale, level, Explain) on one line`, Math.max(...ob) - Math.min(...ob) <= 3 && ob.length === 4, `${ob.length} items`);
   const head = page.getByTestId('review-card-header').first();
   const hy = await head.locator('> *').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y + e.getBoundingClientRect().height / 2)));
   const hText = await head.innerText();
-  ok(`[${label}] card header is one line: number, status emoji, difficulty emoji (no words)`, new Set(hy.map(v => Math.round(v / 4))).size === 1 && /^\d+\s*(✅|❌|⏭️)\s*(🟢|🟡|🔴)\s*$/.test(hText.replace(/\n/g, ' ').trim() + ' '), JSON.stringify(hText));
+  ok(`[${label}] card header is one line: [status] Q1. [difficulty] (emoji, no words)`, new Set(hy.map(v => Math.round(v / 4))).size === 1 && /^(✅|❌|⏭️)\s*Q\d+\.\s*(🟢|🟡|🔴)?\s*$/.test(hText.replace(/\n/g, ' ').trim() + ' '), JSON.stringify(hText));
   const acts = page.getByTestId('review-card-actions').first().locator('button');
   const ay = await acts.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y)));
   ok(`[${label}] bottom action bar: 📖 Rational | ⚖️ Dispute | 💾 Save | 🤖 AI on one line`, ay.length === 4 && new Set(ay).size === 1 && /📖/.test(await acts.nth(0).innerText()) && /⚖️/.test(await acts.nth(1).innerText()) && /💾/.test(await acts.nth(2).innerText()) && /🤖/.test(await acts.nth(3).innerText()));
   await page.getByTestId('review-filters').evaluate(e => e.scrollIntoView({ block: 'start' })); await page.waitForTimeout(1800);
   await page.screenshot({ path: `${SHOTS}/review_${label}.png` });
-  // rationale box: "Ans. - (b) …", purple bar, no book emoji in the title
-  await acts.nth(0).click(); await page.waitForTimeout(500);
+  // rationale: a divider, then 📖 + the original bullets - no "Ans. -" line and no text labels
   const box = page.getByTestId('rationale-box').first();
   const bt = await box.innerText();
-  ok(`[${label}] rationale box title is "Ans. - (x) text" without 📖`, /^Ans\. - \([a-d]\) /.test(bt) && !/📖/.test(bt.split('\n')[0]), bt.split('\n')[0]);
+  ok(`[${label}] rationale box is 📖 + bullets with no "Ans. -" line or text label`, /📖/.test(bt) && !/Ans\.|Explanation|Rationale:/.test(bt), bt.split('\n').slice(0, 2).join(' | '));
   // filter by wrong
   await page.getByRole('tab', { name: /^Wrong/ }).click(); await page.waitForTimeout(500);
   ok(`[${label}] ❌ filter shows only the 4 wrong questions`, (await page.locator('[data-review-status="wrong"]').count()) === 4 && (await page.locator('[data-review-status="correct"]').count()) === 0);

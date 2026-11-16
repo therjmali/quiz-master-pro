@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.3.0] - 2026-11-15
+
+One report vocabulary everywhere, a black & white exam paper, and no more tap-to-cycle settings.
+
+### Changed
+- **Small popup windows instead of tap-to-cycle.** Anything that changed its value by tapping (and cycled through its options) now opens a small premium window that lists every choice: the report preview options (Answers, Include, Layout, Questions), the header Light / Dark button, the home clock style and the Answers / Rationale options in the review. Nothing changes by a bare tap. Switch rows and explicit choices in Settings are unchanged.
+- **Exam paper is black & white** (every colour becomes black or grey), with **no question numbers** unless you switch *Question numbers* on in *Include* (they are always printed when the answers are at the end), answers as **`Ans. 1 (C) text`**, and the explanation as **📖 + the original bullets** (no "Explanation:" label). The answer key reads `Ans. 1 (C)`.
+- **Answers: three choices** with an eye icon in the bottom bar of the preview: 👁️ show after each question, 📑 show at the end (answer key), 🙈 hidden (crossed eye). The same window opens from the Answers button at the top.
+- **Bookmark exam paper** is made by the same offline engine and preview as every other paper (it used to turn a web page into a plain-text PDF).
+- **In-app review card** matches the report: `✅ Q1. 🟢` header, options with a green ✓, a divider, then 📖 + bullets (no `Ans. -` line, no labels); tints are Tailwind green / red / yellow (light and dark).
+- **Reports mark the correct option on skipped questions too**, so a skipped-only report still shows its answers.
+- **AI Generation** is a prominent full-width row at the top of Create Quiz (state at a glance: `On · 🔑 OpenAI` / `Off · MCQs load offline`); tapping it opens a small window with the one ON/OFF switch and your saved keys. The old Zite / Off / Custom AI controls are gone from the report options and error cards. **The key you pick is the only one used** (no silent fallback to your other keys); *Settings → AI* has a matching *Use only this provider* switch (off keeps the old "try the next key" behaviour).
+- **Light / Dark reaches the Android system bars** (status and navigation bar icon colours follow the app). A brand-new install follows the phone's light / dark setting once, then keeps your choice.
+- Labels under 9px are now 9px.
+
+### Added
+- Light and Dark audit of the running quiz screen, the report preview and the new windows (`test:ui:v33`, renamed from `test:ui:v32`); unit tests for the exam-paper format, the bookmark paper, strict provider choice and the first-run theme; `verify-repo` contract checks.
+
+### Removed
+- `RationaleSourceControls` (unused) and the `Ans. -` rationale box of the in-app card.
+
 ## [3.2.0] - 2026-11-14
 
 Two display modes, widgets out of the header, status-card reports and a single AI switch.

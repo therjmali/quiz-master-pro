@@ -9,6 +9,7 @@ import { parseInline, type Block } from './markdown';
 import type { LaidOutReport, Op, Page, ReportDoc, ReportItem, ReportKind, ReportStyle } from './types';
 import { CARD_TONES, isCardItem, levelOf, markedOptions, rationaleBullets, type CardStatus } from './cardModel';
 import { decorOps, type Decor } from './icons';
+import { toMono } from './mono';
 
 export interface Span { text: string; bold: boolean; color?: string; size?: number }
 /** A tinted rounded card drawn behind consecutive rows that share the same tone object. */
@@ -91,7 +92,13 @@ function itemGroups(it: ReportItem, ctx: ItemCtx): Group[] {
   if (isCardItem(it, ctx.kind)) return cardGroups(it, ctx);
   const { colW, size, set, style } = ctx;
   const rows: Row[] = [];
-  rows.push(...rowsFor([{ text: `Q${it.n}.`, bold: true, color: C.ink }, { text: ' ' + (it.question.trim() || '(no question text)'), bold: false, color: C.text }], { colW, size, set }));
+  // Exam paper (black & white): no question numbers unless asked for (they are always printed when the answers are in a key at the end).
+  const exam = ctx.kind === 'exam';
+  const showNum = !exam || style.examNumbers === true || style.answers === 'key';
+  const qText = it.question.trim() || '(no question text)';
+  rows.push(...rowsFor(showNum
+    ? [{ text: exam ? `${it.n}.` : `Q${it.n}.`, bold: true, color: C.ink }, { text: ' ' + qText, bold: false, color: C.text }]
+    : [{ text: qText, bold: false, color: C.text }], { colW, size, set }));
   rows.push(gap(size * 0.35));
   const hangW = measureText('(A) ', false, size, set);
   it.options.forEach((opt, i) => {
@@ -102,9 +109,15 @@ function itemGroups(it: ReportItem, ctx: ItemCtx): Group[] {
   const answerText = it.correct.map(c => { const i = idxOf(c); return i >= 0 ? `(${letter(i)}) ${c}` : c; }).join(',  ');
   if (style.answers === 'inline') {
     rows.push(gap(size * 0.4), { kind: 'rule', h: 1, color: C.rule, dash: [3, 3] }, gap(size * 0.4));
-    const ansLabel = `Ans.${it.n}. : `;
-    rows.push(...rowsFor([{ text: ansLabel, bold: true, color: C.ink }, { text: answerText || '-', bold: true, color: C.good }], { colW, size, set, hang: measureText(ansLabel, true, size, set) }));
-    if (style.showUserAnswer && it.status !== 'unknown') {
+    if (exam) {
+      // old exam format: "Ans. 1 (C) text" in plain bold black
+      const lab = `Ans. ${it.n} `;
+      rows.push(...rowsFor([{ text: lab + (answerText || '-'), bold: true, color: C.ink }], { colW, size, set, hang: measureText(lab, true, size, set) }));
+    } else {
+      const ansLabel = `Ans.${it.n}. : `;
+      rows.push(...rowsFor([{ text: ansLabel, bold: true, color: C.ink }, { text: answerText || '-', bold: true, color: C.good }], { colW, size, set, hang: measureText(ansLabel, true, size, set) }));
+    }
+    if (!exam && style.showUserAnswer && it.status !== 'unknown') {
       const ui = it.user ? idxOf(it.user) : -1;
       const label = it.status === 'skipped' ? 'Not attempted' : `Your answer: ${ui >= 0 ? `(${letter(ui)}) ` : ''}${it.user ?? ''}`;
       const color = it.status === 'correct' ? C.good : it.status === 'wrong' ? C.bad : C.warn;
@@ -116,7 +129,7 @@ function itemGroups(it: ReportItem, ctx: ItemCtx): Group[] {
 
   const groups: Group[] = [{ rows, keep: true }];
   if (style.answers === 'inline') {
-    const rat = rationaleRows(it, ctx);
+    const rat = rationaleRows(it, { ...ctx, emoji: exam });
     if (rat.length) {
       // Keep a short explanation together with its question; only long ones may flow into the next column.
       if (sumH(rows) + sumH(rat) <= ctx.maxKeep) groups[0] = { rows: [...rows, ...rat], keep: true };
@@ -208,8 +221,24 @@ function cardGroups(it: ReportItem & { status: CardStatus }, ctx: ItemCtx): Grou
   return groups;
 }
 
-function rationaleRows(it: ReportItem, ctx: { colW: number; size: number; set: FontSet }): Row[] {
+/** 📖 / 🤖 + the original bullets, no text label (the icon is drawn, the bundled fonts have no emoji). */
+function iconBulletRows(kind: 'book' | 'robot', text: string | undefined, ctx: { colW: number; size: number; set: FontSet }): Row[] {
   const { colW, size, set } = ctx;
+  const bullets = rationaleBullets(text);
+  const bs = size * 0.92, R = bs * 0.62, iconW = R * 2 + 5;
+  const bw = measureText('• ', false, bs, set);
+  const rows: Row[] = [];
+  bullets.forEach((b, i) => {
+    const rs = rowsFor([{ text: '• ', bold: false, color: C.accent }, { text: b, bold: false, color: '#374151' }], { colW, size: bs, set, indent: iconW, hang: bw, lh: 1.36 });
+    if (i === 0) rs[0].decor = [{ k: kind, cx: R, r: R * 0.9 }];
+    rows.push(gap(i === 0 ? size * 0.3 : size * 0.12), ...rs);
+  });
+  return rows;
+}
+
+function rationaleRows(it: ReportItem, ctx: { colW: number; size: number; set: FontSet; emoji?: boolean }): Row[] {
+  const { colW, size, set } = ctx;
+  if (ctx.emoji) return [...iconBulletRows('book', it.book, ctx), ...iconBulletRows('robot', it.ai, ctx)];
   const rows: Row[] = [];
   const add = (label: string, color: string, body: string) => {
     const paras = body.replace(/\r/g, '').split('\n').map(p => p.trim()).filter(Boolean);
@@ -228,14 +257,25 @@ function keyGroups(items: ReportItem[], ctx: { colW: number; size: number; set: 
   const groups: Group[] = [];
   groups.push({ rows: [gap(size * 0.8), ...rowsFor([{ text: 'Answer Key', bold: true, color: C.ink, size: size * 1.5 }], { colW, size: size * 1.5, set }), gap(size * 0.5)], keep: true, keepNext: true });
   const idxOf = (it: ReportItem, txt: string) => it.options.findIndex(o => o.trim() === txt.trim());
+  const mono = ctx.style.mono === true;
   const spans: Span[] = [];
   items.forEach(it => {
     const l = it.correct.map(c => { const i = idxOf(it, c); return i >= 0 ? letter(i) : '?'; }).join('/');
-    spans.push({ text: `${it.n}-`, bold: false, color: C.muted }, { text: l, bold: true, color: C.good }, { text: '    ', bold: false });
+    if (mono) spans.push({ text: `Ans. ${it.n} (${l})`, bold: true, color: C.ink }, { text: '     ', bold: false });
+    else spans.push({ text: `${it.n}-`, bold: false, color: C.muted }, { text: l, bold: true, color: C.good }, { text: '    ', bold: false });
   });
   groups.push({ rows: rowsFor(spans, { colW, size, set, lh: 1.9 }), keep: false });
   const withRat = items.filter(it => (it.book?.trim() || it.ai?.trim()));
-  if (withRat.length) {
+  if (withRat.length && mono) {
+    // black & white paper: a rule instead of an "Explanations" title, then "Ans. 1 (C) text" with the 📖 bullets under it
+    groups.push({ rows: [gap(size * 1.1), { kind: 'rule', h: 1, color: C.rule }, gap(size * 0.7)], keep: true, keepNext: true });
+    for (const it of withRat) {
+      const rat = rationaleRows(it, { colW, size, set, emoji: true });
+      const lab = `Ans. ${it.n} `;
+      const head = rowsFor([{ text: lab + it.correct.map(c => { const i = idxOf(it, c); return i >= 0 ? `(${letter(i)}) ${c}` : c; }).join(',  '), bold: true, color: C.ink }], { colW, size, set, hang: measureText(lab, true, size, set) });
+      groups.push({ rows: [...head, ...rat, gap(size * 0.9)], keep: false });
+    }
+  } else if (withRat.length) {
     groups.push({ rows: [gap(size * 1.2), ...rowsFor([{ text: 'Explanations', bold: true, color: C.ink, size: size * 1.5 }], { colW, size: size * 1.5, set }), gap(size * 0.4)], keep: true, keepNext: true });
     for (const it of withRat) {
       const rat = rationaleRows(it, { colW, size, set });
@@ -415,6 +455,7 @@ export function layoutReport(doc: ReportDoc, style: ReportStyle, set: FontSet): 
     p.ops.push({ t: 'text', x: paper.w / 2 - measureText(label, false, 8, set) / 2, y: fy, text: label, bold: false, size: 8, color: C.muted });
     p.ops.push({ t: 'text', x: paper.w - MARGIN.r - measureText(style.brand, true, 8, set), y: fy, text: style.brand, bold: true, size: 8, color: C.muted });
   });
+  if (style.mono) for (const p of pages) p.ops = toMono(p.ops);
   return { pages, style, title: doc.title };
 }
 

@@ -40,7 +40,8 @@ export function styleFor(kind: ReportKind, base: Partial<ReportStyle> = {}, exam
   const answers: AnswerMode = kind === 'exam' ? (examInline ? 'inline' : 'key') : 'inline';
   // An exam paper keeps the classic two-column paper look; every other report gets the premium dashboard.
   const template = base.template ?? (kind === 'exam' ? 'classic' : 'master');
-  return { ...s, template, answers, showUserAnswer: kind === 'all' || kind === 'wrong' ? s.showUserAnswer : false };
+  // The exam paper is a black & white print-style paper: no colour, no question numbers unless asked for.
+  return { ...s, template, answers, showUserAnswer: kind === 'all' || kind === 'wrong' ? s.showUserAnswer : false, mono: kind === 'exam' ? true : undefined, examNumbers: kind === 'exam' ? base.examNumbers === true : undefined };
 }
 
 const correctOf = (q: QuizQuestion): string[] => (q.correctAnswers && q.correctAnswers.length ? q.correctAnswers : [q.correctAnswer]).filter(Boolean);
@@ -78,6 +79,8 @@ export function buildQuestionDoc(results: QuizResult[], o: BuildOptions): Report
     timeSec: results.reduce((a, r) => a + (r.timeTaken || 0), 0),
   };
   const now = o.now ?? new Date();
+  // the bookmark exam paper is a blank paper made from saved questions: no results chips
+  const isBookmarks = results.length === 1 && results[0].id === 'bookmarks';
   const base = o.scope === 'quiz' ? (results[0]?.quizTitle || 'Quiz') : 'Profile Analysis';
   const subjects = Array.from(new Set(results.map(r => r.subject).filter(Boolean)));
   // Book/unit identity for the report header ("TG 344 - 373", "Book order"): used by the master template.
@@ -88,7 +91,7 @@ export function buildQuestionDoc(results: QuizResult[], o: BuildOptions): Report
   const meta = [
     now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     subjects.length ? subjects.slice(0, 3).join(', ') : '',
-    `${results.length} quiz${results.length === 1 ? '' : 'zes'}`,
+    isBookmarks ? `${all.length} bookmarked question${all.length === 1 ? '' : 's'}` : `${results.length} quiz${results.length === 1 ? '' : 'zes'}`,
     o.difficulty !== 'all' ? `${o.difficulty[0].toUpperCase()}${o.difficulty.slice(1)} only` : '',
     o.order === 'original' ? 'Book order' : 'Attempt order',
     summary.timeSec ? `${Math.floor(summary.timeSec / 60)} min ${summary.timeSec % 60}s` : '',
@@ -108,7 +111,7 @@ export function buildQuestionDoc(results: QuizResult[], o: BuildOptions): Report
     })),
     bookRange: titles.length === 1 ? titles[0] : undefined,
   };
-  return { kind: o.kind, title: `${KIND_TITLES[o.kind]} — ${base}`, subtitle: undefined, meta, summary: docSummary, items };
+  return { kind: o.kind, title: `${KIND_TITLES[o.kind]} — ${base}`, subtitle: undefined, meta, summary: isBookmarks ? undefined : docSummary, items };
 }
 
 /** Revision sheet / generic markdown document. */

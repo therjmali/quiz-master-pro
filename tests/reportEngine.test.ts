@@ -96,9 +96,33 @@ test('layoutReport: exam paper puts an answer key at the end; "none" prints no a
   const qs = Array.from({ length: 6 }, (_, i) => Q(i + 1, { rationale: 'Because.' }));
   const doc = buildQuestionDoc([result(qs, qs.map(() => null))], { ...BUILD, kind: 'exam' });
   const texts = (s = styleFor('exam')) => layoutReport(doc, s, fakeSet).pages.flatMap(p => p.ops).filter(o => o.t === 'text').map(o => (o as any).text as string);
-  assert.ok(texts().includes('Answer Key')); assert.ok(texts().includes('Explanations')); assert.ok(!texts().some(t => t.startsWith('Ans.')));
+  assert.ok(texts().includes('Answer Key')); assert.ok(!texts().includes('Explanations'), 'no "Explanations" title: a rule and the 📖 icon instead');
+  assert.ok(texts().some(t => /^Ans\. 1 \(B\)$/.test(t)), 'key entries read "Ans. 1 (B)"');
   assert.ok(!texts({ ...styleFor('exam'), answers: 'none' }).includes('Answer Key'));
-  assert.ok(texts({ ...styleFor('exam'), answers: 'inline' }).some(t => t.startsWith('Ans.1.')));
+  assert.ok(texts({ ...styleFor('exam'), answers: 'inline' }).some(t => /^Ans\. 1 \(B\)/.test(t)));
+});
+
+test('exam paper: black & white, no question numbers by default, "Ans. 1 (C)", 📖 bullets without an "Explanation" label', () => {
+  const qs = [Q(1, { rationale: '• Point A\n• Point B' }), Q(2, { rationale: 'Second' })];
+  const doc = buildQuestionDoc([result(qs, [null, null])], { ...BUILD, kind: 'exam' });
+  const run = (s: any) => layoutReport(doc, s, fakeSet).pages.flatMap(p => p.ops);
+  const hex = (c: string) => { const n = parseInt(c.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+  const isGray = (c?: string) => !c || !/^#[0-9a-f]{6}$/i.test(c) || new Set(hex(c)).size === 1;
+  const base = { ...styleFor('exam'), answers: 'inline' as const, columns: 1 as const };
+  const ops = run(base);
+  assert.equal(base.mono, true);
+  assert.ok(ops.every(o => o.t === 'line' || o.t === 'text' ? isGray(o.color) : isGray((o as any).fill) && isGray((o as any).stroke)), 'every colour is black or grey');
+  const texts = ops.filter(o => o.t === 'text').map(o => (o as any).text as string);
+  assert.ok(!texts.some(t => /^\d+\.$/.test(t) || /^Q\d+\.$/.test(t)), 'no question numbers by default');
+  assert.ok(texts.some(t => /^Ans\. 1 \(B\) /.test(t)) && texts.some(t => /^Ans\. 2 \(B\) /.test(t)), '"Ans. 1 (C)" style answer lines');
+  assert.ok(!texts.some(t => /Explanation|Rationale|Your answer|Correct$/.test(t)) && texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')), 'bullets, no label');
+  assert.ok(ops.some(o => o.t === 'rect' && o.stroke === '#111111'), 'the 📖 icon is drawn (outline in black)');
+  // numbers on request, and always when the answers are in a key at the end
+  assert.ok(run({ ...base, examNumbers: true }).some(o => o.t === 'text' && /^1\.$/.test(o.text)));
+  assert.ok(run({ ...base, answers: 'key' }).some(o => o.t === 'text' && /^1\.$/.test(o.text)), 'a key needs numbers');
+  assert.ok(!run({ ...base, answers: 'none' }).some(o => o.t === 'text' && /^Ans\./.test(o.text)), 'hidden: no answers');
+  // other reports keep their colours
+  assert.equal(styleFor('all').mono, undefined);
 });
 
 test('layoutReport: a very long rationale is split across columns, never lost or looping', () => {
@@ -135,7 +159,11 @@ test('docToText / docToHtml follow the same settings and escape markup', () => {
   assert.ok(docToHtml(doc, styleFor('all')).includes('Is &lt;b&gt;x&lt;/b&gt; &amp; y?'), 'the default (master) web page escapes too');
   // the exam paper (a blank test) keeps the plain numbered layout
   const exam = docToText(buildQuestionDoc([result([Q(1, { rationale: 'Because' })], [null])], { ...BUILD, kind: 'exam' }), styleFor('exam', {}, true));
-  assert.match(exam, /Ans\.1\. : \(B\) Beta/);
+  assert.match(exam, /^Ans\. 1 \(B\) Beta$/m, 'exam paper: "Ans. 1 (C) text"');
+  assert.match(exam, /^ {2}📖 • Because$/m); assert.ok(!/Explanation|Ans\.1\./.test(exam));
+  assert.ok(!/^(\d+\.|Q\d+\.) /m.test(exam), 'no question numbers in the exam text');
+  const examHtml = docToHtml(buildQuestionDoc([result([Q(1, { rationale: 'Because' })], [null])], { ...BUILD, kind: 'exam' }), styleFor('exam', {}, true));
+  assert.ok(examHtml.includes('<body class="mono">') && examHtml.includes('Ans. 1 ') && examHtml.includes('📖') && !examHtml.includes('Explanation:'), 'exam web page: black & white, same format');
 });
 
 test('card model: status icons, difficulty emoji, check marks and rationale bullets map correctly', () => {
@@ -152,7 +180,9 @@ test('card model: status icons, difficulty emoji, check marks and rationale bull
   assert.deepEqual(markedOptions({ ...base, user: 'B1', status: 'correct' }, on), { ok: [false, true, false, false], no: [false, false, false, false] });
   assert.deepEqual(markedOptions({ ...base, user: 'D1', status: 'wrong' }, on), { ok: [false, true, false, false], no: [false, false, false, true] });
   assert.deepEqual(markedOptions({ ...base, user: 'D1', status: 'wrong' }, { ...on, showUserAnswer: false }).no, [false, false, false, false]);
-  assert.deepEqual(markedOptions({ ...base, user: null, status: 'skipped' }, on).ok, [false, false, false, false], 'not attempted: no check');
+  assert.deepEqual(markedOptions({ ...base, user: null, status: 'skipped' }, on).ok, [false, true, false, false], 'skipped: the correct option still carries the check, so a skipped-only report shows its answers');
+  assert.deepEqual(markedOptions({ ...base, user: null, status: 'skipped' }, on).no, [false, false, false, false]);
+  assert.deepEqual(markedOptions({ ...base, user: null, status: 'unknown' }, on).ok, [false, false, false, false], 'no status (a blank paper): no check');
   assert.deepEqual(markedOptions({ ...base, user: 'B1', status: 'correct' }, { ...on, inlineAnswers: false }).ok, [false, false, false, false], 'answers at the end / hidden: no check');
   assert.equal(isCardItem({ ...base, user: null, status: 'skipped' }, 'all'), true);
   assert.equal(isCardItem({ ...base, user: null, status: 'skipped' }, 'exam'), false);
@@ -181,9 +211,9 @@ test('layoutReport: status cards - tinted background per status, icons, difficul
   assert.ok(texts.includes('Q1.') && texts.includes('Q2.') && texts.includes('Q3.'));
   assert.ok(!texts.some(t => /Ans\.|Explanation|Rationale|Answer/i.test(t)), 'no text labels');
   assert.ok(texts.includes('• ') && texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')));
-  // green check marks: Q1 (correct) and Q2 (the correct option C2 'Beta') only, none on the skipped Q3
+  // green check marks: Q1 (correct), Q2 (the correct option 'Beta') and the skipped Q3 (its correct option)
   const greenChecks = ops.filter(o => o.t === 'line' && o.color === '#16a34a' && o.cap === 'round' && o.w < 2 && o.x1 > 400);
-  assert.equal(greenChecks.length, 4, 'two lines per check, two attempted questions');
+  assert.equal(greenChecks.length, 6, 'two lines per check, one per card');
   const redMarks = ops.filter(o => o.t === 'line' && o.color === '#dc2626' && o.cap === 'round' && o.x1 > 400 && o.w < 2);
   assert.equal(redMarks.length, 2, 'the wrong pick of Q2 gets a cross');
   // answers hidden: tint stays, marks and rationale go
@@ -203,7 +233,20 @@ test('markdown: headings, bullets, quotes, bold spans, tables', () => {
 });
 
 test('report prefs are sanitised', () => {
-  assert.deepEqual(sanitizePrefs({ columns: 7, fontSize: 'huge', paper: 'a3', brand: '   ', showUserAnswer: 'x' }), { columns: 2, fontSize: 'md', paper: 'a4', brand: 'R.J QUIZ', showUserAnswer: true });
+  assert.deepEqual(sanitizePrefs({ columns: 7, fontSize: 'huge', paper: 'a3', brand: '   ', showUserAnswer: 'x' }), { columns: 2, fontSize: 'md', paper: 'a4', brand: 'R.J QUIZ', showUserAnswer: true, examNumbers: false });
+  assert.equal(sanitizePrefs({ examNumbers: true }).examNumbers, true);
   assert.equal(sanitizePrefs({ brand: 'A'.repeat(90) }).brand.length, 28);
   assert.equal(sanitizePrefs({ columns: 1, paper: 'letter', showUserAnswer: false }).showUserAnswer, false);
+});
+
+test('bookmark exam paper: built from saved questions by the same engine (black & white, no results chips)', async () => {
+  const { bookmarksToSession } = await import('../src/utils/reports/bookmarkSession');
+  const session = bookmarksToSession([{ question: 'Q one?', options: ['a', 'b', 'c', 'd'], correctAnswer: 'b', rationale: '• Because', difficulty: 'hard', quizTitle: 'T', subject: 'S' }], 'My marks');
+  assert.equal(session.kind, 'exam');
+  const doc = buildQuestionDoc(session.results, { ...BUILD, kind: 'exam', scope: 'quiz', order: 'original' });
+  assert.equal(doc.summary, undefined, 'no 0 correct / 0 wrong chips');
+  assert.ok(doc.meta.some(m => /1 bookmarked question$/.test(m)));
+  const style = { ...styleFor('exam'), answers: 'inline' as const };
+  const texts = layoutReport(doc, style, fakeSet).pages.flatMap(p => p.ops).filter(o => o.t === 'text').map(o => (o as any).text as string);
+  assert.ok(texts.some(t => /^Ans\. 1 \(B\) b$/.test(t)) && texts.some(t => t.includes('Because')));
 });

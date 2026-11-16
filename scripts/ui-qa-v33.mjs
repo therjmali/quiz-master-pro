@@ -1,8 +1,8 @@
 /**
- * UI regression for v3.2 (real Chrome): Android Widgets moved into Settings > Integrations, exactly two display modes
+ * UI regression for v3.3 (real Chrome): Android Widgets moved into Settings > Integrations, exactly two display modes
  * (Light / Dark) with legacy values migrated, one AI Generation switch with saved-key choices, Preview answer toggle,
  * and a Light-vs-Dark audit that flags invisible text on the main screens.
- * Run: npm run build && npm run test:ui:v32
+ * Run: npm run build && npm run test:ui:v33
  */
 import path from 'node:path';
 import os from 'node:os';
@@ -10,13 +10,14 @@ import fs from 'node:fs';
 import { preview } from 'vite';
 import { chromium } from 'playwright-core';
 
-const SHOTS = path.join(os.tmpdir(), 'qmp-ui-v32'); fs.mkdirSync(SHOTS, { recursive: true });
-const server = await preview({ configFile: path.resolve('vite.config.ts'), preview: { port: 4211, strictPort: true, host: '127.0.0.1' } });
+const SHOTS = path.join(os.tmpdir(), 'qmp-ui-v33'); fs.mkdirSync(SHOTS, { recursive: true });
+const server = await preview({ configFile: path.resolve('vite.config.ts'), preview: { port: 4233, strictPort: true, host: '127.0.0.1' } });
 const browser = await chromium.launch({ ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: process.env.PW_CHANNEL || 'chrome' }), args: ['--no-sandbox'] });
 let failed = 0;
 const ok = (name, pass, info = '') => { if (!pass) failed++; console.log((pass ? 'PASS ' : 'FAIL ') + name + (info ? '  - ' + info : '')); };
-const URL = 'http://127.0.0.1:4211/';
+const URL = 'http://127.0.0.1:4233/';
 
+const SESSION = { quizData: Array.from({ length: 6 }, (_, i) => ({ question: `Question number ${i + 1}: which option is correct?`, options: ['Alpha', 'Beta', 'Gamma', 'Delta'], correctAnswer: 'Alpha', difficulty: 'easy', rationale: 'Because Alpha.' })), settings: { mode: 'submit', timerMode: 'off', quizTitle: 'QA', marksPerQuestion: 1 }, currentIndex: 0, userAnswers: new Array(6).fill(null), flaggedQuestions: new Array(6).fill(false), accumulatedTime: 0, timeLeftPerQ: [], forcedNext: new Array(6).fill(false), totalTimeLeft: 0, savedAt: Date.now() };
 const letters = ['Alpha drug', 'Beta blocker', 'Gamma globulin', 'Delta agent'];
 const quizData = Array.from({ length: 6 }, (_, i) => ({ question: `Which option is correct for case ${i + 1}?`, options: letters, correctAnswer: 'Beta blocker', difficulty: 'medium', rationale: '• Beta blockers reduce heart rate.' }));
 const result = { id: 'qa-1', quizTitle: 'QA Set', subject: 'Pharmacology', timestamp: Date.now() - 3600_000, quizData, userAnswers: ['Beta blocker', 'Alpha drug', null, 'Beta blocker', 'Alpha drug', null], totalQuestions: 6, percentage: 33, score: 2, maxScore: 6, netScore: 2, correct: 2, wrong: 2, skipped: 2, gain: 2, penalty: 0, accuracy: 50, timeTaken: 200, passMark: 50 };
@@ -35,6 +36,7 @@ async function auditContrast(page, min = 2.0) {
     for (let t = walker.nextNode(); t; t = walker.nextNode()) {
       const txt = (t.nodeValue || '').trim(); if (txt.length < 2) continue;
       const el = t.parentElement; if (!el || seen.has(el)) continue; seen.add(el);
+      if (el.closest('svg')) continue; // the report paper (SVG) draws its own white page and coloured bands; it is checked as a rendered PDF instead
       const cs = getComputedStyle(el); if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) === 0) continue;
       const r = el.getBoundingClientRect(); if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth) continue;
       const fg = parse(cs.color); const bg = bgOf(el); if (!fg || !bg) continue;
@@ -76,7 +78,7 @@ async function run(label, w, h) {
   ok(`[${label}] header has no widgets button`, (await page.locator('[title*="idget"], [aria-label*="idget"]').count()) === 0 && !/Android Home Screen Widgets/.test(body0));
 
   /* ── 2. Settings > Integrations > Android Widgets ── */
-  await page.getByTestId('avatar-settings').click(); await page.waitForTimeout(900);
+  await page.getByTestId('avatar-settings').click(); await page.getByLabel('Search settings').waitFor({ timeout: 8000 }).catch(() => {}); await page.waitForTimeout(1200);
   const mainText = await page.locator('body').innerText();
   ok(`[${label}] Settings has an Integrations section`, /Integrations/.test(mainText));
   ok(`[${label}] widget manager is NOT on the main settings page`, (await page.getByTestId('widget-manager').count()) === 0 && !/Pin Daily Practice Widget/.test(mainText));
@@ -159,6 +161,84 @@ async function run(label, w, h) {
   ok(`[${label}] no JS errors (keys / preview)`, k.errs.length === 0, k.errs.slice(0, 2).join(' | '));
   await k.ctx.close();
 
+  /* ── 6b. tap-to-cycle controls are small popup windows now ── */
+  {
+    const t = await newPage(w, h);
+    const tp = t.page;
+    const themeOf = () => tp.evaluate(() => document.documentElement.classList.contains('app-dark') ? 'dark' : 'light');
+    await tp.getByTestId('theme-trigger').click(); await tp.waitForTimeout(450);
+    ok(`[${label}] the header theme button opens a small window (Light / Dark) and changes nothing by itself`, await tp.getByTestId('popup-theme').isVisible() && (await tp.locator('[data-testid="popup-theme"] [role="radio"]').count()) === 2 && (await themeOf()) === 'light');
+    await tp.screenshot({ path: `${SHOTS}/popup_theme_${label}.png` });
+    await tp.locator('[data-testid="popup-theme"] [data-choice="dark"]').click(); await tp.waitForTimeout(600);
+    ok(`[${label}] picking Dark in the window applies it and closes the window`, (await themeOf()) === 'dark' && (await tp.getByTestId('popup-theme').count()) === 0);
+    await tp.getByTestId('theme-trigger').click(); await tp.waitForTimeout(450);
+    await tp.locator('[data-testid="popup-theme"] [data-choice="light"]').click(); await tp.waitForTimeout(500);
+    ok(`[${label}] and back to Light`, (await themeOf()) === 'light');
+    const clock = tp.getByTestId('clock-card').first();
+    if (await clock.count()) {
+      await clock.click(); await tp.waitForTimeout(450);
+      ok(`[${label}] the home clock opens a style window (Digital / Flip / Analog) instead of cycling`, await tp.getByTestId('popup-clock').isVisible() && (await tp.locator('[data-testid="popup-clock"] [role="radio"]').count()) === 3);
+      await tp.keyboard.press('Escape'); await tp.waitForTimeout(300);
+    }
+    ok(`[${label}] no JS errors (popups)`, t.errs.length === 0, t.errs.slice(0, 2).join(' | '));
+    await t.ctx.close();
+  }
+
+  /* ── 6c. Create Quiz: AI Generation is a prominent row at the top ── */
+  {
+    const c = await newPage(w, h, { qmp_user_api_keys: JSON.stringify({ gemini: 'AIzaTestKey123456', openai: 'sk-test-abcdefg' }) });
+    await c.page.locator('nav').getByText('Create', { exact: true }).first().click(); await c.page.waitForTimeout(1300);
+    const box = await c.page.getByTestId('ai-trigger').boundingBox();
+    ok(`[${label}] AI Generation row is full width and sits at the top of Create`, box && box.width > Math.min(w, 760) * 0.55 && box.y < 280, JSON.stringify(box));
+    const status = await c.page.getByTestId('ai-status').innerText();
+    ok(`[${label}] the row shows the state at a glance`, /^(Off · MCQs load offline|On · )/.test(status), status);
+    await c.page.getByTestId('ai-trigger').click(); await c.page.waitForTimeout(400);
+    if ((await c.page.getByTestId('ai-switch').getAttribute('aria-checked')) !== 'true') await c.page.getByTestId('ai-switch').click();
+    await c.page.getByTestId('ai-key-openai').click(); await c.page.waitForTimeout(200);
+    const pr = await c.page.evaluate(() => JSON.parse(localStorage.getItem('qmp_ai_client_prefs') || '{}'));
+    ok(`[${label}] choosing a key means "use only this key"`, pr.preferred === 'openai' && pr.only === true, JSON.stringify(pr));
+    await c.page.keyboard.press('Escape'); await c.page.waitForTimeout(350);
+    ok(`[${label}] the row now reads "On · 🔑 OpenAI"`, (await c.page.getByTestId('ai-status').innerText()) === 'On · 🔑 OpenAI');
+    await c.page.screenshot({ path: `${SHOTS}/ai_row_${label}.png` });
+    await c.ctx.close();
+  }
+
+  /* ── 6d. Exam paper: black & white, no question numbers, "Ans. 1 (C)", 📖 bullets, three answer modes ── */
+  {
+    const e = await newPage(w, h);
+    const ep = e.page;
+    await ep.locator('nav').getByText('Progress', { exact: true }).first().click(); await ep.waitForTimeout(1400);
+    await ep.getByRole('button', { name: /Preview Exam Paper/ }).click();
+    await ep.waitForSelector('[data-testid="report-pages"]', { timeout: 25000 }); await ep.waitForTimeout(1200);
+    const svgTxt = () => ep.evaluate(() => [...document.querySelectorAll('[data-page] svg text')].map(t => t.textContent).join('\n'));
+    const colours = () => ep.evaluate(() => {
+      const bad = []; const ok = (c) => !c || c === 'none' || c === 'transparent' || c === '#fff' || /^#([0-9a-f]{2})\1\1$/i.test(c);
+      document.querySelectorAll('[data-page] svg [fill], [data-page] svg [stroke]').forEach(n => { for (const a of ['fill', 'stroke']) { const v = n.getAttribute(a); if (!ok(v)) bad.push(v); } });
+      return [...new Set(bad)];
+    });
+    await ep.getByTestId('opt-answers').click(); await ep.waitForTimeout(350);
+    await ep.locator('[data-testid="popup-answers"] [data-choice="inline"]').click(); await ep.waitForTimeout(1100);
+    const t1 = await svgTxt();
+    ok(`[${label}] exam paper is black & white`, (await colours()).length === 0, (await colours()).join(','));
+    ok(`[${label}] exam paper: "Ans. 1 (C) …" lines, no "Ans.1. :" and no Explanation label`, /Ans\. 1 \([A-D]\) /.test(t1) && !/Ans\.1\.|Explanation|Rationale/.test(t1));
+    ok(`[${label}] exam paper: no question numbers by default`, !/^Q?\d+\.$/m.test(t1.split('\n').filter(x => !/^\d+\.\d/.test(x)).join('\n')));
+    await ep.screenshot({ path: `${SHOTS}/exam_inline_${label}.png` });
+    await ep.getByTestId('opt-include').click(); await ep.waitForTimeout(350);
+    ok(`[${label}] Include has a "Question numbers" switch for the exam paper`, (await ep.locator('[data-testid="popup-include"] [role="switch"][aria-label="Question numbers"]').count()) === 1);
+    await ep.locator('[data-testid="popup-include"] [role="switch"][aria-label="Question numbers"]').click(); await ep.waitForTimeout(1000);
+    await ep.keyboard.press('Escape'); await ep.waitForTimeout(400);
+    ok(`[${label}] turning question numbers on prints 1. 2. 3.`, /^1\.$/m.test(await svgTxt()));
+    await ep.getByTestId('answers-eye').click(); await ep.waitForTimeout(350);
+    await ep.locator('[data-testid="popup-answers"] [data-choice="none"]').click(); await ep.waitForTimeout(1000);
+    ok(`[${label}] answers hidden (crossed eye): a clean paper`, !/Ans\. \d/.test(await svgTxt()));
+    await ep.getByTestId('answers-eye').click(); await ep.waitForTimeout(350);
+    await ep.locator('[data-testid="popup-answers"] [data-choice="key"]').click(); await ep.waitForTimeout(1000);
+    const t3 = await svgTxt();
+    ok(`[${label}] answers at the end: Answer Key with "Ans. 1 (C)" entries and numbered questions`, /Answer Key/.test(t3) && /Ans\. 1 \([A-D]\)/.test(t3) && /^1\.$/m.test(t3));
+    ok(`[${label}] exam preview: no JS errors`, e.errs.length === 0, e.errs.slice(0, 2).join(' | '));
+    await e.ctx.close();
+  }
+
   /* ── 7. legacy theme values are migrated on start ── */
   for (const [legacy, expected] of [['amoled', 'dark'], ['ancient', 'light'], ['light', 'light'], ['dark', 'dark']]) {
     const m = await newPage(w, h, { qmp_theme: legacy });
@@ -178,17 +258,42 @@ async function run(label, w, h) {
       ok(`[${label}] ${mode}: ${name} fits the width`, !(await a.page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)));
       await a.page.screenshot({ path: `${SHOTS}/${mode}_${name}_${label}.png` });
     }
+    // popups (small windows) and the full-page report preview, in this mode
     await a.page.getByTestId('avatar-settings').click(); await a.page.waitForTimeout(900);
-    const badS = await auditContrast(a.page);
-    ok(`[${label}] ${mode}: Settings has no invisible text`, badS.length === 0, badS.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', '));
-    await a.page.screenshot({ path: `${SHOTS}/${mode}_Settings_${label}.png` });
+    await a.page.goto(URL); await a.page.waitForTimeout(1400);
+    await a.page.getByTestId('theme-trigger').click(); await a.page.waitForTimeout(500);
+    { const bad = await auditContrast(a.page); ok(`[${label}] ${mode}: theme popup has no invisible text`, bad.length === 0, bad.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', ')); await a.page.screenshot({ path: `${SHOTS}/${mode}_PopupTheme_${label}.png` }); }
+    await a.page.keyboard.press('Escape'); await a.page.waitForTimeout(300);
+    await a.page.locator('nav').getByText('Create', { exact: true }).first().click(); await a.page.waitForTimeout(1200);
+    await a.page.getByTestId('ai-trigger').click(); await a.page.waitForTimeout(500);
+    { const bad = await auditContrast(a.page); ok(`[${label}] ${mode}: AI Generation window has no invisible text`, bad.length === 0, bad.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', ')); await a.page.screenshot({ path: `${SHOTS}/${mode}_PopupAI_${label}.png` }); }
+    await a.page.keyboard.press('Escape'); await a.page.waitForTimeout(300);
+    await a.page.locator('nav').getByText('Progress', { exact: true }).first().click(); await a.page.waitForTimeout(1300);
+    await a.page.getByRole('button', { name: /Preview Full Report/ }).click(); await a.page.waitForSelector('[data-testid="report-pages"]', { timeout: 25000 }); await a.page.waitForTimeout(1200);
+    { const bad = await auditContrast(a.page); ok(`[${label}] ${mode}: report preview has no invisible text`, bad.length === 0, bad.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', ')); await a.page.screenshot({ path: `${SHOTS}/${mode}_ReportPreview_${label}.png` }); }
+    await a.page.getByTestId('opt-answers').click(); await a.page.waitForTimeout(450);
+    { const bad = await auditContrast(a.page); ok(`[${label}] ${mode}: Answers window has no invisible text`, bad.length === 0, bad.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', ')); await a.page.screenshot({ path: `${SHOTS}/${mode}_PopupAnswers_${label}.png` }); }
     await a.ctx.close();
+
+    // the running quiz screen and the pause overlay
+    const qz = await newPage(w, h, { qmp_theme: mode, qmp_active_session: JSON.stringify(SESSION) });
+    await qz.page.getByRole('button', { name: /resume/i }).first().click(); await qz.page.waitForTimeout(1400);
+    { const bad = await auditContrast(qz.page); ok(`[${label}] ${mode}: quiz screen has no invisible text`, bad.length === 0, bad.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', ')); await qz.page.screenshot({ path: `${SHOTS}/${mode}_Quiz_${label}.png` }); }
+    ok(`[${label}] ${mode}: quiz screen fits the width`, !(await qz.page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)));
+    await qz.ctx.close();
+    const a2 = await newPage(w, h, { qmp_theme: mode });
+    await a2.page.getByTestId('avatar-settings').click(); await a2.page.waitForTimeout(900);
+    const badS = await auditContrast(a2.page);
+    ok(`[${label}] ${mode}: Settings has no invisible text`, badS.length === 0, badS.slice(0, 4).map(b => `${b.text}(${b.cr})`).join(', '));
+    await a2.page.screenshot({ path: `${SHOTS}/${mode}_Settings_${label}.png` });
+    await a2.ctx.close();
   }
 }
 
 try {
-  await run('phone 390x800', 390, 800);
-  await run('tablet 1280x800', 1280, 800);
+  // ONLY=phone or ONLY=tablet runs one viewport (each takes a few minutes)
+  if (!process.env.ONLY || process.env.ONLY === 'phone') await run('phone 390x800', 390, 800);
+  if (!process.env.ONLY || process.env.ONLY === 'tablet') await run('tablet 1280x800', 1280, 800);
 } finally { await browser.close(); await server.close(); }
-console.log(failed ? `\n${failed} check(s) FAILED  (screenshots: ${SHOTS})` : `\nAll v3.2 UI checks passed  (screenshots: ${SHOTS})`);
+console.log(failed ? `\n${failed} check(s) FAILED  (screenshots: ${SHOTS})` : `\nAll v3.3 UI checks passed  (screenshots: ${SHOTS})`);
 process.exit(failed ? 1 : 0);

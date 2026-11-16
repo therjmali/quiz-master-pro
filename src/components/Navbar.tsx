@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { AppTheme } from '../types/quiz';
+import { ChoiceList, PopupShell } from './ui/ChoicePopup';
 import type { SessionMode } from './SessionSelector';
 import type { QuizResult } from '../types/quiz';
 import { triggerOpenSettings } from './cloud/CloudGate';
@@ -35,7 +36,8 @@ interface NavbarProps {
   syncStatus?: SyncStatus;
   quizCount?: number;
   theme: AppTheme;
-  onToggleTheme: () => void;
+  /** Opens a small window to pick Light or Dark (no tap-to-cycle). */
+  onThemeChange: (t: AppTheme) => void;
   isDashboard?: boolean;
   profileAvatarEmoji?: string;
   profileAvatarUrl?: string;
@@ -104,7 +106,7 @@ function NavbarInner({
   updateAvailable,
   syncStatus = 'idle',
   theme,
-  onToggleTheme,
+  onThemeChange,
   profileAvatarEmoji,
   profileAvatarUrl,
   onOpenNotifications,
@@ -117,6 +119,7 @@ function NavbarInner({
   const isLoading = account.loading;
   const user = account.signedIn ? account : null;
   const themeConf = THEME_CONFIGS[theme];
+  const [themeOpen, setThemeOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
 
   useEffect(() => {
@@ -218,12 +221,14 @@ function NavbarInner({
               {/* Theme toggle */}
               <button
                 type="button"
-                onClick={onToggleTheme}
-                title={themeConf.nextLabel}
+                onClick={() => setThemeOpen(true)}
+                title={`Display mode: ${themeConf.label}`}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card/60 text-foreground/70 shadow-sm transition-all hover:border-foreground/20 hover:text-foreground active:scale-95 shrink-0"
-                aria-label="Toggle theme"
+                aria-label="Display mode"
+                aria-haspopup="dialog"
+                data-testid="theme-trigger"
               >
-                {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                {theme === 'light' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </button>
 
               {/* Profile photo: opens Settings (account, updates, backup, cloud, everything else) */}
@@ -258,6 +263,12 @@ function NavbarInner({
         </div>
       </header>
 
+      <PopupShell open={themeOpen} onClose={() => setThemeOpen(false)} title="Display mode" subtitle="Light or Dark" icon={theme === 'light' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />} testId="popup-theme">
+        <ChoiceList label="Display mode" value={theme} onSelect={v => { onThemeChange(v); setThemeOpen(false); }} options={[
+          { value: 'light', label: 'Light', hint: 'Warm paper, easy in daylight', icon: '☀️' },
+          { value: 'dark', label: 'Dark', hint: 'Deep black, easy at night', icon: '🌙' },
+        ]} />
+      </PopupShell>
     </>
   );
 }

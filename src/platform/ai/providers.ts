@@ -39,6 +39,8 @@ export class AiError extends Error {
 
 export interface AiClientPrefs {
   preferred: ProviderId | null;
+  /** true: use ONLY the preferred provider (no fallback to the other saved keys). */
+  only?: boolean;
   models: Partial<Record<ProviderId, string>>;
 }
 
@@ -47,8 +49,8 @@ const PREFS_KEY = 'qmp_ai_client_prefs';
 export function getAiClientPrefs(): AiClientPrefs {
   try {
     const raw = JSON.parse(localStorage.getItem(PREFS_KEY) || '{}');
-    return { preferred: PROVIDER_ORDER.includes(raw.preferred) ? raw.preferred : null, models: raw.models && typeof raw.models === 'object' ? raw.models : {} };
-  } catch { return { preferred: null, models: {} }; }
+    return { preferred: PROVIDER_ORDER.includes(raw.preferred) ? raw.preferred : null, only: raw.only === true, models: raw.models && typeof raw.models === 'object' ? raw.models : {} };
+  } catch { return { preferred: null, only: false, models: {} }; }
 }
 
 export function saveAiClientPrefs(prefs: AiClientPrefs): void {
@@ -79,6 +81,8 @@ export function availableProviders(override: Partial<Record<ProviderId, string |
     const key = explicit || (enabledFlag === false ? '' : saved);
     if (key) found.push({ provider, key });
   }
+  // "Use only this key": no silent fallback to the other saved keys (only while that key still exists)
+  if (prefs.only && prefs.preferred && found.some(p => p.provider === prefs.preferred)) return found.filter(p => p.provider === prefs.preferred);
   if (prefs.preferred) found.sort((a, b) => (a.provider === prefs.preferred ? -1 : b.provider === prefs.preferred ? 1 : 0));
   return found;
 }

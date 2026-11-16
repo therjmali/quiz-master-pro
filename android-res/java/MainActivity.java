@@ -37,6 +37,17 @@ public class MainActivity extends BridgeActivity {
         js("if(window.__qmWidgetAction){window.__qmWidgetAction(" + payload + ");}");
     }
 
+    /** Icon colours of the system bars (the bars themselves stay transparent / edge-to-edge). */
+    private void applyThemeBars(boolean lightTheme) {
+        try {
+            androidx.core.view.WindowInsetsControllerCompat c =
+                androidx.core.view.WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+            if (c == null) return;
+            c.setAppearanceLightStatusBars(lightTheme);
+            c.setAppearanceLightNavigationBars(lightTheme);
+        } catch (Throwable ignored) { }
+    }
+
     /**
      * Measures how much of the WebView is covered by the status / navigation bars (edge-to-edge) and
      * hands it to the web layer. Android WebViews frequently report env(safe-area-inset-*) as 0, which
@@ -147,6 +158,12 @@ public class MainActivity extends BridgeActivity {
         }
 
         /* ── In-app updates (downloads the new APK from this project's GitHub releases) ── */
+        /** Light / Dark follows the app: dark status-bar and navigation-bar icons on the Light theme, light icons on Dark. */
+        @JavascriptInterface
+        public void setThemeBars(final String color, final boolean lightTheme) {
+            runOnUiThread(new Runnable() { @Override public void run() { applyThemeBars(lightTheme); } });
+        }
+
         @JavascriptInterface
         public boolean canInstallPackages() {
             return Build.VERSION.SDK_INT < 26 || getPackageManager().canRequestPackageInstalls();

@@ -16,6 +16,7 @@ import {
 import { ExportFormat } from '../../utils/reports/reportData';
 import SmartPreviewModal from '../reports/SmartPreviewModal';
 import { ReportPreviewData } from '../reports/ReportPreviewPage';
+import { bookmarksToSession } from '../../utils/reports/bookmarkSession';
 import { hasBackend } from '../../platform/ai/caller';
 import { generateBookmarksPdf } from 'zitejs/api';
 
@@ -128,40 +129,13 @@ export default function PdfControlsModal({ open, onClose, bookmarks, title, onOp
     onClose();
   }, [onClose]);
 
-  // Open in full-page preview when callback is available
+  // Open the full-page preview: the bookmark exam paper is built by the same offline engine as every other paper
+  // (black & white exam format, answers popup, layout and level popups, PDF / Word / text / web page, notification).
   useEffect(() => {
-    if (!open || !onOpenReportPreview || !previewHtml || items.length === 0) return;
-    // Close the modal and open full-page preview
-    const previewDiffRef = { current: 'all' as 'all' | 'easy' | 'medium' | 'hard' };
-
-    const regenerateFn = (opts: { showAnswers: boolean; showBookRat: boolean; showAiRat: boolean; difficultyFilter?: 'all' | 'easy' | 'medium' | 'hard' }): string => {
-      const bOpts: BookmarkViewOpts = {
-        showAnswers: opts.showAnswers,
-        showBookRat: opts.showBookRat,
-        showAiRat: opts.showAiRat,
-        difficultyFilter: opts.difficultyFilter || 'all',
-      };
-      currentOptsRef.current = bOpts;
-      previewDiffRef.current = bOpts.difficultyFilter;
-      return buildBookmarkExamPaperHtml(items, title, bOpts);
-    };
-
-    const downloadFn = (fmt: ExportFormat, editedHtml?: string) => {
-      handleDownload(fmt, editedHtml);
-    };
-
-    onOpenReportPreview({
-      html: previewHtml,
-      title: `Bookmark Exam Paper${title ? ` — ${title}` : ''}`,
-      activeCard: 'exam',
-      showAnswers: false,
-      showBookRat: false,
-      showAiRat: false,
-      onRegenerate: regenerateFn,
-      onDownload: downloadFn,
-    });
+    if (!open || !onOpenReportPreview || items.length === 0) return;
+    onOpenReportPreview({ title: `Bookmark Exam Paper${title ? ` — ${title}` : ''}`, session: bookmarksToSession(items, title) });
     onClose();
-  }, [open, onOpenReportPreview, previewHtml, items.length]); // eslint-disable-line
+  }, [open, onOpenReportPreview, items.length]); // eslint-disable-line
 
   if (!open) return null;
 

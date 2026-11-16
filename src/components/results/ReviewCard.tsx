@@ -72,7 +72,7 @@ function ReviewCardInner({
 
   const handleAiExplain = async () => {
     if (loadingRat) return;
-    if (!aiEnabled) { setAiError('AI is off — enable it in the 📖 Rationale button above.'); return; }
+    if (!aiEnabled) { setAiError('AI is off. Turn it on from Create Quiz.'); return; }
     if (aiRationale) return;
     setAiError(''); setLoadingRat(true);
     try {
@@ -89,11 +89,12 @@ function ReviewCardInner({
   const effBook = ratOverride ?? showBook;
   const effAi = ratOverride ?? showAi;
   const ratOpen = effBook || effAi;
-  const diffEmoji = (q.difficulty || 'medium').toLowerCase() === 'easy' ? '🟢' : (q.difficulty || 'medium').toLowerCase() === 'hard' ? '🔴' : '🟡';
+  // difficulty icon only when the question has a known level
+  const lvl = String(q.difficulty ?? '').trim().toLowerCase();
+  const diffEmoji = lvl === 'easy' ? '🟢' : lvl === 'hard' ? '🔴' : lvl === 'medium' ? '🟡' : '';
   const statusEmoji = isCorrect ? '✅' : isSkipped ? '⏭️' : '❌';
-  const tint = isCorrect ? 'bg-emerald-500/[0.09] border-emerald-500/25' : isSkipped ? 'bg-amber-500/[0.10] border-amber-500/25' : 'bg-red-500/[0.08] border-red-500/25';
-  const correctIdx = opts.findIndex(o => o === q.correctAnswer || q.correctAnswers?.includes(o));
-  const answerTitle = correctIdx >= 0 ? `Ans. - (${String.fromCharCode(97 + correctIdx)}) ${opts[correctIdx]}` : `Ans. - ${q.correctAnswer}`;
+  // status tint: green / red / yellow (Tailwind 50 on light, 950 at 30% on dark)
+  const tint = isCorrect ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-500/25' : isSkipped ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-500/25' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-500/25';
   const shortOpts = opts.every(o => String(o).length <= 14);
   const disputeDot = existingDispute ? (existingDispute.verdict === 'confirmed' ? 'bg-emerald-500' : existingDispute.verdict === 'disputed' ? 'bg-amber-500' : 'bg-red-500') : '';
 
@@ -112,13 +113,11 @@ function ReviewCardInner({
         </div>
       )}
 
-      {/* Header: number · attempt status · difficulty - one straight line, emoji only */}
-      <div className="mb-3 flex flex-nowrap items-center gap-2.5 border-b border-foreground/10 pb-3" data-testid="review-card-header">
-        <div className={`flex h-9 min-w-9 items-center justify-center rounded-xl border-2 px-1.5 text-sm font-black tabular-nums ${
-          isCorrect ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500' : isSkipped ? 'border-amber-500/40 bg-amber-500/10 text-amber-500' : 'border-red-500/40 bg-red-500/10 text-red-500'
-        }`}>{index + 1}</div>
+      {/* Header: [status] Q1. [difficulty] - one straight line, emoji only */}
+      <div className="mb-3 flex flex-nowrap items-center gap-2 border-b border-foreground/10 pb-3" data-testid="review-card-header">
         <span className="text-xl leading-none" role="img" aria-label={statusText}>{statusEmoji}</span>
-        <span className="text-xl leading-none" role="img" aria-label={`${mergedBadge.label} difficulty`}>{diffEmoji}</span>
+        <span className="text-base font-black tabular-nums text-foreground">Q{index + 1}.</span>
+        {diffEmoji && <span className="text-lg leading-none" role="img" aria-label={`${mergedBadge.label || lvl} difficulty`}>{diffEmoji}</span>}
         {mergedBadge.label && !/^(easy|medium|hard)$/i.test(mergedBadge.label) && (
           <span className={`truncate rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${mergedBadge.classes}`}>{mergedBadge.label}</span>
         )}
@@ -170,28 +169,38 @@ function ReviewCardInner({
         </div>
       )}
 
-      {/* Rationale: white box, purple left bar, "Ans. - (x) text", bullet body */}
+      {/* Rationale */}
       <div className={`grid transition-all duration-300 ease-in-out ${ratOpen ? 'mb-3 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden">
-          <div className="rounded-xl border-l-4 border-[#7c3aed] bg-card p-3 shadow-sm" data-testid="rationale-box">
-            <p className="mb-1.5 text-[13px] font-black leading-snug text-foreground">{answerTitle}</p>
-            {effBook && (bookRationale
-              ? <div className="flex gap-1.5 text-xs text-foreground/75"><span className="font-black text-[#7c3aed]">•</span><AiRationaleText text={bookRationale} className="text-xs text-foreground/75" /></div>
-              : <p className="text-[11px] text-foreground/40">• No explanation came with this question.</p>)}
+          {/* divider, then 📖 + the original bullets (and 🤖 + the AI bullets); no "Ans." line and no text labels */}
+          <div className="border-t border-foreground/10 pt-3" data-testid="rationale-box">
+            {effBook && (
+              <div className="flex items-start gap-2">
+                <span className="pt-0.5 text-base leading-none" role="img" aria-label="Book rationale">📖</span>
+                <div className="min-w-0 flex-1">
+                  {bookRationale
+                    ? <AiRationaleText text={bookRationale} className="text-xs text-foreground/75" />
+                    : <p className="text-[11px] text-foreground/45">No explanation came with this question.</p>}
+                </div>
+              </div>
+            )}
             {effAi && (
-              <div className={effBook ? 'mt-2 border-t border-border pt-2' : ''}>
-                {aiRationale ? (
-                  <div className="flex gap-1.5 text-xs text-foreground/75"><span className="font-black text-violet-500">•</span><div className="min-w-0"><span className="mb-0.5 block text-[9px] font-black uppercase tracking-widest text-violet-500">💡 AI</span><AiRationaleText text={aiRationale} className="text-xs text-foreground/75" /></div></div>
-                ) : aiError ? (
-                  <p className="text-xs leading-relaxed text-destructive">{aiError}</p>
-                ) : !aiEnabled ? (
-                  <p className="flex items-center gap-1.5 text-[11px] text-foreground/40"><BrainCircuit className="h-3.5 w-3.5 flex-shrink-0" /> AI explanation is off - turn it on in Rationale settings.</p>
-                ) : (
-                  <button type="button" onClick={(e) => { e.stopPropagation(); void handleAiExplain(); }} disabled={loadingRat}
-                    className="flex items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-2 text-xs font-bold text-violet-600 transition-all hover:bg-violet-500/20 dark:text-violet-300">
-                    {loadingRat ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> AI thinking…</> : <><Sparkles className="h-3.5 w-3.5" /> Get AI explanation</>}
-                  </button>
-                )}
+              <div className={`flex items-start gap-2 ${effBook ? 'mt-2.5' : ''}`}>
+                <span className="pt-0.5 text-base leading-none" role="img" aria-label="AI rationale">🤖</span>
+                <div className="min-w-0 flex-1">
+                  {aiRationale ? (
+                    <AiRationaleText text={aiRationale} className="text-xs text-foreground/75" />
+                  ) : aiError ? (
+                    <p className="text-xs leading-relaxed text-destructive">{aiError}</p>
+                  ) : !aiEnabled ? (
+                    <p className="flex items-center gap-1.5 text-[11px] text-foreground/45"><BrainCircuit className="h-3.5 w-3.5 flex-shrink-0" /> AI is off. Turn it on from Create Quiz.</p>
+                  ) : (
+                    <button type="button" onClick={(e) => { e.stopPropagation(); void handleAiExplain(); }} disabled={loadingRat}
+                      className="flex items-center gap-2 rounded-xl border border-violet-500/25 bg-violet-500/10 px-4 py-2 text-xs font-bold text-violet-700 transition-all hover:bg-violet-500/20 dark:text-violet-300">
+                      {loadingRat ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> AI thinking…</> : <><Sparkles className="h-3.5 w-3.5" /> Get AI explanation</>}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>

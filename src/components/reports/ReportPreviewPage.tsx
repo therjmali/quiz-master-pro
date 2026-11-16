@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Download, FileText, FileType2, Loader2, Minus, Plus, Share2, Sparkles, X, Code2, Maximize2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Download, Eye, EyeOff, FileText, FileType2, ListChecks, Loader2, Minus, Plus, Share2, Sparkles, X, Code2, Maximize2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PageView, ensureFontFaces } from './PdfPages';
 import type { ReportPreviewData } from './reportSession';
@@ -11,6 +11,7 @@ import type { AnswerMode, LaidOutReport, ReportDoc, ReportKind, ReportStyle } fr
 import { announceSaved, exportReportDoc, friendlyError, openSavedReportToast, shareSavedReportToast, type ExportFormat } from '../../utils/reports/exportReport';
 import { useReportPrefs } from '../../utils/reports/reportPrefs';
 import { OverlayLayer } from '../ui/Overlay';
+import { ChoiceList, PopupSection, PopupShell, PopupTrigger, SwitchRow } from '../ui/ChoicePopup';
 import { shareSavedReport } from '../../platform/reportFiles';
 import type { ReportFonts } from '../../utils/reports/pdf/reportFonts';
 
@@ -26,14 +27,16 @@ const FORMATS: { fmt: ExportFormat; label: string; sub: string; Icon: typeof Fil
   { fmt: 'text', label: 'Plain text', sub: 'Copy into any app', Icon: FileText },
   { fmt: 'html', label: 'Web page', sub: 'Open in any browser', Icon: Code2 },
 ];
-const ANSWER_LABEL: Record<AnswerMode, string> = { inline: 'Answers: after each', key: 'Answers: key at end', none: 'Answers: hidden' };
-const NEXT_ANSWER: Record<AnswerMode, AnswerMode> = { inline: 'key', key: 'none', none: 'inline' };
+const ANSWER_SHORT: Record<AnswerMode, string> = { inline: 'After each', key: 'At the end', none: 'Hidden' };
+const ANSWER_ICON: Record<AnswerMode, React.ReactNode> = { inline: <Eye className="h-4 w-4" />, key: <ListChecks className="h-4 w-4" />, none: <EyeOff className="h-4 w-4" /> };
+const ANSWER_ARIA: Record<AnswerMode, string> = { inline: 'Answers shown after each question', key: 'Answers shown at the end', none: 'Answers hidden' };
+const LEVEL_LABEL: Record<Difficulty, string> = { all: 'All levels', easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+const SIZE_LABEL = { sm: 'Small', md: 'Medium', lg: 'Large' } as const;
+type PopupName = 'answers' | 'include' | 'layout' | 'questions' | null;
 const DIFFS: Difficulty[] = ['all', 'easy', 'medium', 'hard'];
 
 interface Opts { kind: ReportKind; answers: AnswerMode | null; book: boolean; ai: boolean; difficulty: Difficulty; order: 'original' | 'attempt'; rev: number }
 type Built = { status: 'loading' } | { status: 'error'; message: string } | { status: 'empty'; why: string } | { status: 'ready'; report: LaidOutReport; fonts: ReportFonts; doc: ReportDoc; style: ReportStyle };
-
-const pill = (on: boolean) => `shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all active:scale-95 ${on ? 'border-primary/40 bg-primary/15 text-primary' : 'border-border bg-card/70 text-foreground/60'}`;
 
 export default function ReportPreviewPage({ data, onBack }: { data: ReportPreviewData; onBack: () => void }) {
   const session = data.session;
@@ -47,6 +50,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const [popup, setPopup] = useState<PopupName>(null);
   const [aiProgress, setAiProgress] = useState<{ done: number; total: number } | null>(null);
   const aiCancel = useRef(false);
   const scroller = useRef<HTMLDivElement>(null);
@@ -74,7 +78,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
           doc = { kind: 'custom', title: data.title, meta: [new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })], blocks: htmlToBlocks(data.html || '') };
           if (!doc.blocks?.length) { setBuilt({ status: 'empty', why: 'There is nothing to show in this report.' }); return; }
         }
-        const base = styleFor(doc.kind, { columns: doc.blocks ? 1 : prefs.columns, fontSize: prefs.fontSize, paper: prefs.paper, brand: prefs.brand, showUserAnswer: prefs.showUserAnswer });
+        const base = styleFor(doc.kind, { columns: doc.blocks ? 1 : prefs.columns, fontSize: prefs.fontSize, paper: prefs.paper, brand: prefs.brand, showUserAnswer: prefs.showUserAnswer, examNumbers: prefs.examNumbers });
         const style: ReportStyle = { ...base, answers: opts.answers ?? base.answers };
         const { report, fonts } = await prepareReport(doc, style, browserFontSource);
         await ensureFontFaces(fonts.set.regular.concat(fonts.set.bold).map(f => f.id));
@@ -84,7 +88,7 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
       }
     }, 140);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [opts, prefs.columns, prefs.fontSize, prefs.paper, prefs.brand, prefs.showUserAnswer, session, data.html, data.title]);
+  }, [opts, prefs.columns, prefs.fontSize, prefs.paper, prefs.brand, prefs.showUserAnswer, prefs.examNumbers, session, data.html, data.title]);
 
   // ── page width follows the screen; pinch to zoom ──
   useEffect(() => {
@@ -147,6 +151,8 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
   const items = built.status === 'ready' ? built.doc.items : undefined;
   const showUserToggle = !!items && (opts.kind === 'all' || opts.kind === 'wrong');
   const answerMode = built.status === 'ready' ? built.style.answers : (opts.answers ?? 'inline');
+  const isExam = opts.kind === 'exam';
+  const includeCount = (showUserToggle && prefs.showUserAnswer ? 1 : 0) + (opts.book ? 1 : 0) + (opts.ai ? 1 : 0) + (isExam && prefs.examNumbers ? 1 : 0);
 
   return (
     <OverlayLayer layer="panel">
@@ -179,17 +185,13 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
         </nav>
       )}
 
-      {/* options */}
+      {/* options: each one opens a small popup window listing every choice (nothing changes by a bare tap) */}
       {session && opts.kind !== 'revision' && (
         <div className="flex gap-1.5 overflow-x-auto border-b border-border bg-background px-3 py-2 [scrollbar-width:none]" aria-label="Report options">
-          <button type="button" className={pill(answerMode !== 'none')} onClick={() => patch({ answers: NEXT_ANSWER[answerMode] })}>{ANSWER_LABEL[answerMode]}</button>
-          {showUserToggle && <button type="button" className={pill(prefs.showUserAnswer)} onClick={() => setPrefs({ showUserAnswer: !prefs.showUserAnswer })}>Your answer</button>}
-          <button type="button" className={pill(opts.book)} onClick={() => { patch({ book: !opts.book }); session.onRationalePrefsChange?.({ showBook: !opts.book, showAi: opts.ai }); }}>📖 Book rationale</button>
-          <button type="button" className={pill(opts.ai)} onClick={() => { patch({ ai: !opts.ai }); session.onRationalePrefsChange?.({ showBook: opts.book, showAi: !opts.ai }); }}>💡 AI rationale</button>
-          <button type="button" className={pill(prefs.columns === 2)} onClick={() => setPrefs({ columns: prefs.columns === 2 ? 1 : 2 })}>{prefs.columns === 2 ? '2 columns' : '1 column'}</button>
-          <button type="button" className={pill(false)} onClick={() => setPrefs({ fontSize: prefs.fontSize === 'sm' ? 'md' : prefs.fontSize === 'md' ? 'lg' : 'sm' })}>Text: {prefs.fontSize === 'sm' ? 'Small' : prefs.fontSize === 'md' ? 'Medium' : 'Large'}</button>
-          <button type="button" className={pill(opts.difficulty !== 'all')} onClick={() => patch({ difficulty: DIFFS[(DIFFS.indexOf(opts.difficulty) + 1) % DIFFS.length] })}>Level: {opts.difficulty === 'all' ? 'All' : opts.difficulty[0].toUpperCase() + opts.difficulty.slice(1)}</button>
-          <button type="button" className={pill(false)} onClick={() => { const o = opts.order === 'original' ? 'attempt' : 'original'; patch({ order: o }); session.onOrderChange?.(o); }}>Order: {opts.order === 'original' ? 'Book' : 'Attempt'}</button>
+          <PopupTrigger testId="opt-answers" icon={ANSWER_ICON[answerMode]} label="Answers" value={ANSWER_SHORT[answerMode]} active={answerMode !== 'none'} onClick={() => setPopup('answers')} />
+          <PopupTrigger testId="opt-include" icon="📖" label="Include" value={`${includeCount} on`} active={includeCount > 0} onClick={() => setPopup('include')} />
+          <PopupTrigger testId="opt-layout" icon="▥" label="Layout" value={`${prefs.columns} col · ${SIZE_LABEL[prefs.fontSize]}`} onClick={() => setPopup('layout')} />
+          <PopupTrigger testId="opt-questions" icon="🎚️" label="Questions" value={`${LEVEL_LABEL[opts.difficulty]} · ${opts.order === 'original' ? 'Book' : 'Attempt'}`} active={opts.difficulty !== 'all'} onClick={() => setPopup('questions')} />
         </div>
       )}
       {missingAi > 0 && (
@@ -248,6 +250,13 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
             <button type="button" aria-label="Previous page" onClick={() => goto(page - 1)} disabled={page <= 1} className="grid h-9 w-9 place-items-center rounded-full active:scale-90 disabled:opacity-30"><ChevronLeft className="h-4 w-4" /></button>
             <span className="min-w-[54px] text-center text-[12px] font-black tabular-nums" data-testid="page-indicator">{page} / {total}</span>
             <button type="button" aria-label="Next page" onClick={() => goto(page + 1)} disabled={page >= total} className="grid h-9 w-9 place-items-center rounded-full active:scale-90 disabled:opacity-30"><ChevronRight className="h-4 w-4" /></button>
+            {session && opts.kind !== 'revision' && (
+              <>
+                <span className="mx-1 h-5 w-px bg-border" />
+                <button type="button" data-testid="answers-eye" aria-label={ANSWER_ARIA[answerMode]} title={ANSWER_ARIA[answerMode]} onClick={() => setPopup('answers')}
+                  className={`grid h-9 w-9 place-items-center rounded-full active:scale-90 ${answerMode === 'none' ? 'text-foreground/55' : 'text-primary'}`}>{ANSWER_ICON[answerMode]}</button>
+              </>
+            )}
             <span className="mx-1 h-5 w-px bg-border" />
             <button type="button" aria-label="Zoom out" onClick={() => setZoom(z => Math.max(0.6, +(z - 0.2).toFixed(2)))} className="grid h-9 w-9 place-items-center rounded-full active:scale-90"><Minus className="h-4 w-4" /></button>
             <button type="button" aria-label="Fit to width" onClick={() => setZoom(1)} className="grid h-9 min-w-[44px] place-items-center rounded-full px-1 text-[11px] font-black active:scale-90">{zoom === 1 ? <Maximize2 className="h-3.5 w-3.5" /> : `${Math.round(zoom * 100)}%`}</button>
@@ -255,6 +264,42 @@ export default function ReportPreviewPage({ data, onBack }: { data: ReportPrevie
           </div>
         </div>
       )}
+
+
+      {/* option popups */}
+      <PopupShell open={popup === 'answers'} onClose={() => setPopup(null)} title="Answers" subtitle="Show or hide the answers" icon={ANSWER_ICON[answerMode]} testId="popup-answers">
+        <ChoiceList label="Answers" value={answerMode} onSelect={v => { patch({ answers: v }); setPopup(null); }} options={[
+          { value: 'inline', label: 'Show after each question', hint: 'Answer line right under every question', icon: <Eye className="h-4 w-4" /> },
+          { value: 'key', label: 'Show at the end', hint: 'One answer key after the last question', icon: <ListChecks className="h-4 w-4" /> },
+          { value: 'none', label: 'Hidden', hint: 'A clean paper without answers', icon: <EyeOff className="h-4 w-4" /> },
+        ]} />
+      </PopupShell>
+      <PopupShell open={popup === 'include'} onClose={() => setPopup(null)} title="Include" subtitle="What to print with each question" icon="📖" testId="popup-include">
+        {showUserToggle && <SwitchRow label="Your answer" hint="Marks the option you picked" icon="🙋" checked={prefs.showUserAnswer} onChange={v => setPrefs({ showUserAnswer: v })} />}
+        <SwitchRow label="Book rationale" hint="The explanation from your notes" icon="📖" checked={opts.book} onChange={v => { patch({ book: v }); session?.onRationalePrefsChange?.({ showBook: v, showAi: opts.ai }); }} />
+        <SwitchRow label="AI rationale" hint="Explanations written by your AI key" icon="💡" checked={opts.ai} onChange={v => { patch({ ai: v }); session?.onRationalePrefsChange?.({ showBook: opts.book, showAi: v }); }} />
+        {isExam && <SwitchRow label="Question numbers" hint="Always on when the answers are at the end" icon="🔢" checked={prefs.examNumbers} onChange={v => setPrefs({ examNumbers: v })} />}
+      </PopupShell>
+      <PopupShell open={popup === 'layout'} onClose={() => setPopup(null)} title="Layout" subtitle="Columns and text size" icon="▥" testId="popup-layout">
+        <PopupSection title="Columns">
+          <ChoiceList label="Columns" value={prefs.columns} onSelect={v => { setPrefs({ columns: v === 1 ? 1 : 2 }); setPopup(null); }} options={[{ value: 2, label: '2 columns', hint: 'Compact, fits more per page', icon: '▥' }, { value: 1, label: '1 column', hint: 'Wide, easiest to read', icon: '▭' }]} />
+        </PopupSection>
+        <PopupSection title="Text size">
+          <ChoiceList label="Text size" value={prefs.fontSize} onSelect={v => { setPrefs({ fontSize: v }); setPopup(null); }} options={[{ value: 'sm', label: 'Small', icon: 'A' }, { value: 'md', label: 'Medium', icon: 'A' }, { value: 'lg', label: 'Large', icon: 'A' }]} />
+        </PopupSection>
+      </PopupShell>
+      <PopupShell open={popup === 'questions'} onClose={() => setPopup(null)} title="Questions" subtitle="Level and order" icon="🎚️" testId="popup-questions">
+        <PopupSection title="Level">
+          <ChoiceList label="Level" value={opts.difficulty} onSelect={v => { patch({ difficulty: v }); setPopup(null); }} options={[
+            { value: 'all', label: 'All levels', icon: '🎯' }, { value: 'easy', label: 'Easy', icon: '🟢' }, { value: 'medium', label: 'Medium', icon: '🟡' }, { value: 'hard', label: 'Hard', icon: '🔴' },
+          ]} />
+        </PopupSection>
+        <PopupSection title="Order">
+          <ChoiceList label="Order" value={opts.order} onSelect={v => { patch({ order: v }); session?.onOrderChange?.(v); setPopup(null); }} options={[
+            { value: 'attempt', label: 'Attempt order', hint: 'The order you answered them in', icon: '⏱️' }, { value: 'original', label: 'Book order', hint: 'The order in your book / notes', icon: '📚' },
+          ]} />
+        </PopupSection>
+      </PopupShell>
 
       {/* formats sheet */}
       {menu && (

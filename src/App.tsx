@@ -808,7 +808,7 @@ function AppScreens({
             syncStatus={syncStatus}
             quizCount={history.length}
             theme={theme}
-            onToggleTheme={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+            onThemeChange={setTheme}
             onOpenNotifications={() => setNotifCenterOpen(true)}
             unreadNotificationCount={pendingTaskCount}
             onOpenSyncCenter={() => setSyncCenterOpen(true)}

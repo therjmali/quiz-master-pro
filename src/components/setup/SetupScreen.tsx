@@ -679,9 +679,10 @@ export default function SetupScreen({
 
       {/* ── Top Action Row ── */}
       <div className="space-y-2 px-1">
+        {/* AI Generation: prominent row at the very top (opens a small window with the ON/OFF switch and your saved keys) */}
+        <AISourceControls prefs={aiPrefs} onChange={(p) => { onAiPrefsChange(p); if (p.reportHelper !== aiPrefs.reportHelper) onReportHelperChange(p.reportHelper); }} onAddKey={onOpenApiKeys} />
         <div className="cq-rail flex items-center gap-1.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
-          {/* ── Left: AI & Controls ── */}
-          <AISourceControls prefs={aiPrefs} onChange={(p) => { onAiPrefsChange(p); if (p.reportHelper !== aiPrefs.reportHelper) onReportHelperChange(p.reportHelper); }} onAddKey={onOpenApiKeys} />
+          {/* ── Left: Controls ── */}
           <ShuffleControlsButton
             shuffleQuestions={settings.shuffleQuestions}
             shuffleOptions={settings.shuffleOptions}

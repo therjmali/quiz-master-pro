@@ -1,3 +1,4 @@
+import { ChoiceList, PopupShell, SwitchRow } from '../ui/ChoicePopup';
 import { useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
 import { hapticTap } from '../../utils/haptics';
@@ -38,15 +39,6 @@ const FILTER_BTNS: { key: Filter; label: string; icon: string; color: string }[]
   { key: 'bookmarked', label: 'Bookmarked', icon: '🔖', color: '' },
 ];
 
-function TogglePill({ active, icon, label, onClick }: {
-  active: boolean; icon: string; label: string; activeClass?: string; onClick: () => void;
-}) {
-  return (
-    <button type="button" aria-pressed={active} onClick={() => { hapticTap(); onClick(); }} className="qmp-capsule">
-      <span className="leading-none">{icon}</span><span>{label}</span>
-    </button>
-  );
-}
 
 export default function ReviewSection({
   result, settings, rationaleCache, getAiRationale,
@@ -59,6 +51,7 @@ export default function ReviewSection({
   const [explainProgress, setExplainProgress] = useState({ done: 0, total: 0 });
   const [explainDifficulty, setExplainDifficulty] = useState<string>('all');
   const [showAnswersInline, setShowAnswersInline] = usePersistedState('qmp_show_answers_inline', true);
+  const [reviewPopup, setReviewPopup] = useState<'answers' | 'include' | null>(null);
 
   // Scroll preservation ref — captures scrollY before toggle, restores after render
   const savedScrollRef = useRef<number | null>(null);
@@ -225,27 +218,13 @@ export default function ReviewSection({
       {/* View options: capsules, one line, swipe sideways */}
       <div className="sticky top-0 z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md">
         <div className="qmp-capsules" data-testid="review-options">
-          <TogglePill
-            active={showAnswersInline}
-            icon="👁️"
-            label="Answers"
-            activeClass=""
-            onClick={() => preserveScroll(() => setShowAnswersInline(!showAnswersInline))}
-          />
-          <TogglePill
-            active={rationalePrefs.showBook}
-            icon="📖"
-            label="Book"
-            activeClass=""
-            onClick={() => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showBook: !rationalePrefs.showBook }))}
-          />
-          <TogglePill
-            active={rationalePrefs.showAi}
-            icon="💡"
-            label="AI"
-            activeClass=""
-            onClick={() => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showAi: !rationalePrefs.showAi }))}
-          />
+          {/* Answers / Include open a small window (nothing changes by a bare tap) */}
+          <button type="button" className="qmp-capsule" data-on={showAnswersInline} aria-haspopup="dialog" data-testid="review-opt-answers" onClick={() => setReviewPopup('answers')}>
+            <span className="leading-none">{showAnswersInline ? '👁️' : '🙈'}</span> Answers <span className="text-[9px] opacity-50">▾</span>
+          </button>
+          <button type="button" className="qmp-capsule" data-on={rationalePrefs.showBook || rationalePrefs.showAi} aria-haspopup="dialog" data-testid="review-opt-include" onClick={() => setReviewPopup('include')}>
+            <span className="leading-none">📖</span> Rationale <span className="text-[9px] opacity-50">▾</span>
+          </button>
           <label className="qmp-capsule relative cursor-pointer gap-1 pr-2" data-on={explainDifficulty !== 'all'}>
             <span className="sr-only">Difficulty</span>
             <select
@@ -274,6 +253,16 @@ export default function ReviewSection({
             }
           </button>
         </div>
+        <PopupShell open={reviewPopup === 'answers'} onClose={() => setReviewPopup(null)} title="Answers" subtitle="Show or hide the correct answers" icon={showAnswersInline ? '👁️' : '🙈'} testId="review-popup-answers">
+          <ChoiceList label="Answers" value={showAnswersInline ? 'show' : 'hide'} onSelect={v => { preserveScroll(() => setShowAnswersInline(v === 'show')); setReviewPopup(null); }} options={[
+            { value: 'show', label: 'Show answers', hint: 'Green option and ✓ on every card', icon: '👁️' },
+            { value: 'hide', label: 'Hide answers', hint: 'Practise without seeing them', icon: '🙈' },
+          ]} />
+        </PopupShell>
+        <PopupShell open={reviewPopup === 'include'} onClose={() => setReviewPopup(null)} title="Rationale" subtitle="What to show under each question" icon="📖" testId="review-popup-include">
+          <SwitchRow label="Book rationale" hint="The explanation from your notes" icon="📖" checked={rationalePrefs.showBook} onChange={v => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showBook: v }))} />
+          <SwitchRow label="AI rationale" hint="Explanations written by your AI key" icon="🤖" checked={rationalePrefs.showAi} onChange={v => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showAi: v }))} />
+        </PopupShell>
       </div>
 
       {/* Question list */}

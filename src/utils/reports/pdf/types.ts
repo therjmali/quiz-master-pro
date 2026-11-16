@@ -63,6 +63,10 @@ export interface ReportStyle {
   brand: string;
   /** Title band + summary chips on the first page. */
   header: boolean;
+  /** Black & white output (the exam paper): every colour is converted to black / grey. */
+  mono?: boolean;
+  /** Exam paper: print question numbers next to the questions (always on when answers are in a key at the end). */
+  examNumbers?: boolean;
 }
 
 export const DEFAULT_STYLE: ReportStyle = { template: 'master', columns: 2, fontSize: 'md', answers: 'inline', showUserAnswer: true, paper: 'a4', brand: 'R.J QUIZ', header: true };

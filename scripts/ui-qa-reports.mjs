@@ -54,7 +54,7 @@ async function run(label, w, h) {
   const count = (sel) => page.evaluate(s => document.querySelectorAll('[data-page] svg ' + s).length, sel);
   // status-tinted cards: 5 correct (green), 4 wrong (red), 3 skipped (yellow) - all on the pages
   ok(`[${label}] cards are tinted by status (5 green, 4 red, 3 yellow)`, (await count('rect[fill="#f0fdf4" i]')) === 5 && (await count('rect[fill="#fef2f2" i]')) === 4 && (await count('rect[fill="#fefce8" i]')) === 3, `${await count('rect[fill="#f0fdf4" i]')}/${await count('rect[fill="#fef2f2" i]')}/${await count('rect[fill="#fefce8" i]')}`);
-  ok(`[${label}] a green check on the right of the answer for the 9 attempted questions (none for skipped)`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 18, String(await count('line[stroke="#16a34a"][stroke-linecap="round"]')));
+  ok(`[${label}] a green check on the right of the correct option of every card (9 attempted + 3 skipped)`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 24, String(await count('line[stroke="#16a34a"][stroke-linecap="round"]')));
   ok(`[${label}] the 4 wrong picks are crossed`, (await count('line[stroke="#dc2626"][stroke-linecap="round"]')) >= 8);
   ok(`[${label}] footer has page numbers and the brand`, /Page 1 of \d+/.test(t1) && /R\.J QUIZ/.test(t1));
   const total = await page.getByTestId('page-indicator').innerText();
@@ -69,8 +69,18 @@ async function run(label, w, h) {
   await page.getByRole('button', { name: 'Fit to width' }).click(); await page.waitForTimeout(200);
 
   // options: hide answers, then tabs
-  await page.getByRole('button', { name: /Answers: after each/ }).click(); await page.waitForTimeout(250);
-  await page.getByRole('button', { name: /Answers: key at end/ }).click(); await page.waitForTimeout(250);
+  // options open small popup windows (nothing changes by a bare tap); the eye in the bottom bar opens the same Answers window
+  const before = await count('line[stroke="#16a34a"][stroke-linecap="round"]');
+  await page.getByTestId('opt-answers').click(); await page.waitForTimeout(350);
+  ok(`[${label}] Answers opens a small window with 3 choices (after each / at the end / hidden)`, await page.getByTestId('popup-answers').isVisible() && (await page.locator('[data-testid="popup-answers"] [role="radio"]').count()) === 3 && (await page.locator('[data-testid="popup-answers"] [data-choice="inline"]').getAttribute('aria-checked')) === 'true');
+  await page.keyboard.press('Escape'); await page.waitForTimeout(300);
+  ok(`[${label}] closing the window changes nothing`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === before);
+  await page.getByTestId('answers-eye').click(); await page.waitForTimeout(350);
+  ok(`[${label}] the eye in the bottom bar opens the same Answers window`, await page.getByTestId('popup-answers').isVisible());
+  await page.locator('[data-testid="popup-answers"] [data-choice="key"]').click(); await page.waitForTimeout(900);
+  ok(`[${label}] "Show at the end": no check marks on the cards, an Answer Key follows`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 0 && /Answer Key/.test(await svgText()));
+  await page.getByTestId('opt-answers').click(); await page.waitForTimeout(300);
+  await page.locator('[data-testid="popup-answers"] [data-choice="none"]').click(); await page.waitForTimeout(250);
   await page.waitForSelector('[data-testid="report-pages"]'); await page.waitForTimeout(700);
   { const hid = await svgText(); ok(`[${label}] answers can be hidden: no check marks and no rationale, the status tint stays`, (await count('line[stroke="#16a34a"][stroke-linecap="round"]')) === 0 && !/Beta blockers reduce heart rate/.test(hid) && (await count('rect[fill="#f0fdf4" i]')) === 5); }
   await page.getByRole('tab', { name: /Mistakes/ }).click(); await page.waitForTimeout(1200);
