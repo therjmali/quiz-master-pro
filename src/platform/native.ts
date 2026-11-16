@@ -29,6 +29,7 @@ export function isStandalonePwa(): boolean {
 export function env(name: string): string {
   try {
     const e = (import.meta as unknown as { env?: Record<string, string | undefined> }).env;
-    return String(e?.[name] ?? '').trim();
+    const v = e?.[name] ?? (typeof process !== 'undefined' ? process.env?.[name] : undefined);
+    return String(v ?? '').trim();
   } catch { return ''; }
 }
