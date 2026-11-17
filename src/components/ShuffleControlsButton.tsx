@@ -31,15 +31,6 @@ function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (
 
 export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions, onToggleQuestions, onToggleOptions }: Props) {
   const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => { if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
   const close = useCallback(() => setOpen(false), []);
   const isOriginal = !shuffleQuestions && !shuffleOptions;
   const isFullShuffle = shuffleQuestions && shuffleOptions;
@@ -51,9 +42,9 @@ export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions
     : { icon: '⚡', text: `${shuffleQuestions ? 'Questions' : 'Options'} shuffled only`, cls: 'bg-amber-500/8 border-amber-500/15 text-amber-600 dark:text-amber-300' };
 
   return (
-    <div ref={containerRef} className="relative z-30">
+    <div className="relative z-30">
       {/* ── Blue Trigger ── */}
-      <button onClick={() => setOpen(o => !o)} aria-haspopup="true" aria-expanded={open}
+      <button onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} aria-haspopup="true" aria-expanded={open}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all select-none ${
           open
             ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30'

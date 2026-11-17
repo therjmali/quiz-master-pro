@@ -42,16 +42,6 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
 
 export default function RationaleControlsButton({ prefs, onChange, reportHelper, onReportHelperChange }: Props) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Desktop outside-click
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
-
   const close = useCallback(() => setOpen(false), []);
 
   const bothOff  = !prefs.showBook && !prefs.showAi;
@@ -64,9 +54,9 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
   const aiLine = !aiOn ? "Off · explanations won't generate" : chosenKey ? `🔑 ${KEY_PROVIDER_NAMES[chosenKey]}` : 'Add an API key in Profile → API Keys';
 
   return (
-    <div ref={ref} className="relative z-30">
+    <div className="relative z-30">
       {/* ── Blue Trigger Button ── */}
-      <button onClick={() => setOpen(o => !o)} aria-haspopup="true" aria-expanded={open}
+      <button onClick={(e) => { e.stopPropagation(); setOpen(o => !o); }} aria-haspopup="true" aria-expanded={open}
         className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-bold transition-all select-none ${
           open
             ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30'
@@ -87,7 +77,7 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
           bothOff ? 'bg-foreground/5 border-border text-foreground/40'
           : 'bg-amber-500/8 border-amber-500/15 text-amber-600 dark:text-amber-300'
         }`}>
-          <span className="text-base leading-none flex-shrink-0">{bothOff ? '🙈' : bothOn ? '📖' : prefs.showBook ? '📖' : '💡'}</span>
+          <span className="text-base leading-none flex-shrink-0">{bothOff ? '🚫' : bothOn ? '📖' : prefs.showBook ? '📖' : '💡'}</span>
           <span className="leading-snug">
             {bothOff ? 'All rationale hidden in reports'
              : bothOn ? 'Book + AI rationale shown in reports'
@@ -175,7 +165,7 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
           </button>
           <button onClick={() => onChange({ showBook: false, showAi: false })} disabled={bothOff}
             className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-foreground/5 border-border text-foreground/40 hover:bg-foreground/10 hover:text-foreground/60">
-            🙈 All Off
+            🚫 All Off
           </button>
         </div>
 

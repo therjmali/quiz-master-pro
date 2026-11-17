@@ -4,6 +4,28 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.8.0] - 2026-11-17
+
+Strict UI/UX standardization, report engine color logic correction, toggle unresponsiveness resolution, and clipboard paste bridge finalization.
+
+### Fixed & Standardized
+- **Report UI & Answer Color Logic**:
+  - Correct answer line (`Ans. - (X) ...`) is now **always** styled in bold green (`text-green-700 dark:text-green-400` / `#15803d` / `T.okInk`), permanently eliminating the bug where skipped or incorrect questions rendered correct answers in red.
+  - When incorrect, the user's wrong answer is appended next to it in red: `(You answered: Disinfection)`.
+  - Refactored review option rendering into a dedicated `ReviewOptionItem` component with standardized flexbox alignment (`flex items-center justify-between gap-3`).
+  - Standardized option styling across all states:
+    - **Correct Option (Always)**: Green background (`bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40`), bold text, and `✅` indicator aligned to the right.
+    - **User's Incorrect Selection**: Red background (`bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40`), bold text, and `❌` indicator aligned to the right.
+    - **Other Options**: Neutral background (`bg-background/60 border-border text-foreground/85 font-normal`), no icons.
+    - **Skipped Questions**: Displays solely the `✅` on the correct option with no red backgrounds or `❌` icons.
+- **State & Interaction Bug Fixes (Toggle Switches)**:
+  - Eliminated the root cause of unresponsive toggle switches in both the New Quiz Dashboard (`ShuffleControlsButton`) and Post-Quiz Dashboard (`RationaleControlsButton`): removed the erroneous `document.addEventListener('mousedown')` handlers that prematurely closed portalled overlays on touch/click down.
+  - Added `e.stopPropagation()` to trigger buttons and switches to avoid click bubbling and ensure reliable state changes.
+  - Replaced legacy monkey emojis with modern, clean iconography.
+- **Clipboard Paste Bridge**:
+  - Enhanced `readClipboardText` in `src/platform/clipboard.ts` to seamlessly handle native Android via direct `ClipboardManager` and `@capacitor/clipboard`, returning clipboard contents cleanly without falling through to restricted WebView clipboard APIs.
+  - Hardened Web/PWA clipboard reading within clean `try/catch` and immediate user activation gesture.
+
 ## [3.7.0] - 2026-11-17
 
 Bug resolution, state management fixes, native WebView clipboard bridge, redundant UI deprecation, and report visual indicators refactoring.

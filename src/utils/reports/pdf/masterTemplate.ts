@@ -328,8 +328,10 @@ function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: nu
       const i = idxOf(c);
       return i >= 0 ? `(${LETTER(i)}) ${c}` : c;
     }).join(', ');
-    const ansColor = it.status === 'correct' ? T.okInk : it.status === 'wrong' ? T.noInk : T.okInk;
-    const ansLine = `Ans. - ${ansSummary}.`;
+    const ansColor = T.okInk;
+    const ansLine = (it.status === 'wrong' && it.userAnswer)
+      ? `Ans. - ${ansSummary}. (You answered: ${it.userAnswer})`
+      : `Ans. - ${ansSummary}.`;
     const ansLines = wrap(set, ansLine, Math.max(20, rightEdge - optX), fOpt, true, 4);
     ansLines.forEach((ln, li) => {
       ops.push(txt(optX, y + fOpt * 0.95 + li * optLH, ln, { bold: true, size: fOpt, color: ansColor }));

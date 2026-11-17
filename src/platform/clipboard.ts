@@ -24,21 +24,25 @@ export async function readClipboardText(): Promise<string> {
   if (bridge?.readClipboard) {
     try {
       const val = bridge.readClipboard();
-      if (typeof val === 'string' && val.length > 0) return val;
+      if (typeof val === 'string') return val;
     } catch (e) {
       console.warn('NativeBridge readClipboard error:', e);
     }
   }
 
   // 2. Capacitor native plugin bridge (@capacitor/clipboard)
-  if (Capacitor.isNativePlatform()) {
+  if (Capacitor.isNativePlatform() || Capacitor.isPluginAvailable('Clipboard')) {
     try {
       const res = await Clipboard.read();
-      if (res && typeof res.value === 'string' && res.value.length > 0) {
+      if (res && typeof res.value === 'string') {
         return res.value;
       }
+      return '';
     } catch (e) {
-      console.warn('Native Clipboard.read error, falling back to navigator.clipboard:', e);
+      console.warn('Native Clipboard.read error:', e);
+      if (Capacitor.isNativePlatform()) {
+        return '';
+      }
     }
   }
 
@@ -47,7 +51,6 @@ export async function readClipboardText(): Promise<string> {
     try {
       return await navigator.clipboard.readText();
     } catch (e) {
-      // If native platform already checked and was empty, return empty string instead of throwing
       if (Capacitor.isNativePlatform() || bridge?.readClipboard) {
         return '';
       }
@@ -55,7 +58,7 @@ export async function readClipboardText(): Promise<string> {
     }
   }
 
-  throw new Error('Clipboard access unavailable');
+  return '';
 }
 
 /**

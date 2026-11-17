@@ -27,6 +27,41 @@ function MultilineText({ text }: { text: string }) {
   return <>{text.split('\n').map((line, i) => (<span key={i}>{i > 0 && <br />}{line}</span>))}</>;
 }
 
+interface ReviewOptionItemProps {
+  opt: string;
+  index: number;
+  isCorrectOption: boolean;
+  isUserWrongSelection: boolean;
+}
+
+function ReviewOptionItem({ opt, index, isCorrectOption, isUserWrongSelection }: ReviewOptionItemProps) {
+  const letter = String.fromCharCode(65 + index);
+
+  let containerClass = 'bg-background/60 border-border text-foreground/85 font-normal';
+  let letterClass = 'text-foreground/70 font-semibold';
+  let icon: React.ReactNode = null;
+
+  if (isCorrectOption) {
+    containerClass = 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-900 dark:text-green-200 font-bold';
+    letterClass = 'text-green-950 dark:text-green-100 font-bold';
+    icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" aria-label="Correct answer">✅</span>;
+  } else if (isUserWrongSelection) {
+    containerClass = 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-900 dark:text-red-200 font-bold';
+    letterClass = 'text-red-950 dark:text-red-100 font-bold';
+    icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" aria-label="Your incorrect answer">❌</span>;
+  }
+
+  return (
+    <div className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${containerClass}`}>
+      <span className="text-sm leading-snug flex-1 min-w-0 break-words">
+        <span className={`mr-1.5 text-xs ${letterClass}`}>({letter})</span>
+        {opt}
+      </span>
+      {icon}
+    </div>
+  );
+}
+
 function ReviewCardInner({
   q, index, userAnswer, rationaleCache, getAiRationale,
   showBook = true, showAi = true, aiEnabled = true,
@@ -59,8 +94,9 @@ function ReviewCardInner({
     if (cached && cached !== aiRationale) setAiRationale(cached);
   }, [rationaleCache, q.question]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isCorrect = userAnswer === q.correctAnswer || (userAnswer !== null && q.correctAnswers?.includes(userAnswer)) || false;
-  const isSkipped = userAnswer === null;
+  const isSkipped = userAnswer === null || userAnswer === undefined;
+  const isCorrect = !isSkipped && (userAnswer === q.correctAnswer || (q.correctAnswers?.includes(userAnswer) ?? false));
+  const isWrong   = !isCorrect && !isSkipped;
   const status    = isCorrect ? 'correct' : isSkipped ? 'skipped' : 'wrong';
   const opts      = q.shuffledOpts || q.options;
 
@@ -96,7 +132,11 @@ function ReviewCardInner({
   const diffEmoji = lvl === 'easy' ? '🟢' : lvl === 'hard' ? '🔴' : lvl === 'medium' ? '🟡' : '';
   const statusEmoji = isCorrect ? '✅' : isSkipped ? '⏭️' : '❌';
   // status tint: green / red / yellow (Tailwind 50 on light, 950 at 30% on dark)
-  const tint = isCorrect ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-500/25' : isSkipped ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-500/25' : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-500/25';
+  const tint = isCorrect
+    ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-500/25'
+    : isSkipped
+    ? 'bg-yellow-50 border-yellow-200 dark:bg-yellow-950/30 dark:border-yellow-500/25'
+    : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-500/25';
   const shortOpts = opts.every(o => String(o).length <= 14);
   const disputeDot = existingDispute ? (existingDispute.verdict === 'confirmed' ? 'bg-emerald-500' : existingDispute.verdict === 'disputed' ? 'bg-amber-500' : 'bg-red-500') : '';
 
@@ -136,39 +176,29 @@ function ReviewCardInner({
       {/* Options: 2x2 when short, stacked when long */}
       <div className={`mb-4 ${shortOpts && opts.length === 4 ? 'grid grid-cols-2 gap-2' : 'space-y-2'}`}>
         {opts.map((opt, i) => {
-          const isThisCorrect = opt === q.correctAnswer || q.correctAnswers?.includes(opt) || false;
-          const isThisUser    = opt === userAnswer;
-          let bgClass = 'bg-background/60 border-border text-foreground/85';
-          let icon: React.ReactNode = null;
-
-          if (isThisCorrect) {
-            bgClass = 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-800 dark:text-green-300 font-medium';
-            icon = <span className="ml-auto flex-shrink-0 text-base leading-none" aria-label="Correct answer">✅</span>;
-          } else if (isThisUser && !isCorrect) {
-            bgClass = 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-800 dark:text-red-300 font-medium';
-            icon = <span className="ml-auto flex-shrink-0 text-base leading-none" aria-label="Your incorrect answer">❌</span>;
-          }
+          const isThisCorrect = opt === q.correctAnswer || (q.correctAnswers?.includes(opt) ?? false);
+          const isThisUserWrong = isWrong && opt === userAnswer;
 
           return (
-            <div key={i} className={`flex items-center justify-between gap-2 rounded-xl border p-3 transition-colors ${bgClass}`}>
-              <span className="text-sm leading-snug">
-                <span className="mr-1.5 text-xs font-bold text-foreground">({String.fromCharCode(65 + i)})</span>
-                {opt}
-              </span>
-              {icon}
-            </div>
+            <ReviewOptionItem
+              key={i}
+              opt={opt}
+              index={i}
+              isCorrectOption={isThisCorrect}
+              isUserWrongSelection={isThisUserWrong}
+            />
           );
         })}
       </div>
 
       {/* Inline Answer Line: immediately below options, bold, color-coded */}
-      <div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs">
-        <span className={`font-bold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs">
+        <span className="font-bold text-green-700 dark:text-green-400">
           Ans. - ({String.fromCharCode(65 + Math.max(0, opts.indexOf(q.correctAnswer)))}) {q.correctAnswer}.
         </span>
-        {!isCorrect && !isSkipped && (
-          <span className="text-[11px] text-foreground/50 ml-auto">
-            (You answered: <span className="font-semibold text-red-500">{userAnswer}</span>)
+        {isWrong && userAnswer && (
+          <span className="text-[11px] text-foreground/60 ml-auto flex-shrink-0">
+            (You answered: <span className="font-bold text-red-600 dark:text-red-400">{userAnswer}</span>)
           </span>
         )}
       </div>

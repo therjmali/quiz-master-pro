@@ -133,7 +133,7 @@ body.mono,body.mono *{color:#111 !important;border-color:#888 !important}body.mo
     parts.push(`<div class="q"><b>Q${it.n}.</b> ${esc(it.question)}</div>`);
     it.options.forEach((o, i) => parts.push(`<div class="opt"><b>(${L(i)})</b> ${esc(o)}</div>`));
     if (style.answers === 'inline') {
-      const color = it.status === 'correct' ? '#16a34a' : it.status === 'wrong' ? '#dc2626' : '#16a34a';
+      const color = '#16a34a';
       parts.push(`<div class="rule"></div><div><span class="ans" style="font-weight:700;color:${color}"><b style="color:${color}">Ans. - </b> ${esc(ansText(it))}.</span></div>`);
       if (style.showUserAnswer && it.status !== 'unknown') parts.push(`<div class="you ${it.status === 'correct' ? 'ok' : it.status === 'wrong' ? 'no' : 'sk'}">${esc(userText(it))}</div>`);
       if (it.book) parts.push(`<div class="rat"><b>Explanation:</b> ${esc(it.book).replace(/\n/g, '<br>')}</div>`);

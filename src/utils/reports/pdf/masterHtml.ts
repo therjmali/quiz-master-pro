@@ -272,8 +272,11 @@ function questionCard(it: ReportItem, style: ReportStyle): string {
       const i = options.findIndex(o => o.trim() === c.trim());
       return i >= 0 ? `(${L(i)}) ${c}` : c;
     }).join(', ');
-    const ansColor = it.status === 'correct' ? '#15803d' : it.status === 'wrong' ? '#b91c1c' : '#15803d';
-    inlineAnsHtml = `<div class="ans-line" style="font-weight:700;color:${ansColor};margin:4px 0 6px 0;font-size:12px;">Ans. - ${esc(ansSummary)}.</div>`;
+    const ansColor = '#15803d';
+    const wrongAns = (it.status === 'wrong' && it.userAnswer)
+      ? ` <span class="wrong-ans" style="color:#b91c1c;font-weight:600;font-size:11px;">(You answered: ${esc(it.userAnswer)})</span>`
+      : '';
+    inlineAnsHtml = `<div class="ans-line" style="font-weight:700;color:${ansColor};margin:4px 0 6px 0;font-size:12px;">Ans. - ${esc(ansSummary)}.${wrongAns}</div>`;
   }
   const rat = (emoji: string, text: string | undefined) => {
     const bullets = rationaleBullets(text);
