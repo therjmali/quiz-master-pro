@@ -32,4 +32,10 @@ jobs:
         if: always()
         shell: bash
         run: |
-          [ -f cloud-check.txt ] && while IFS= read -r line; do [ -n "$line" ] && echo "::notice title=Cloud check::${line}"; done < cloud-check.txt || true
+          if [ -f cloud-check.txt ]; then
+            while IFS= read -r line; do
+              if [ -n "$line" ]; then
+                echo "::notice title=Cloud check::${line}"
+              fi
+            done < cloud-check.txt
+          fi
