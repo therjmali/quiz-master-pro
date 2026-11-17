@@ -329,8 +329,8 @@ function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: nu
       return i >= 0 ? `(${LETTER(i)}) ${c}` : c;
     }).join(', ');
     const ansColor = T.okInk;
-    const ansLine = (it.status === 'wrong' && it.userAnswer)
-      ? `Ans. - ${ansSummary}. (You answered: ${it.userAnswer})`
+    const ansLine = (it.status === 'wrong' && it.user)
+      ? `Ans. - ${ansSummary}. (You answered: ${it.user})`
       : `Ans. - ${ansSummary}.`;
     const ansLines = wrap(set, ansLine, Math.max(20, rightEdge - optX), fOpt, true, 4);
     ansLines.forEach((ln, li) => {
