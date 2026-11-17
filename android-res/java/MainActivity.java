@@ -229,6 +229,56 @@ public class MainActivity extends BridgeActivity {
                 return false;
             }
         }
+
+        @JavascriptInterface
+        public String readClipboard() {
+            final java.util.concurrent.atomic.AtomicReference<String> ref = new java.util.concurrent.atomic.AtomicReference<>("");
+            final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (cm != null && cm.hasPrimaryClip()) {
+                            android.content.ClipData clip = cm.getPrimaryClip();
+                            if (clip != null && clip.getItemCount() > 0) {
+                                CharSequence cs = clip.getItemAt(0).coerceToText(MainActivity.this);
+                                if (cs != null) ref.set(cs.toString());
+                            }
+                        }
+                    } catch (Throwable ignored) {}
+                    latch.countDown();
+                }
+            });
+            try {
+                latch.await(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ignored) {}
+            return ref.get();
+        }
+
+        @JavascriptInterface
+        public boolean writeClipboard(final String text) {
+            final java.util.concurrent.atomic.AtomicBoolean ref = new java.util.concurrent.atomic.AtomicBoolean(false);
+            final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (cm != null) {
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("text", text != null ? text : "");
+                            cm.setPrimaryClip(clip);
+                            ref.set(true);
+                        }
+                    } catch (Throwable ignored) {}
+                    latch.countDown();
+                }
+            });
+            try {
+                latch.await(500, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (InterruptedException ignored) {}
+            return ref.get();
+        }
     }
 
     @Override

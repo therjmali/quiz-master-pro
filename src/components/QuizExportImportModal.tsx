@@ -15,6 +15,7 @@ import { loadFullResults } from '../utils/reports/loadFull';
 import { storeQuizDetail } from '../hooks/useHistorySync';
 import { getQuizDetail } from 'zitejs/api';
 import { useAuth } from 'zitejs/auth';
+import { readClipboardText } from '../platform/clipboard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -676,7 +677,7 @@ function ImportPanel({ onStartQuiz, onClose, onImportToHistory, isLoggedIn }: {
 
   const handleClipboard = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await readClipboardText();
       if (!text.trim()) { toast.error('Clipboard is empty'); return; }
       setPasteText(text);
       setSource('paste');

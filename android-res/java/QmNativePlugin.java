@@ -169,4 +169,51 @@ public class QmNativePlugin extends Plugin {
         res.put("pinned", ok);
         call.resolve(res);
     }
+
+    @PluginMethod
+    public void readClipboard(final PluginCall call) {
+        bridge.executeOnMainThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                    String value = "";
+                    if (cm != null && cm.hasPrimaryClip()) {
+                        android.content.ClipData clip = cm.getPrimaryClip();
+                        if (clip != null && clip.getItemCount() > 0) {
+                            CharSequence cs = clip.getItemAt(0).coerceToText(getContext());
+                            if (cs != null) value = cs.toString();
+                        }
+                    }
+                    JSObject res = new JSObject();
+                    res.put("value", value);
+                    call.resolve(res);
+                } catch (Exception e) {
+                    call.reject("Failed to read clipboard: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    @PluginMethod
+    public void writeClipboard(final PluginCall call) {
+        final String str = call.getString("string", "");
+        bridge.executeOnMainThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager) getContext().getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (cm != null) {
+                        android.content.ClipData clip = android.content.ClipData.newPlainText("text", str != null ? str : "");
+                        cm.setPrimaryClip(clip);
+                    }
+                    JSObject res = new JSObject();
+                    res.put("success", true);
+                    call.resolve(res);
+                } catch (Exception e) {
+                    call.reject("Failed to write clipboard: " + e.getMessage());
+                }
+            }
+        });
+    }
 }

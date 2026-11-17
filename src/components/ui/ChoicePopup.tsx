@@ -61,7 +61,7 @@ export function SwitchRow({ label, hint, icon, checked, onChange, disabled }: {
   label: string; hint?: string; icon?: React.ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean;
 }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)}
+    <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
       className={`qmp-choice qmp-switch-row ${checked ? 'is-on' : ''}`} style={{ minHeight: 0, minWidth: 0 }}>
       {icon != null && <span className="qmp-choice-icon" aria-hidden="true">{icon}</span>}
       <span className="qmp-choice-text">

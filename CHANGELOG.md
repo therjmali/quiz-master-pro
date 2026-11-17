@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.7.0] - 2026-11-17
+
+Bug resolution, state management fixes, native WebView clipboard bridge, redundant UI deprecation, and report visual indicators refactoring.
+
+### Fixed & Enhanced
+- **State Management & Toggle Switches**: Fixed non-functional toggle switches in the New Quiz Dashboard ("Shuffle" questions and options) and the Post-Quiz Dashboard ("Rationale - Book/AI" options). Replaced conflict-prone `<label>` wrappers with interactive cards, stopped event bubbling via `e.stopPropagation()`, added keyboard accessibility (`Enter`/`Space`), and ensured clean state propagation to quiz generators and report renderers.
+- **Native Android & WebView Clipboard Bridge**: Eradicated the "Clipboard blocked — paste manually (Ctrl+V)" error on mobile WebView and Capacitor APK. Implemented direct native clipboard bridging (`readClipboard` and `writeClipboard`) in Android's `MainActivity.java` and `QmNativePlugin.java` via system `ClipboardManager`, integrated `@capacitor/clipboard`, and wired automatic fallback to standard web clipboard APIs in `src/platform/clipboard.ts`. Updated Setup Screen and import modal paste flows.
+- **Redundant UI Deprecation**: Completely removed the redundant "Show/Hide Answers" modal popup (eye icon and monkey emoji) from the post-quiz review header (`ReviewSection.tsx`). Answers are now rendered statically and permanently based on attempt status.
+- **Report Visual Indicators (✅ / ❌ Refactor)**: Refactored MCQ option feedback in `ReviewCard.tsx` to provide instant, clear visual status:
+  - **Correct Questions**: Correct option marked with `✅` and green background (`bg-green-50 dark:bg-green-950/30 border-green-200 text-green-800 dark:text-green-300`).
+  - **Incorrect Questions**: User's wrong selection marked with `❌` and red background (`bg-red-50 dark:bg-red-950/30 border-red-200 text-red-800 dark:text-red-300`); actual correct option marked with `✅` and green background.
+  - **Skipped Questions**: No `❌` indicators; correct option marked with `✅` and green background.
+  - Preserved bold option letters `(A)`, `(B)`, `(C)`, `(D)` and color-coded inline answer summary line.
+
 ## [3.6.0] - 2026-11-16
 
 Tablet responsiveness, modal close fixes, unclickable filter resolution, zero-lag report zoom & virtualization, and ultra-premium visual polish.

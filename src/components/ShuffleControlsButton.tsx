@@ -11,10 +11,19 @@ interface Props {
 
 function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id?: string }) {
   return (
-    <button type="button" id={id} onClick={() => onChange(!checked)} role="switch" aria-checked={checked}
-      className={`relative w-11 h-6 rounded-full border-2 transition-all flex-shrink-0 focus:outline-none ${
+    <button
+      type="button"
+      id={id}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      role="switch"
+      aria-checked={checked}
+      className={`relative w-11 h-6 rounded-full border-2 transition-all flex-shrink-0 focus:outline-none cursor-pointer ${
         checked ? 'bg-primary border-primary/60 shadow-md shadow-primary/25' : 'bg-foreground/10 border-foreground/20'
-      }`}>
+      }`}
+    >
       <span className={`absolute w-4 h-4 bg-white rounded-full top-[3px] shadow transition-all duration-200 ${checked ? 'left-[23px]' : 'left-[3px]'}`} />
     </button>
   );
@@ -68,8 +77,12 @@ export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions
 
         {/* Controls */}
         <div className="p-3 space-y-2">
-          <label htmlFor="toggle-shuffle-q"
-            className={`flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onToggleQuestions(!shuffleQuestions)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleQuestions(!shuffleQuestions); } }}
+            className={`flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all ${
               shuffleQuestions ? 'bg-blue-500/8 border-blue-500/15' : 'bg-foreground/[0.02] border-border hover:bg-foreground/[0.04]'
             }`}>
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -84,10 +97,14 @@ export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions
               </div>
             </div>
             <ToggleSwitch id="toggle-shuffle-q" checked={shuffleQuestions} onChange={onToggleQuestions} />
-          </label>
+          </div>
 
-          <label htmlFor="toggle-shuffle-o"
-            className={`flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onToggleOptions(!shuffleOptions)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleOptions(!shuffleOptions); } }}
+            className={`flex items-center justify-between gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all ${
               shuffleOptions ? 'bg-blue-500/8 border-blue-500/15' : 'bg-foreground/[0.02] border-border hover:bg-foreground/[0.04]'
             }`}>
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
@@ -102,7 +119,7 @@ export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions
               </div>
             </div>
             <ToggleSwitch id="toggle-shuffle-o" checked={shuffleOptions} onChange={onToggleOptions} />
-          </label>
+          </div>
         </div>
 
         {/* Quick actions */}

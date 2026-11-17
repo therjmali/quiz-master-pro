@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "3.6.0",
+  "version": "3.7.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",
+    "@capacitor/clipboard": "^8.0.1",
     "@capacitor/core": "^8.6.0",
     "@capacitor/filesystem": "^8.1.5",
     "@capacitor/local-notifications": "^8.3.1",

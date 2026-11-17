@@ -12,6 +12,7 @@ import SubjectManager from './SubjectManager';
 import { syncSubjectsFromHistory, getUserSubjects } from '../../utils/subjects';
 import ShuffleControlsButton from '../ShuffleControlsButton';
 import AISourceControls from '../AISourceControls';
+import { readClipboardText, writeClipboardText } from '../../platform/clipboard';
 
 import BulkImportModal from './BulkImportModal';
 import PhotoQuizModal from './PhotoQuizModal';
@@ -207,7 +208,7 @@ function CopyPromptButton() {
 
   const handleCopy = useCallback(() => {
     const prompt = COPY_PROMPT_TEXT;
-    navigator.clipboard.writeText(prompt).then(() => {
+    writeClipboardText(prompt).then(() => {
       setCopied(true);
       toast.success('MCQ format prompt copied');
       setTimeout(() => setCopied(false), 2000);
@@ -804,15 +805,19 @@ export default function SetupScreen({
             <button
               onClick={async () => {
                 try {
-                  const t = await navigator.clipboard.readText();
-                  setText(t);
-                  toast.success('Pasted!');
+                  const t = await readClipboardText();
+                  if (t.trim()) {
+                    setText(t);
+                    toast.success('Pasted!');
+                  } else {
+                    toast.error('Clipboard is empty');
+                  }
                 } catch {
                   toast.error('Clipboard blocked — paste manually (Ctrl+V).');
                 }
               }}
               disabled={loading}
-              className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 text-foreground/60 text-xs font-bold py-2.5 px-3 rounded-xl transition-all active:scale-95 active:bg-foreground/10 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 bg-foreground/5 border border-foreground/10 text-foreground/60 text-xs font-bold py-2.5 px-3 rounded-xl transition-all active:scale-95 active:bg-foreground/10 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <Clipboard className="w-3.5 h-3.5" /> Paste
             </button>

@@ -21,10 +21,18 @@ interface Props {
 
 function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void }) {
   return (
-    <button onClick={onChange} role="switch" aria-checked={checked}
-      className={`relative w-11 h-6 rounded-full border-2 transition-all flex-shrink-0 focus:outline-none ${
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange();
+      }}
+      role="switch"
+      aria-checked={checked}
+      className={`relative w-11 h-6 rounded-full border-2 transition-all flex-shrink-0 focus:outline-none cursor-pointer ${
         checked ? 'bg-primary border-primary/60 shadow-md shadow-primary/20' : 'bg-foreground/10 border-foreground/20'
-      }`}>
+      }`}
+    >
       <motion.span layout className="absolute w-4 h-4 bg-white rounded-full top-[3px] shadow-sm"
         animate={{ left: checked ? '23px' : '3px' }}
         transition={{ type: 'spring', stiffness: 500, damping: 35 }} />
@@ -91,9 +99,14 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
         {/* Controls */}
         <div className="p-3 space-y-2">
           {/* Book Rationale */}
-          <div className={`p-3 rounded-xl border transition-all ${
-            prefs.showBook ? 'bg-amber-500/8 border-amber-500/18' : 'bg-foreground/[0.02] border-border'
-          }`}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onChange({ ...prefs, showBook: !prefs.showBook })}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange({ ...prefs, showBook: !prefs.showBook }); } }}
+            className={`p-3 rounded-xl border cursor-pointer select-none transition-all ${
+              prefs.showBook ? 'bg-amber-500/8 border-amber-500/18' : 'bg-foreground/[0.02] border-border hover:bg-foreground/[0.04]'
+            }`}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
@@ -111,9 +124,14 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
           </div>
 
           {/* AI Rationale */}
-          <div className={`p-3 rounded-xl border transition-all ${
-            prefs.showAi ? 'bg-purple-500/8 border-purple-500/18' : 'bg-foreground/[0.02] border-border'
-          }`}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => onChange({ ...prefs, showAi: !prefs.showAi })}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange({ ...prefs, showAi: !prefs.showAi }); } }}
+            className={`p-3 rounded-xl border cursor-pointer select-none transition-all ${
+              prefs.showAi ? 'bg-purple-500/8 border-purple-500/18' : 'bg-foreground/[0.02] border-border hover:bg-foreground/[0.04]'
+            }`}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 flex-1 min-w-0">
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
@@ -130,7 +148,15 @@ export default function RationaleControlsButton({ prefs, onChange, reportHelper,
             </div>
 
             {prefs.showAi && (
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReportHelperChange(aiOn ? 'off' : 'cloud');
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onReportHelperChange(aiOn ? 'off' : 'cloud'); } }}
+                className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3 cursor-pointer select-none">
                 <div className="min-w-0">
                   <div className="text-xs font-black text-foreground/90">AI Generation</div>
                   <div className="mt-0.5 text-[9px] leading-snug text-foreground/40" data-testid="rationale-ai-line">{aiLine}</div>

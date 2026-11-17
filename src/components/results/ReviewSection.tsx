@@ -1,8 +1,7 @@
-import { ChoiceList, PopupShell, SwitchRow } from '../ui/ChoicePopup';
+import { PopupShell, SwitchRow } from '../ui/ChoicePopup';
 import { useState, useMemo, useCallback, useRef, useLayoutEffect } from 'react';
 import { toast } from 'sonner';
 import { hapticTap } from '../../utils/haptics';
-import { usePersistedState } from '../../hooks/usePersistedState';
 import { QuizResult, QuizSettings, ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import ReviewCard from './ReviewCard';
 import { loadFileTree, saveFileTree, addBookmarkToTree, removeBookmarkNode, isQuestionBookmarked, getAllBookmarks, FileNode, BookmarkData } from '../../utils/fileTree';
@@ -50,8 +49,7 @@ export default function ReviewSection({
   const [explainAllLoading, setExplainAllLoading] = useState(false);
   const [explainProgress, setExplainProgress] = useState({ done: 0, total: 0 });
   const [explainDifficulty, setExplainDifficulty] = useState<string>('all');
-  const [showAnswersInline, setShowAnswersInline] = usePersistedState('qmp_show_answers_inline', true);
-  const [reviewPopup, setReviewPopup] = useState<'answers' | 'include' | null>(null);
+  const [reviewPopup, setReviewPopup] = useState<'include' | null>(null);
 
   // Scroll preservation ref — captures scrollY before toggle, restores after render
   const savedScrollRef = useRef<number | null>(null);
@@ -218,10 +216,6 @@ export default function ReviewSection({
       {/* View options: capsules, one line, swipe sideways (sticks cleanly below navbar) */}
       <div className="sticky top-[60px] sm:top-[68px] z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md pointer-events-auto shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
         <div className="qmp-capsules pointer-events-auto" data-testid="review-options">
-          {/* Answers / Include open a small window (nothing changes by a bare tap) */}
-          <button type="button" className="qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95" data-on={showAnswersInline} aria-haspopup="dialog" data-testid="review-opt-answers" onClick={() => setReviewPopup('answers')}>
-            <span className="leading-none">{showAnswersInline ? '👁️' : '🙈'}</span> Answers <span className="text-[9px] opacity-50">▾</span>
-          </button>
           <button type="button" className="qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95" data-on={rationalePrefs.showBook || rationalePrefs.showAi} aria-haspopup="dialog" data-testid="review-opt-include" onClick={() => setReviewPopup('include')}>
             <span className="leading-none">📖</span> Rationale <span className="text-[9px] opacity-50">▾</span>
           </button>
@@ -253,12 +247,6 @@ export default function ReviewSection({
             }
           </button>
         </div>
-        <PopupShell open={reviewPopup === 'answers'} onClose={() => setReviewPopup(null)} title="Answers" subtitle="Show or hide the correct answers" icon={showAnswersInline ? '👁️' : '🙈'} testId="review-popup-answers">
-          <ChoiceList label="Answers" value={showAnswersInline ? 'show' : 'hide'} onSelect={v => { preserveScroll(() => setShowAnswersInline(v === 'show')); setReviewPopup(null); }} options={[
-            { value: 'show', label: 'Show answers', hint: 'Green option and ✓ on every card', icon: '👁️' },
-            { value: 'hide', label: 'Hide answers', hint: 'Practise without seeing them', icon: '🙈' },
-          ]} />
-        </PopupShell>
         <PopupShell open={reviewPopup === 'include'} onClose={() => setReviewPopup(null)} title="Rationale" subtitle="What to show under each question" icon="📖" testId="review-popup-include">
           <SwitchRow label="Book rationale" hint="The explanation from your notes" icon="📖" checked={rationalePrefs.showBook} onChange={v => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showBook: v }))} />
           <SwitchRow label="AI rationale" hint="Explanations written by your AI key" icon="🤖" checked={rationalePrefs.showAi} onChange={v => preserveScroll(() => onRationalePrefsChange({ ...rationalePrefs, showAi: v }))} />
@@ -284,7 +272,6 @@ export default function ReviewSection({
               getAiRationale={getAiRationale}
               showBook={rationalePrefs.showBook}
               showAi={rationalePrefs.showAi}
-              showAnswersInline={showAnswersInline}
               aiEnabled={aiEnabled}
               bookmarked={bookmarkedSet.has(q.question)}
               onToggleBookmark={() => handleToggleBookmark(q, userAnswer)}

@@ -17,7 +17,6 @@ interface Props {
   getAiRationale: (question: string, correctAnswer: string, userAnswer: string | null, status: 'correct' | 'wrong' | 'skipped') => Promise<string>;
   showBook?: boolean;
   showAi?: boolean;
-  showAnswersInline?: boolean;
   aiEnabled?: boolean;
   bookmarked?: boolean;
   onToggleBookmark?: () => void;
@@ -30,7 +29,7 @@ function MultilineText({ text }: { text: string }) {
 
 function ReviewCardInner({
   q, index, userAnswer, rationaleCache, getAiRationale,
-  showBook = true, showAi = true, showAnswersInline = true, aiEnabled = true,
+  showBook = true, showAi = true, aiEnabled = true,
   bookmarked = false, onToggleBookmark, onAskAI,
 }: Props) {
   // Double-tap to bookmark
@@ -86,6 +85,9 @@ function ReviewCardInner({
 
   // "📖 Rational" on the card overrides the global Book / AI switches for this one question.
   const [ratOverride, setRatOverride] = useState<boolean | null>(null);
+  useEffect(() => {
+    setRatOverride(null);
+  }, [showBook, showAi]);
   const effBook = ratOverride ?? showBook;
   const effAi = ratOverride ?? showAi;
   const ratOpen = effBook || effAi;
@@ -136,44 +138,40 @@ function ReviewCardInner({
         {opts.map((opt, i) => {
           const isThisCorrect = opt === q.correctAnswer || q.correctAnswers?.includes(opt) || false;
           const isThisUser    = opt === userAnswer;
-          let cls = 'bg-background/60 border-border';
-          let badge: React.ReactNode = null;
+          let bgClass = 'bg-background/60 border-border text-foreground/85';
+          let icon: React.ReactNode = null;
 
-          if (showAnswersInline) {
-            if (isThisCorrect) {
-              cls = 'bg-emerald-500/15 border-emerald-500/35';
-              badge = <span className="flex-shrink-0 whitespace-nowrap text-[11px] font-black text-emerald-600 dark:text-emerald-400" aria-label="Correct answer">✓</span>;
-            } else if (isThisUser && !isCorrect) {
-              cls = 'bg-red-500/15 border-red-500/35';
-              badge = <span className="flex-shrink-0 whitespace-nowrap text-[11px] font-black text-red-600 dark:text-red-400" aria-label="Your answer">✗</span>;
-            }
+          if (isThisCorrect) {
+            bgClass = 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-800 dark:text-green-300 font-medium';
+            icon = <span className="ml-auto flex-shrink-0 text-base leading-none" aria-label="Correct answer">✅</span>;
+          } else if (isThisUser && !isCorrect) {
+            bgClass = 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-800 dark:text-red-300 font-medium';
+            icon = <span className="ml-auto flex-shrink-0 text-base leading-none" aria-label="Your incorrect answer">❌</span>;
           }
 
           return (
-            <div key={i} className={`flex items-center justify-between gap-2 rounded-xl border p-3 ${cls}`}>
-              <span className="text-sm leading-snug text-foreground/85">
+            <div key={i} className={`flex items-center justify-between gap-2 rounded-xl border p-3 transition-colors ${bgClass}`}>
+              <span className="text-sm leading-snug">
                 <span className="mr-1.5 text-xs font-bold text-foreground">({String.fromCharCode(65 + i)})</span>
                 {opt}
               </span>
-              {badge}
+              {icon}
             </div>
           );
         })}
       </div>
 
       {/* Inline Answer Line: immediately below options, bold, color-coded */}
-      {showAnswersInline && (
-        <div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs">
-          <span className={`font-bold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
-            Ans. - ({String.fromCharCode(65 + Math.max(0, opts.indexOf(q.correctAnswer)))}) {q.correctAnswer}.
+      <div className="mb-3 flex items-center gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs">
+        <span className={`font-bold ${isCorrect ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+          Ans. - ({String.fromCharCode(65 + Math.max(0, opts.indexOf(q.correctAnswer)))}) {q.correctAnswer}.
+        </span>
+        {!isCorrect && !isSkipped && (
+          <span className="text-[11px] text-foreground/50 ml-auto">
+            (You answered: <span className="font-semibold text-red-500">{userAnswer}</span>)
           </span>
-          {!isCorrect && !isSkipped && (
-            <span className="text-[11px] text-foreground/50 ml-auto">
-              (You answered: <span className="font-semibold text-red-500">{userAnswer}</span>)
-            </span>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Rationale */}
       <div className={`grid transition-all duration-300 ease-in-out ${ratOpen ? 'mb-3 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
@@ -247,7 +245,6 @@ const ReviewCard = memo(ReviewCardInner, (prev, next) => {
     prev.userAnswer === next.userAnswer &&
     prev.showBook === next.showBook &&
     prev.showAi === next.showAi &&
-    prev.showAnswersInline === next.showAnswersInline &&
     prev.aiEnabled === next.aiEnabled &&
     prev.bookmarked === next.bookmarked &&
     // Compare only this question's cache entry instead of entire object reference
