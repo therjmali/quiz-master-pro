@@ -216,13 +216,19 @@ export function useHistorySync(user: any, isLoading: boolean) {
 
     try {
       const resp = await getQuizDetail({ id });
-      if (!resp.record) return null;
-      const full = parseFullRecord(resp.record);
-      detailCacheRef.current.set(id, full);
-      return full;
-    } catch {
-      return null;
-    }
+      if (resp.record) {
+        const full = parseFullRecord(resp.record);
+        detailCacheRef.current.set(id, full);
+        return full;
+      }
+    } catch { /* offline or not reachable: use the copy on this device */ }
+    // The copy on this device (what the cloud sync wrote here) is a valid source too: a quiz that arrived from
+    // another device opens without any network, instead of failing as "data not loaded".
+    try {
+      const local = (await getHistoryAsync()).find(r => r.id === id && (r.quizData?.length ?? 0) > 0);
+      if (local) { detailCacheRef.current.set(id, local); return local; }
+    } catch { /* no local copy either */ }
+    return null;
   }, []);
 
   /** Cache a QuizResult that was just created locally (e.g. after quiz completion) */

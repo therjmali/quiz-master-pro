@@ -1,7 +1,8 @@
 import { useState, useEffect, memo } from 'react';
 import { useAccount } from '../platform/cloud/useAccount';
 import { useCloudAuth } from '../platform/cloud/authStore';
-import { useSyncState } from '../platform/cloud/syncEngine';
+import { useSyncState, syncNow } from '../platform/cloud/syncEngine';
+import { toast } from 'sonner';
 import {
   GraduationCap,
   Cloud,
@@ -19,7 +20,8 @@ import type { SessionMode } from './SessionSelector';
 import type { QuizResult } from '../types/quiz';
 import { triggerOpenSettings } from './cloud/CloudGate';
 
-export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'error';
+import { syncBadgeCopy, type SyncStatus } from '../platform/cloud/syncBadge';
+export type { SyncStatus };
 
 interface SubjectOption {
   name: string;
@@ -54,42 +56,32 @@ interface NavbarProps {
   onOpenSyncCenter?: () => void;
 }
 
-function SyncBadge({ status, onClick, deviceMode = false }: { status: SyncStatus; onClick?: () => void; deviceMode?: boolean }) {
+function SyncBadge({ status, pending = 0, onClick, deviceMode = false }: { status: SyncStatus; pending?: number; onClick?: () => void; deviceMode?: boolean }) {
+  const copy = syncBadgeCopy(status, pending);
+  const tone = deviceMode || copy.tone === 'ok'
+    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
+    : copy.tone === 'busy' ? 'border-primary/25 bg-primary/10 text-primary'
+    : copy.tone === 'warn' ? 'border-amber-500/35 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+    : copy.tone === 'bad' ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300'
+    : 'border-border/60 bg-card/40 text-muted-foreground';
+  // Problems always say so in words; a healthy badge keeps to the icon on a narrow phone.
+  const wordsOnPhone = copy.tone === 'bad' || copy.tone === 'warn';
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-1.5 rounded-full border px-2 sm:px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-all hover:scale-105 active:scale-95 shrink-0 ${
-        deviceMode || status === 'synced'
-          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300'
-          : status === 'syncing'
-            ? 'border-primary/25 bg-primary/10 text-primary'
-            : status === 'error'
-              ? 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300'
-              : 'border-border/60 bg-card/40 text-muted-foreground'
-      }`}
-      title={
-        deviceMode
-          ? 'Signed in on this device — tap for account & backup'
-          : status === 'syncing'
-            ? 'Cloud sync — syncing…'
-            : status === 'synced'
-              ? 'Cloud sync — everything is saved'
-              : status === 'error'
-                ? 'Cloud sync — needs attention'
-                : 'Cloud sync & devices'
-      }
-      aria-label="Open account and sync"
+      data-testid="sync-badge"
+      data-status={deviceMode ? 'device' : status}
+      className={`flex items-center gap-1.5 rounded-full border px-2 sm:px-2.5 py-1.5 text-[10px] font-black tracking-wide shadow-[0_8px_18px_-12px_rgba(0,0,0,0.7)] transition-all hover:scale-[1.03] active:scale-95 ${tone}`}
+      title={deviceMode ? 'Signed in on this device: tap for account & backup' : copy.title}
+      aria-label={deviceMode ? 'Open account and sync' : copy.label.replace(/^\S+\s/, '')}
     >
       {deviceMode && <ShieldCheck className="h-3 w-3" />}
       {!deviceMode && status === 'syncing' && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-      {!deviceMode && status === 'synced' && <Cloud className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />}
-      {!deviceMode && status === 'error' && <CloudOff className="h-3 w-3 text-red-600 dark:text-red-300" />}
-      {!deviceMode && status === 'offline' && <CloudOff className="h-3 w-3 text-muted-foreground" />}
-      {!deviceMode && status === 'idle' && <Cloud className="h-3 w-3 text-muted-foreground" />}
-      <span className="hidden sm:inline">
-        {status === 'syncing' ? 'Syncing' : status === 'synced' ? 'Saved' : status === 'error' ? 'Error' : 'Local'}
-      </span>
+      {!deviceMode && (status === 'synced' || status === 'idle' || status === 'paused') && <Cloud className="h-3 w-3" />}
+      {!deviceMode && (status === 'offline' || status === 'error') && <CloudOff className="h-3 w-3" />}
+      {!deviceMode && (status === 'pending' || status === 'attention') && <Cloud className="h-3 w-3" />}
+      {!deviceMode && <span className={wordsOnPhone ? '' : 'hidden sm:inline'}>{copy.label.replace(/^\S+\s/, '')}</span>}
     </button>
   );
 }
@@ -133,16 +125,33 @@ function NavbarInner({
     };
   }, []);
 
-  // Compute live sync status from Supabase cloud sync engine
+  // Live status from the sync engine. Every phase maps to its own state: the old mapping showed "Saved"
+  // for offline, waiting, undecided and not-set-up, which is how a device could say it was synced while it was not.
   const effectiveSyncStatus: SyncStatus = ((): SyncStatus => {
     if (cloudAuth.status === 'signed-in') {
       if (syncEngine.phase === 'syncing') return 'syncing';
-      if (syncEngine.phase === 'error') return 'error';
-      return 'synced';
+      if (syncEngine.phase === 'error' || syncEngine.phase === 'not-set-up') return 'error';
+      if (syncEngine.phase === 'offline' || !syncEngine.online) return 'offline';
+      if (syncEngine.phase === 'needs-choice' || syncEngine.needsChoice) return 'attention';
+      if (syncEngine.phase === 'paused') return 'paused';
+      if (syncEngine.phase === 'pending' || (syncEngine.pendingCount ?? 0) > 0) return 'pending';
+      if (syncEngine.phase === 'synced') return 'synced';
+      return 'idle';
     }
     if (syncStatus === 'syncing') return 'syncing';
     return 'offline';
   })();
+  // Tapping an error / offline badge retries right away (backoff reset); anything else opens Cloud sync.
+  const onBadgeTap = () => {
+    if (effectiveSyncStatus === 'error' || effectiveSyncStatus === 'offline' || effectiveSyncStatus === 'pending') {
+      void syncNow('manual-retry').then(res => {
+        if (res.ok) toast.success('☁️ Synced');
+        else if (res.error) toast.error(res.error === 'Offline' ? 'Still offline. Your changes are safe on this device and upload automatically.' : `Sync: ${res.error}`);
+      }).catch(() => undefined);
+      return;
+    }
+    (onOpenSyncCenter || (() => { onOpenSettings(); triggerOpenSettings('cloud'); }))();
+  };
 
   return (
     <>
@@ -196,7 +205,8 @@ function NavbarInner({
                 status={effectiveSyncStatus}
                 // A device account has nothing to sync: show it as "signed in" rather than "never synced".
                 deviceMode={cloudAuth.status === 'signed-in' && !cloudAuth.configured}
-                onClick={onOpenSyncCenter || (() => { onOpenSettings(); triggerOpenSettings('cloud'); })}
+                pending={syncEngine.pendingCount ?? 0}
+                onClick={onBadgeTap}
               />
 
 

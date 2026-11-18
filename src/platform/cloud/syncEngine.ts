@@ -42,10 +42,12 @@ import { mergeSections, onlySyncable, planPush, remoteFromDoc, type Sections } f
 import type { MergeConflict } from './merge3';
 import * as remoteApi from './remote';
 import type { RemoteDoc, RevisionRow } from './remote';
-import { subscribeToRealtime, unsubscribeFromRealtime } from './realtimeSync';
+import { subscribeToRealtime, unsubscribeFromRealtime, sendSyncPing, isRealtimeConnected } from './realtimeSync';
 import {
   enqueueMutation,
-  dequeueMultiple,
+  dequeueQueuedBefore,
+  resetBackoff,
+  getStuckItems,
   getEligibleItems,
   getPendingQueueCount,
   recordFailure,
@@ -116,7 +118,11 @@ export const DATA_APPLIED_EVENT = 'qm:cloud-data-applied';
 
 const CONFLICTS_KEY = 'qm-sync-conflicts-v1';
 const AUTOSYNC_KEY = 'qm-cloud-autosync-v1';
-const POLL_MS = 45_000;
+/** Poll interval while Realtime is connected (a safety net) and while it is not (the main way changes arrive). */
+const POLL_MS_REALTIME = 120_000;
+const POLL_MS_FALLBACK = 20_000;
+/** One resume / focus / reconnect usually fires several events at once: they become a single sync. */
+const FOREGROUND_DEBOUNCE_MS = 1_200;
 const LOCAL_DEBOUNCE_MS = 2500;
 const QUEUE_WORKER_INTERVAL_MS = 5000;
 const MAX_CONFLICTS = 40;
@@ -269,7 +275,7 @@ function recordConflicts(key: string, conflicts: MergeConflict[]): SyncConflictR
 let dirty = true; // device may differ from last sync
 let changeSeq = 0;
 let started = false;
-let pollTimer: ReturnType<typeof setInterval> | null = null;
+let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let queueWorkerTimer: ReturnType<typeof setInterval> | null = null;
 let localTimer: ReturnType<typeof setTimeout> | null = null;
 let settleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -317,41 +323,21 @@ export function startSyncEngine(): void {
     error: null,
   });
 
-  // ── 1. Foreground lifecycle listeners ──
-  const onVisibility = () => {
-    if (document.visibilityState === 'visible' && state.autoSync) {
-      void syncFromCloud('foreground-resume');
-    }
-  };
-
-  const onWindowFocus = () => {
-    if (state.autoSync) {
-      void syncFromCloud('window-focus');
-    }
-  };
-
+  // ── 1. Foreground lifecycle: one coalesced sync per resume, whichever event fires first ──
+  const onVisibility = () => { if (document.visibilityState === 'visible') requestForegroundSync('foreground-resume'); };
+  const onWindowFocus = () => requestForegroundSync('window-focus');
   const onOnline = () => {
     setState({ online: true });
-    if (state.autoSync) {
-      void syncFromCloud('online-reconnect');
-    }
+    requestForegroundSync('online-reconnect');
   };
-
   const onOffline = () => {
-    setState({
-      online: false,
-      phase: 'offline',
-      pendingCount: getPendingQueueCount(),
-    });
+    setState({ online: false, phase: 'offline', pendingCount: getPendingQueueCount() });
   };
-
   const onLocal = (key?: string) => {
     noteLocalChange(key);
     if (!state.autoSync) return;
     if (localTimer) clearTimeout(localTimer);
-    localTimer = setTimeout(() => {
-      void syncNow('local-change');
-    }, LOCAL_DEBOUNCE_MS);
+    localTimer = setTimeout(() => { void syncNow('local-change'); }, LOCAL_DEBOUNCE_MS);
   };
 
   if (typeof document !== 'undefined') {
@@ -365,60 +351,65 @@ export function startSyncEngine(): void {
     unsubscribers.push(() => window.removeEventListener('offline', onOffline));
   }
 
-  // Capacitor native App resume listener (Android/iOS)
-  try {
-    import('@capacitor/app').then(({ App }) => {
-      const handle = App.addListener('appStateChange', (appState) => {
-        if (appState.isActive && state.autoSync) {
-          void syncFromCloud('capacitor-app-resume');
-        }
-      });
-      unsubscribers.push(() => {
-        handle.then(h => h.remove()).catch(() => {});
-      });
-    }).catch(() => {});
-  } catch {}
+  // Capacitor (Android / iOS): the WebView does not always fire visibilitychange on resume, so listen natively too.
+  const myRun = ++runGeneration;
+  void import('@capacitor/app').then(({ App }) => {
+    const handle = App.addListener('appStateChange', ({ isActive }) => { if (isActive) requestForegroundSync('capacitor-app-resume'); });
+    const remove = () => { void handle.then(h => h.remove()).catch(() => undefined); };
+    if (!started || myRun !== runGeneration) remove();   // the engine was stopped while the plugin loaded
+    else unsubscribers.push(remove);
+  }).catch(() => undefined);
 
   unsubscribers.push(onLocalChange(onLocal));
 
-  // ── 2. Supabase Realtime WebSocket subscription ──
+  // ── 2. Realtime: a ping from another device (Broadcast) or a row change (Postgres Changes) pulls at once ──
   try {
-    const unsubRealtime = subscribeToRealtime(userId, {
-      onRemoteChange: (table) => {
-        if (state.autoSync && state.phase !== 'disabled') {
-          void syncFromCloud(`realtime:${table}`);
-        }
-      },
-      onStatusChange: (status) => {
-        if (status === 'ERROR') {
-          // Fall back gracefully to background polling if WebSockets fail
-        }
-      },
+    const unsubRealtime = subscribeToRealtime(userId, getDeviceIdentity().id, {
+      onRemoteChange: (source) => requestForegroundSync(`realtime:${source}`, 250),
+      onStatusChange: () => schedulePoll(),   // connected: relax the poll; not connected: poll faster
     });
     unsubscribers.push(unsubRealtime);
-  } catch {}
+  } catch { /* Realtime is an accelerator, never a requirement */ }
 
-  // ── 3. Periodic poll & Queue worker with exponential backoff ──
-  pollTimer = setInterval(() => {
-    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-    if (state.autoSync) void syncNow('poll');
-  }, POLL_MS);
-
+  // ── 3. Poll (adaptive) and the outbox retry worker (exponential backoff) ──
+  schedulePoll();
   queueWorkerTimer = setInterval(() => {
-    const eligible = getEligibleItems();
-    if (eligible.length > 0 && state.online && state.autoSync && !running) {
-      void syncNow('queue-backoff-retry');
-    }
+    if (!state.online || !state.autoSync || running) return;
+    if (getEligibleItems().length > 0) void syncNow('queue-backoff-retry');
+    else if (getStuckItems().length > 0 && state.phase !== 'error') setState({ phase: 'error', error: 'Some changes could not be uploaded. Tap to retry.' });
   }, QUEUE_WORKER_INTERVAL_MS);
 
   // Initial sync on startup
-  void syncFromCloud('boot');
+  void syncNow('boot');
+}
+
+let runGeneration = 0;
+let foregroundTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Several resume / focus / realtime events inside a short window become one sync. */
+export function requestForegroundSync(reason: string, delayMs = FOREGROUND_DEBOUNCE_MS): void {
+  if (!started || !state.autoSync || !deps.getUserId()) return;
+  if (foregroundTimer) return;   // one is already waiting
+  foregroundTimer = setTimeout(() => { foregroundTimer = null; void syncNow(reason); }, delayMs);
+}
+
+function schedulePoll(): void {
+  if (!started) return;
+  if (pollTimer) clearTimeout(pollTimer);
+  const every = isRealtimeConnected() ? POLL_MS_REALTIME : POLL_MS_FALLBACK;
+  pollTimer = setTimeout(() => {
+    if (typeof document === 'undefined' || document.visibilityState === 'visible') { if (state.autoSync) void syncNow('poll'); }
+    schedulePoll();
+  }, every);
 }
 
 /** Stop the synchronization engine and clean up all listeners/subscriptions */
 export function stopSyncEngine(): void {
   started = false;
-  if (pollTimer) clearInterval(pollTimer);
+  if (pollTimer) clearTimeout(pollTimer);
+  if (foregroundTimer) clearTimeout(foregroundTimer);
+  foregroundTimer = null;
+  runGeneration++;
   if (queueWorkerTimer) clearInterval(queueWorkerTimer);
   if (localTimer) clearTimeout(localTimer);
   if (settleTimer) clearTimeout(settleTimer);
@@ -465,6 +456,8 @@ export async function syncFromCloud(reason = 'cloud-sync'): Promise<SyncResult> 
 
 /** Trigger synchronization immediately */
 export function syncNow(reason = 'manual'): Promise<SyncResult> {
+  // A manual retry (tap, Force sync, manual-retry) starts from a clean slate: no waiting out a backoff
+  if (/^(manual|force)/.test(reason)) resetBackoff();
   if (!deps.getUserId()) {
     return Promise.resolve({ ok: false, reason, skipped: true, error: 'Not signed in' });
   }
@@ -535,6 +528,7 @@ async function performSync(reason: string): Promise<SyncResult> {
   const userId = deps.getUserId();
   if (!userId) return { ok: false, reason, skipped: true, error: 'Not signed in' };
   const startSeq = changeSeq;
+  const startedAtMs = Date.now();   // outbox items queued before this moment are covered by this sync
   setState({ phase: 'syncing', error: null, lastReason: reason });
 
   let meta = loadMeta();
@@ -556,14 +550,9 @@ async function performSync(reason: string): Promise<SyncResult> {
     (doc.changedKeys ?? []).length > 0 ||
     doc.version !== meta.version;
 
-  // Check if remote updated_at is newer than our last sync timestamp
-  const lastSyncTs = meta.lastSyncAt ? new Date(meta.lastSyncAt).getTime() : 0;
-  const remoteUpdatedTs = doc.updatedAt ? new Date(doc.updatedAt).getTime() : 0;
-  const isRemoteNewer = remoteUpdatedTs > lastSyncTs;
-
   // Fast path: nothing changed anywhere since the last sync
   const pendingQueueCount = getPendingQueueCount();
-  if (!dirty && pendingQueueCount === 0 && !remoteChanged && !isRemoteNewer && meta.userId === userId && !meta.firstSyncDecision) {
+  if (!dirty && pendingQueueCount === 0 && !remoteChanged && meta.userId === userId && !meta.firstSyncDecision) {
     const nextMeta: SyncMeta = { ...meta, lastSyncAt: deps.now(), lastError: null, version: doc.version };
     saveMeta(nextMeta);
     setState({
@@ -666,10 +655,10 @@ async function performSync(reason: string): Promise<SyncResult> {
     }
   }
 
-  // Clear pushed items from outbox queue
-  if (appliedToServer.length > 0) {
-    dequeueMultiple(appliedToServer.map(k => k.replace(/^-/, '')));
-  }
+  // Pull, merge and push all succeeded: everything queued before this sync started is now in the cloud.
+  // (The old code removed outbox items by section key although they are identified by id, so nothing was
+  // ever removed: "pending" never cleared and the retry worker re-synced every few seconds, forever.)
+  dequeueQueuedBefore(startedAtMs);
 
   if (firstContact && localCount > 0) {
     const missing = Object.keys(local).filter((k) => !(k in serverSections) && merged[k] !== undefined);
@@ -728,6 +717,7 @@ async function performSync(reason: string): Promise<SyncResult> {
   const allConflicts = [...newConflicts, ...state.conflicts].slice(0, MAX_CONFLICTS);
   if (newConflicts.length) persistConflicts(allConflicts);
   const pushed = appliedToServer.filter((k) => !k.startsWith('-'));
+  if (appliedToServer.length > 0) sendSyncPing({ d: getDeviceIdentity().id, v: version });   // other devices pull straight away
 
   setState({
     phase: 'synced',

@@ -251,6 +251,13 @@ if (exists('.github/workflows/ci.yml')) {
   const bottom = nav.includes("label: 'Progress'") && !nav.includes("label: 'Profile'");
   check('bottom tab is "Progress" (not Profile)', bottom, 'bottom nav label');
   check('Navbar profile photo opens Settings', read('src/components/Navbar.tsx').includes('onOpenSettings'), 'missing');
+  // v3.7 contracts: cross-device sync
+  const rtSrc = read('src/platform/cloud/realtimeSync.ts'), engSrc = read('src/platform/cloud/syncEngine.ts');
+  check('Realtime watches only tables that exist (quiz_sync_docs) plus a broadcast ping, on separate channels', rtSrc.includes("table: 'quiz_sync_docs'") && rtSrc.includes("'sync-ping'") && !/quiz_attempts|'reports'|'notes'|'bookmarks'/.test(rtSrc), 'Realtime subscribes to tables that are not in the schema');
+  check('quiz_schema.sql puts quiz_sync_docs in the realtime publication (idempotent)', read('supabase/quiz_schema.sql').includes('alter publication supabase_realtime add table public.quiz_sync_docs') && read('supabase/quiz_schema.sql').includes('duplicate_object'), 'publication block missing');
+  check('a successful sync drains the outbox (by time, not by wrong ids) and pings the other devices', engSrc.includes('dequeueQueuedBefore(startedAtMs)') && !engSrc.includes('dequeueMultiple') && engSrc.includes('sendSyncPing('), 'outbox drain or ping missing');
+  check('one coalesced foreground sync; runtime.ts no longer starts its own syncs; reload never interrupts a quiz', engSrc.includes('requestForegroundSync') && !read('src/platform/runtime.ts').includes('syncFromCloud(') && read('src/platform/runtime.ts').includes('isQuizInProgress'), 'duplicate foreground syncs are back');
+  check('header cloud badge distinguishes synced / syncing / offline (N) / waiting / retry', read('src/components/Navbar.tsx').includes('syncBadgeCopy') && read('src/platform/cloud/syncBadge.ts').includes("'attention'") && !exists('src/components/cloud/SyncStatusIndicator.tsx'), 'the badge mapping changed');
   // v3.3 contracts
   const popupUi = read('src/components/ui/ChoicePopup.tsx');
   check('settings that used to change by tapping open small popup windows', popupUi.includes('PopupShell') && ['src/components/reports/ReportPreviewPage.tsx', 'src/components/Navbar.tsx', 'src/components/dashboard/HeroClock.tsx', 'src/components/results/ReviewSection.tsx'].every(f => read(f).includes('ChoicePopup')) && !read('src/components/reports/ReportPreviewPage.tsx').includes('NEXT_ANSWER') && !read('src/components/dashboard/HeroClock.tsx').includes('CLOCK_ORDER'), 'a tap-to-cycle control is back');

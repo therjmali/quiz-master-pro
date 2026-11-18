@@ -83,6 +83,20 @@ grant select on public.quiz_sync_docs, public.quiz_sync_sections, public.quiz_sy
 revoke all on public.quiz_devices from anon;
 grant select, insert, update, delete on public.quiz_devices to authenticated;
 
+-- Realtime (optional, safe to re-run): quiz_sync_docs gets one tiny UPDATE per accepted push. With the table in
+-- the supabase_realtime publication, the account's other devices hear about it at once (Postgres Changes, delivered
+-- only to the row's owner through the "read own" policy above). Without it the app still syncs: devices also ping
+-- each other over Realtime Broadcast, and fall back to a short poll.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    begin
+      alter publication supabase_realtime add table public.quiz_sync_docs;
+    exception when duplicate_object then null;
+    end;
+  end if;
+end $$;
+
 -- ── Internal helpers (not callable from the API) ───────────────────────────
 create or replace function public._quiz_sync_payload(p_uid uuid, p_version integer, p_updated timestamptz, p_have jsonb)
 returns jsonb language sql stable security definer set search_path = '' as $$

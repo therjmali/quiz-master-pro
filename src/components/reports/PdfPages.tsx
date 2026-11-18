@@ -46,7 +46,9 @@ export const PageView = memo(function PageView({ page, set, width, index, onVisi
   const [near, setNear] = useState(index < 2);
   useEffect(() => {
     const el = ref.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setNear(true); return; }
+    // `qmp_virtualize_pages=0` keeps every page mounted (test / debugging switch)
+    let keepAll = false; try { keepAll = localStorage.getItem('qmp_virtualize_pages') === '0'; } catch { /* ignore */ }
+    if (!el || keepAll || typeof IntersectionObserver === 'undefined') { setNear(true); return; }
     const near = new IntersectionObserver(es => es.forEach(e => { setNear(e.isIntersecting); }), { rootMargin: '1000px 0px' });
     const vis = new IntersectionObserver(es => es.forEach(e => { if (e.intersectionRatio > 0.45) onVisible(index); }), { threshold: [0.45, 0.6] });
     near.observe(el); vis.observe(el);

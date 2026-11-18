@@ -77,6 +77,9 @@ It is read-only - it never creates users or writes data.
   sync wins and the other value is listed under *Sync log* so nothing is silently lost.
 - **Deleting** something on one device deletes it everywhere (quiz results and library items go to the 30-day trash first, which also syncs).
 - **Drafts & question details sync too:** Up to 5 active quiz drafts (`quiz_drafts`) and monthly question-detail shards (`qd:YYYY-MM`) sync across your devices so any device can resume a quiz or export full reports.
+- **Changes arrive at once, not only on a timer.** After a push the device pings the account's other devices over Supabase Realtime (Broadcast: no data, only "something changed"), and they pull straight away. A resume from the background, a focus event and a reconnect each trigger one coalesced sync. Re-running `supabase/quiz_schema.sql` also adds `quiz_sync_docs` to the `supabase_realtime` publication (Postgres Changes as a second path). If Realtime is unavailable the app polls every 20 s instead. Sign-out removes the channels.
+- **Waiting changes (outbox).** Edits made offline or during an outage wait in an outbox and retry with exponential backoff (2 s, 4 s, 8 s, ... capped). A successful sync clears them. After repeated failures the header badge says *Retry*; tapping it, or *Sync now*, retries immediately.
+- **Reading from the cloud tables:** the sync tables are read-only for signed-in users (row-level security: `select` own rows only). All writes go through the `quiz_sync_*` functions, which check the account, the version and the section size, so a client can never overwrite another account or skip a conflict check.
 - **Stays on the device:** AI keys (`qmp_user_api_keys` — never uploaded), caches, local backup snapshots and notification schedules.
 
 ## Troubleshooting
@@ -86,6 +89,8 @@ It is read-only - it never creates users or writes data.
 | "Cloud database is not set up yet" | Run `supabase/quiz_schema.sql` (step 2) |
 | "New sign-ups are turned off" | Enable sign-ups temporarily, or create the user in Authentication -> Users |
 | "No internet connection" | Normal while offline; everything syncs when you are back online |
+| Header badge says *Retry* or *Offline (N)* | N changes are waiting in the outbox. Tap the badge to retry now; they are never lost |
+| "Showing offline data. Tap to retry sync." | A quiz or report is not on this device yet; the app shows what it has. Tap *Retry*, or open Cloud sync > Sync now |
 | Free project paused | Open the Supabase dashboard and restore the project |
 | "rejected ... section too large" | One month of history exceeded 8 MB: export a backup, trim old results, sync again |
 

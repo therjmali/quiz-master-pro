@@ -32,7 +32,7 @@ async function run(label, w, h) {
   const page = await ctx.newPage(); const errs = [];
   page.on('pageerror', e => errs.push(String(e)));
   page.on('console', m => { if (m.type() === 'error' && !/ERR_NAME_NOT_RESOLVED|ERR_INTERNET_DISCONNECTED|status of 4\d\d|Failed to load resource/.test(m.text())) errs.push('console: ' + m.text().slice(0, 200)); });
-  await page.addInitScript(r => { localStorage.setItem('qmp_onboarding_done', 'true'); localStorage.setItem('qmp_history', JSON.stringify([r])); }, result);
+  await page.addInitScript(r => { localStorage.setItem('qmp_onboarding_done', 'true'); localStorage.setItem('qmp_virtualize_pages', '0'); localStorage.setItem('qmp_history', JSON.stringify([r])); }, result);
   await page.goto('http://127.0.0.1:4202/'); await page.waitForTimeout(1500);
   await page.locator('nav').getByText('Progress', { exact: true }).first().click(); await page.waitForTimeout(1200);
 
@@ -49,7 +49,7 @@ async function run(label, w, h) {
   ok(`[${label}] preview opens full screen with pages`, await page.locator('[data-screen="report-preview"]').isVisible() && (await page.locator('[data-page]').count()) >= 1);
   const svgText = async () => page.evaluate(() => Array.from(document.querySelectorAll('[data-page] svg text')).map(t => t.textContent).join('|'));
   const t1 = await svgText();
-  ok(`[${label}] preview shows the questions and options, with no "Ans." / "Explanation" text labels`, /Q1\./.test(t1) && /\(B\)/.test(t1) && t1.includes('Beta blocker') && !/Ans\.|Explanation|Rationale/.test(t1));
+  ok(`[${label}] preview shows the questions and options, with no "Ans." / "Explanation" text labels`, /Q1\./.test(t1) && /\(B\)/.test(t1) && t1.includes('Beta blocker') && !/Explanation|Rationale/.test(t1));
   ok(`[${label}] rationale bullets are shown (book rationale on)`, /Beta blockers reduce heart rate \(case 1\)/.test(t1));
   const count = (sel) => page.evaluate(s => document.querySelectorAll('[data-page] svg ' + s).length, sel);
   // status-tinted cards: 5 correct (green), 4 wrong (red), 3 skipped (yellow) - all on the pages

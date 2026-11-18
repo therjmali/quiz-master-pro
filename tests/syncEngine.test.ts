@@ -5,7 +5,8 @@ import { FakeCloud, FakeDevice } from './helpers';
 import { CloudError } from '../src/platform/cloud/http';
 import { __setEngineDepsForTests, __resetEngineForTests, syncNow, noteLocalChange, resolveFirstSync, getSyncState, restoreRevision, fetchRevisions, wipeCloudCopy, DATA_APPLIED_EVENT, pushDeviceOverCloud, pullCloudOverDevice, isSyncWriteGuarded } from '../src/platform/cloud/syncEngine';
 import { getOutbox, clearOutbox } from '../src/platform/cloud/syncQueue';
-import { subscribeToRealtime, unsubscribeFromRealtime } from '../src/platform/cloud/realtimeSync';
+import { subscribeToRealtime, unsubscribeFromRealtime, sendSyncPing, isRealtimeConnected, getRealtimeStatus, __setRealtimeClientForTests } from '../src/platform/cloud/realtimeSync';
+import { resetBackoff, getEligibleItems, dequeueQueuedBefore, recordFailure, getStuckItems } from '../src/platform/cloud/syncQueue';
 import { generateUUID } from '../src/platform/cloud/uuid';
 import { __restoreIdbForTests, __snapshotIdbForTests, idbGet, STORE } from '../src/platform/idb';
 import { __resetBaseCacheForTests, loadMeta } from '../src/platform/cloud/sections';
@@ -324,45 +325,227 @@ test('offline disconnected state queues local records and pushes to cloud upon r
   const cloudHistory = cloud.data()['hist:2026-11'] as { items: Record<string, any> };
   assert.ok(cloudHistory?.items?.[quizId], 'record was pushed to cloud after reconnection');
   assert.equal(cloudHistory.items[quizId].score, 95);
+  // ...and the outbox is EMPTY again: nothing stays "pending", nothing keeps retrying in the background
+  assert.equal(getOutbox().length, 0, 'the outbox is drained after a successful sync');
+  assert.equal(getSyncState().pendingCount, 0);
 });
 
-test('Realtime subscription cleanly unsubscribes on logout to prevent memory leaks or cross-account data bleeding', async () => {
-  let unsubCalled = false;
-  let subscribedUser: string | null = null;
-  const mockSupabase = {
-    channel: (name: string) => {
-      subscribedUser = name;
-      const ch: any = {
-        on: () => ch,
-        subscribe: (cb: any) => { cb?.('SUBSCRIBED'); return ch; },
-      };
-      return ch;
-    },
-    removeChannel: () => {
-      unsubCalled = true;
-      subscribedUser = null;
-    },
-  };
 
-  const oldUrl = process.env.VITE_SUPABASE_URL;
-  const oldKey = process.env.VITE_SUPABASE_ANON_KEY;
+/* ───────────────────────── outbox ───────────────────────── */
+
+test('outbox: a successful sync clears what it covered; a change made during the sync stays queued', async () => {
+  const a = new Phone('A');
+  a.dev.edit('qmp_settings', settings());
+  await on(a, async () => {
+    noteLocalChange('qmp_settings');
+    assert.equal(getOutbox().length, 1);
+    const res = await syncNow('t');
+    assert.equal(res.ok, true);
+    assert.equal(getOutbox().length, 0, 'drained');
+    assert.equal(getEligibleItems().length, 0, 'the retry worker has nothing to do');
+    assert.equal(getSyncState().pendingCount, 0);
+  });
+  // items queued after the cut-off survive
+  await on(a, async () => {
+    noteLocalChange('hist:2026-11');
+    const removed = dequeueQueuedBefore(Date.now() - 10_000);
+    assert.equal(removed, 0);
+    assert.equal(getOutbox().length, 1);
+  });
+});
+
+test('outbox: a failed push keeps the item with a growing backoff; a manual retry starts clean and succeeds', async () => {
+  const a = new Phone('A');
+  a.dev.edit('qmp_settings', settings());
+  await on(a, async () => {
+    await syncNow('initial');
+    a.dev.edit('qmp_settings', settings({ theme: 'light' }));
+    noteLocalChange('qmp_settings');
+    cloud.failNextPushWith = new CloudError('Network down', 'network');
+    const res = await syncNow('local-change');
+    assert.equal(res.ok, false);
+    const item = getOutbox()[0];
+    assert.ok(item && item.retryCount >= 1, 'the failure is counted on the item');
+    assert.ok(item.nextRetryAt > Date.now(), 'and it waits (exponential backoff) before the next automatic retry');
+    assert.equal(getEligibleItems().length, 0);
+    // "Force sync" / tapping the badge: no waiting out the backoff
+    const ok = await syncNow('manual-retry');
+    assert.equal(ok.ok, true);
+    assert.equal(getOutbox().length, 0);
+    assert.equal((cloud.data().qmp_settings as { theme: string }).theme, 'light');
+  });
+});
+
+test('outbox: resetBackoff makes every waiting item eligible again', async () => {
+  const a = new Phone('A');
+  await on(a, async () => {
+    noteLocalChange('qmp_settings');
+    const [item] = getOutbox();
+    // pretend every automatic retry was used up
+    for (let i = 0; i < 12; i++) recordFailure(item.id, 'Network down');
+    assert.equal(getEligibleItems().length, 0);
+    assert.equal(getStuckItems().length, 1, 'stuck items are reported so the UI can say so');
+    resetBackoff();
+    assert.equal(getEligibleItems().length, 1);
+    assert.equal(getStuckItems().length, 0);
+  });
+});
+
+/* ───────────────────────── two devices, A to Z ───────────────────────── */
+
+test('two devices: a quiz finished on the phone reaches the tablet (and back), including the full question details', async () => {
+  const phone = new Phone('Phone'); const tablet = new Phone('Tablet');
+  phone.dev.edit('qmp_settings', settings());
+  await on(phone, () => syncNow('boot'));
+  await on(tablet, () => syncNow('boot'));            // the tablet joins the account
+  // the phone finishes a quiz (summary row + the full questions)
+  const id = generateUUID();
+  phone.dev.edit('hist:2026-11', { items: { [id]: { id, score: 70, timestamp: 1 } } });
+  phone.dev.edit('qd:2026-11', { items: { [id]: { id, quizData: [{ question: 'Q?', options: ['a', 'b'], correctAnswer: 'a' }] } } });
+  await on(phone, async () => { noteLocalChange('hist:2026-11'); await syncNow('local-change'); });
+  // the tablet comes to the foreground and pulls
+  await on(tablet, async () => {
+    const res = await syncNow('foreground-resume');
+    assert.equal(res.ok, true);
+    const hist = tablet.dev.data['hist:2026-11'] as { items: Record<string, unknown> };
+    assert.ok(hist.items[id], 'the quiz is on the tablet');
+    const det = tablet.dev.data['qd:2026-11'] as { items: Record<string, { quizData: unknown[] }> };
+    assert.equal(det.items[id].quizData.length, 1, 'with its questions, so it can be opened and reviewed');
+    assert.equal(getOutbox().length, 0);
+  });
+  // a note made on the tablet comes back to the phone
+  tablet.dev.edit('bookmarks', { folders: { f1: { id: 'f1', name: 'Anatomy' } } });
+  await on(tablet, async () => { noteLocalChange('bookmarks'); await syncNow('local-change'); });
+  await on(phone, async () => { await syncNow('poll'); assert.ok((phone.dev.data.bookmarks as any).folders.f1, 'bookmark reached the phone'); });
+});
+
+test('two devices: the phone creates a quiz offline, the tablet is online meanwhile; reconnecting pushes the phone queue and the tablet gets it', async () => {
+  const phone = new Phone('Phone'); const tablet = new Phone('Tablet');
+  phone.dev.edit('qmp_settings', settings());
+  await on(phone, () => syncNow('boot')); await on(tablet, () => syncNow('boot'));
+  Object.defineProperty(globalThis, 'navigator', { value: { onLine: false }, writable: true, configurable: true });
+  const id = generateUUID();
+  phone.dev.edit('hist:2026-11', { items: { [id]: { id, score: 55, timestamp: 2 } } });
+  await on(phone, async () => { noteLocalChange('hist:2026-11'); assert.equal((await syncNow('offline')).error, 'Offline'); assert.equal(getOutbox().length, 1); });
+  Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, writable: true, configurable: true });
+  await on(tablet, async () => { await syncNow('poll'); assert.equal((tablet.dev.data['hist:2026-11'] as any)?.items?.[id], undefined, 'nothing yet: the phone has not reconnected'); });
+  await on(phone, async () => { assert.equal((await syncNow('online-reconnect')).ok, true); assert.equal(getOutbox().length, 0); });
+  await on(tablet, async () => { await syncNow('realtime:broadcast'); assert.ok((tablet.dev.data['hist:2026-11'] as any).items[id], 'the tablet received the queued quiz'); });
+});
+
+/* ───────────────────────── realtime ───────────────────────── */
+
+function fakeRealtime() {
+  const channels: any[] = []; const removed: string[] = [];
+  const client = {
+    channel: (name: string) => {
+      const ch: any = { name, handlers: [] as any[], sent: [] as any[], statusCb: null as any,
+        on: (type: string, filter: any, cb: any) => { ch.handlers.push({ type, filter, cb }); return ch; },
+        subscribe: (cb: any) => { ch.statusCb = cb; cb?.('SUBSCRIBED'); return ch; },
+        send: (msg: any) => { ch.sent.push(msg); return Promise.resolve('ok'); } };
+      channels.push(ch); return ch;
+    },
+    removeChannel: (ch: any) => { removed.push(ch.name); return Promise.resolve('ok'); },
+  };
+  return { client, channels, removed };
+}
+
+async function withCloudEnv<T>(fn: () => Promise<T> | T): Promise<T> {
+  const oldUrl = process.env.VITE_SUPABASE_URL, oldKey = process.env.VITE_SUPABASE_ANON_KEY;
   process.env.VITE_SUPABASE_URL = 'https://fake-project.supabase.co';
   process.env.VITE_SUPABASE_ANON_KEY = 'anon-key-that-is-longer-than-20-chars';
-
-  const { __setSupabaseForTests } = await import('../src/platform/cloud/supabase');
-  __setSupabaseForTests(mockSupabase as any);
-
-  try {
-    subscribeToRealtime('user-123', { onRemoteChange: () => {} });
-    assert.ok(subscribedUser?.includes('user-123'), 'subscribed with user ID');
-
-    // Simulate logout
-    unsubscribeFromRealtime();
-    assert.equal(unsubCalled, true, 'channel was removed from Supabase client');
-    assert.equal(subscribedUser, null, 'user ID cleared');
-  } finally {
-    process.env.VITE_SUPABASE_URL = oldUrl;
-    process.env.VITE_SUPABASE_ANON_KEY = oldKey;
-    __setSupabaseForTests(null);
+  try { return await fn(); } finally {
+    process.env.VITE_SUPABASE_URL = oldUrl; process.env.VITE_SUPABASE_ANON_KEY = oldKey;
+    __setRealtimeClientForTests(null); unsubscribeFromRealtime();
   }
+}
+
+test('realtime: subscribes only to tables that exist (quiz_sync_docs) plus a broadcast channel, filtered to the signed-in user', () => withCloudEnv(() => {
+  const rt = fakeRealtime(); __setRealtimeClientForTests(() => rt.client as any);
+  subscribeToRealtime('user-123', 'dev-A', { onRemoteChange: () => {} });
+  const dbBindings = rt.channels.flatMap(c => c.handlers).filter((h: any) => h.type === 'postgres_changes');
+  assert.equal(dbBindings.length, 1, 'one table, no phantom tables that would fail the whole subscription');
+  assert.equal(dbBindings[0].filter.table, 'quiz_sync_docs');
+  assert.equal(dbBindings[0].filter.filter, 'user_id=eq.user-123');
+  assert.ok(rt.channels.some(c => c.name === 'qm-sync:user-123' && c.handlers.some((h: any) => h.type === 'broadcast')));
+  assert.ok(isRealtimeConnected() && getRealtimeStatus() === 'CONNECTED');
+}));
+
+test('realtime: a ping from another device triggers a pull, our own echo does not', () => withCloudEnv(() => {
+  const rt = fakeRealtime(); __setRealtimeClientForTests(() => rt.client as any);
+  const seen: string[] = [];
+  subscribeToRealtime('user-1', 'dev-A', { onRemoteChange: (src) => seen.push(src) });
+  const ping = rt.channels.find(c => c.name === 'qm-sync:user-1').handlers.find((h: any) => h.type === 'broadcast');
+  ping.cb({ payload: { d: 'dev-A', v: 3 } });      // echo of our own push
+  assert.deepEqual(seen, []);
+  ping.cb({ payload: { d: 'dev-B', v: 4 } });      // the tablet pushed
+  assert.deepEqual(seen, ['broadcast']);
+  const db = rt.channels.find(c => c.name === 'qm-db:user-1').handlers[0];
+  db.cb({ new: { user_id: 'user-1', version: 5 } });
+  assert.deepEqual(seen, ['broadcast', 'database']);
+}));
+
+test('realtime: sign-out removes both channels; another account never receives the previous one', () => withCloudEnv(() => {
+  const rt = fakeRealtime(); __setRealtimeClientForTests(() => rt.client as any);
+  const seen: string[] = [];
+  subscribeToRealtime('user-1', 'dev-A', { onRemoteChange: () => seen.push('u1') });
+  const oldPing = rt.channels.find(c => c.name === 'qm-sync:user-1');
+  unsubscribeFromRealtime();
+  assert.deepEqual(rt.removed.sort(), ['qm-db:user-1', 'qm-sync:user-1']);
+  assert.equal(getRealtimeStatus(), 'DISCONNECTED');
+  assert.equal(sendSyncPing({ d: 'dev-A', v: 1 }), false, 'nothing is sent after sign-out');
+  // switch to user 2: user 1 channels are gone, and a late callback of the old channel is ignored
+  subscribeToRealtime('user-2', 'dev-A', { onRemoteChange: () => seen.push('u2') });
+  oldPing.statusCb?.('CHANNEL_ERROR');
+  assert.equal(getRealtimeStatus(), 'CONNECTED', 'a stale status callback from the removed channel changes nothing');
+  assert.ok(rt.channels.filter(c => c.name.includes('user-2')).length === 2);
+}));
+
+test('realtime: a channel error is reported (the engine then polls faster); a ping is only sent while connected', () => withCloudEnv(() => {
+  const rt = fakeRealtime(); __setRealtimeClientForTests(() => rt.client as any);
+  const statuses: string[] = [];
+  subscribeToRealtime('user-1', 'dev-A', { onRemoteChange: () => {}, onStatusChange: s => statuses.push(s) });
+  const ping = rt.channels.find(c => c.name === 'qm-sync:user-1');
+  assert.equal(sendSyncPing({ d: 'dev-A', v: 2 }), true);
+  assert.equal(ping.sent[0].event, 'sync-ping'); assert.equal(ping.sent[0].payload.v, 2);
+  ping.statusCb('CHANNEL_ERROR');
+  assert.equal(isRealtimeConnected(), false);
+  assert.equal(sendSyncPing({ d: 'dev-A', v: 3 }), false);
+  assert.deepEqual(statuses, ['CONNECTING', 'CONNECTED', 'ERROR']);
+}));
+
+test('realtime: a successful push pings the other devices', () => withCloudEnv(async () => {
+  const rt = fakeRealtime(); __setRealtimeClientForTests(() => rt.client as any);
+  const a = new Phone('A');
+  a.dev.edit('qmp_settings', settings());
+  await on(a, async () => {
+    subscribeToRealtime('user-1', 'phone-A', { onRemoteChange: () => {} });
+    await syncNow('first');
+    const ping = rt.channels.find(c => c.name === 'qm-sync:user-1');
+    assert.ok(ping.sent.some((m: any) => m.event === 'sync-ping' && m.payload.d), 'ping sent after the push');
+    const before = ping.sent.length;
+    await syncNow('nothing-changed');
+    assert.equal(ping.sent.length, before, 'no ping when nothing was pushed');
+  });
+}));
+
+/* ───────────────────────── foreground / resume ───────────────────────── */
+
+test('resume: focus + visibility + app-state events inside one window become a single sync; stopping the engine cancels a waiting one', async () => {
+  const { startSyncEngine, stopSyncEngine, requestForegroundSync } = await import('../src/platform/cloud/syncEngine');
+  const a = new Phone('A');
+  a.dev.edit('qmp_settings', settings());
+  await on(a, async () => {
+    startSyncEngine();
+    await new Promise(r => setTimeout(r, 80));          // the boot sync
+    const base = cloud.pulls;
+    for (const reason of ['foreground-resume', 'window-focus', 'capacitor-app-resume', 'realtime:broadcast', 'online-reconnect']) requestForegroundSync(reason, 30);
+    await new Promise(r => setTimeout(r, 150));
+    assert.equal(cloud.pulls - base, 1, 'five events, one pull');
+    requestForegroundSync('window-focus', 60);
+    stopSyncEngine();                                    // sign-out / app close
+    const afterStop = cloud.pulls;
+    await new Promise(r => setTimeout(r, 120));
+    assert.equal(cloud.pulls, afterStop, 'a waiting resume sync is cancelled by stop');
+  });
 });

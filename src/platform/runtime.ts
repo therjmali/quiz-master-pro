@@ -6,7 +6,7 @@
  */
 import { installStorageHook } from './storageHook';
 import { initCloudAuth, onAuthChange } from './cloud/authStore';
-import { DATA_APPLIED_EVENT, detachCloudAccount, refreshEngineForAccount, syncFromCloud } from './cloud/syncEngine';
+import { DATA_APPLIED_EVENT, detachCloudAccount, refreshEngineForAccount } from './cloud/syncEngine';
 import { isCloudConfigured } from './cloud/config';
 import { runAutoBackupIfDue } from './autoBackup';
 import { purgeExpiredHistoryTrash } from '../utils/historyTrash';
@@ -20,15 +20,32 @@ import { initPwa } from './pwa';
 let booted = false;
 const RELOAD_KEY = 'qm-cloud-reloads';
 
-/** Applying remote data needs a reload so every screen re-reads storage. Capped to avoid loops. */
+let reloadTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** The person is taking a quiz: never reload the page under them. */
+function isQuizInProgress(): boolean {
+  try { return document.documentElement.dataset.qmpScreen === 'quiz'; } catch { return false; }
+}
+
+/**
+ * Applying remote data needs a reload so every screen re-reads storage. The reload never interrupts a quiz
+ * (it waits until the person leaves it) and is never silently dropped: the old cap of 2 reloads per 30 s threw
+ * the refresh away, so a second remote change left the screen stale until a manual restart. Now it waits out
+ * the window and then reloads once (still capped, so it can never loop).
+ */
 function reloadForRemoteData(): void {
-  try {
+  if (reloadTimer) return;   // one is already scheduled; it will pick up everything applied so far
+  const attempt = () => {
+    reloadTimer = null;
+    if (isQuizInProgress()) { reloadTimer = setTimeout(attempt, 4_000); return; }
     const now = Date.now();
-    const recent = (JSON.parse(sessionStorage.getItem(RELOAD_KEY) || '[]') as number[]).filter(t => now - t < 30_000);
-    if (recent.length >= 2) return;
-    sessionStorage.setItem(RELOAD_KEY, JSON.stringify([...recent, now]));
-  } catch { /* storage blocked: reload once anyway */ }
-  setTimeout(() => window.location.reload(), 900);   // lets the "synced from another device" toast show
+    let recent: number[] = [];
+    try { recent = (JSON.parse(sessionStorage.getItem(RELOAD_KEY) || '[]') as number[]).filter(t => now - t < 30_000); } catch { /* storage blocked: reload once anyway */ }
+    if (recent.length >= 2) { reloadTimer = setTimeout(attempt, Math.max(1_000, 30_000 - (now - recent[0]) + 500)); return; }
+    try { sessionStorage.setItem(RELOAD_KEY, JSON.stringify([...recent, now])); } catch { /* ignore */ }
+    window.location.reload();
+  };
+  reloadTimer = setTimeout(attempt, 900);   // lets the "synced from another device" toast show
 }
 
 export function initPlatform(): void {
@@ -71,21 +88,13 @@ export function initPlatform(): void {
       void runAutoBackupIfDue().catch(() => undefined);
     } else {
       void rescheduleAll().catch(() => undefined);
-      if (isCloudConfigured()) void syncFromCloud('visibility-foreground').catch(() => undefined);
+      // the sync engine owns the foreground sync (one coalesced run per resume)
     }
   });
 
   if (isNative()) {
     import('@capacitor/app').then(({ App }) => {
-      App.addListener('resume', () => {
-        void rescheduleAll().catch(() => undefined);
-        if (isCloudConfigured()) void syncFromCloud('capacitor-resume').catch(() => undefined);
-      });
-      App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive && isCloudConfigured()) {
-          void syncFromCloud('capacitor-app-active').catch(() => undefined);
-        }
-      });
+      App.addListener('resume', () => { void rescheduleAll().catch(() => undefined); });
       App.addListener('pause', () => {
         void runAutoBackupIfDue().catch(() => undefined);
       });

@@ -1,3 +1,4 @@
+import { notifyShowingOfflineData } from '../../platform/cloud/offlineNotice';
 import { useState, useMemo, useCallback, useRef, useEffect, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { loadQuizQuestions } from '../../utils/ensureQuestions';
@@ -763,7 +764,7 @@ export default function LibraryScreen({ history, onViewResult, onDeleteHistory, 
 
 
   const handlePractice = (r: QuizResult) => {
-    if (!r.quizData?.length) { toast('Quiz data not loaded yet'); return; }
+    if (!r.quizData?.length) { notifyShowingOfflineData(); return; }
     const m = r.quizData.filter((q, i) => r.userAnswers[i] !== null && r.userAnswers[i] !== q.correctAnswer);
     if (!m.length) { toast('No mistakes to practice!'); return; }
     onPracticeMistakes(m.map(q => ({ ...q, shuffledOpts: undefined })));

@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.9.0] - 2026-11-17
+
+Cross-device sync audit: the outbox that never emptied, a Realtime subscription that could never connect, six syncs per resume, and a header badge that said "Saved" while offline.
+
+### Fixed
+- **Outbox never emptied.** After a successful push the engine removed outbox items by *section key* although they are identified by *id*, so nothing was ever removed: "pending changes" never cleared and the retry worker re-ran a full sync every 5 seconds, forever (battery, data, and a status that never said "synced"). A successful sync now clears everything queued before it started; changes made *during* the sync stay queued.
+- **Realtime could not connect.** It subscribed to `quiz_attempts`, `reports`, `notes` and `bookmarks`, tables that do not exist in this project, which makes Supabase refuse the whole subscription; the real sync table was never watched. Now two independent channels: a Broadcast **sync-ping** (works with no database change, carries no data) and Postgres Changes on `quiz_sync_docs` (needs the one-line publication added to `supabase/quiz_schema.sql`; re-run the SQL once to enable it). A pushing device pings the account's others, which pull at once. Sign-out removes both channels, and a stale callback from a removed channel is ignored.
+- **Six syncs per resume.** The engine and `runtime.ts` each listened to visibility, focus and the Capacitor resume events. All of them now go through one coalesced request (one sync per resume); the native listener is also removed if the engine stops while the plugin is still loading.
+- **Polling** is adaptive: 120 s while Realtime is connected, 20 s when it is not (it used to be a fixed 45 s). The fast path no longer compares the device clock with the server clock (a device whose clock ran behind skipped the fast path on every poll).
+- **Header cloud badge told the wrong story.** Offline, waiting, "choose how to combine" and "not set up" all showed *Saved*. It now shows 🟢 Synced, 🔄 Syncing…, 🔴 Offline (N waiting), 🟡 N waiting, ⚠️ Choose, ⏸ Paused or ⚠️ Retry; tapping an error / offline / waiting badge retries immediately (the backoff is reset), anything else opens Cloud sync.
+- **Remote data never interrupts a quiz, and a refresh is never dropped.** The reload that applies data from another device waits until you leave the quiz, and when the 2-per-30 s cap was hit the refresh used to be thrown away (the screen stayed stale); it now waits out the window and reloads once.
+- A quiz that arrived from another device opens from the copy on this device when the detail request fails ("data not loaded"); when nothing is there yet the toast says **"Showing offline data. Tap to retry sync."** with a Retry action instead of a dead end.
+
+### Added
+- Outbox: `dequeueQueuedBefore`, `resetBackoff` (manual retry starts clean), `getStuckItems` (items that used up their retries are reported as an error instead of waiting silently).
+- Tests: outbox drain and backoff, a quiz (summary + full questions) travelling phone to tablet and a bookmark back, an offline phone queue reaching the tablet after reconnect, Realtime channel set-up, echo filtering, sign-out and account-switch isolation, ping-after-push, and one coalesced sync per resume.
+- `verify-repo` contract checks for all of the above; the *Cloud check* workflow now publishes its findings as run annotations.
+
+### Removed
+- The unused `SyncStatusIndicator` component (the header badge is the indicator).
 ## [3.8.0] - 2026-11-17
 
 Strict UI/UX standardization, report engine color logic correction, toggle unresponsiveness resolution, and clipboard paste bridge finalization.

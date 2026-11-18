@@ -67,7 +67,7 @@ async function run(label, w, h) {
   await page.getByTestId('report-grid').waitFor({ timeout: 15000 });
   const tiles = await page.getByTestId('report-grid').locator('[role="listitem"]').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; }));
   const rows = [...new Set(tiles.map(t => t.y))], cols = [...new Set(tiles.map(t => t.x))];
-  ok(`[${label}] report buttons form a compact grid: 8 tiles in exactly 2 lines`, tiles.length === 8 && rows.length === 2 && cols.length === 4, `rows=${rows.length} cols=${cols.length}`);
+  ok(`[${label}] report buttons form a compact grid: 7 tiles in exactly 2 lines`, tiles.length === 7 && rows.length === 2 && cols.length === 4, `rows=${rows.length} cols=${cols.length}`);
   ok(`[${label}] tiles are equal squircles inside the card`, new Set(tiles.map(t => t.w)).size <= 2 && tiles.every(t => t.x >= 0 && t.x + t.w <= w), JSON.stringify(tiles[0]));
   const sub = page.getByTestId('reports-subtitle');
   const sb = await sub.boundingBox();

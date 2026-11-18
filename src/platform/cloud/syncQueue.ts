@@ -17,6 +17,7 @@ export interface OutboxItem {
   updatedAt: string;        // ISO timestamp for Last-Write-Wins comparison
   retryCount: number;       // Number of failed attempts
   nextRetryAt: number;      // Epoch ms when item is eligible for next attempt
+  queuedAt: number;         // Epoch ms when this version of the mutation was queued (a sync clears everything queued before it started)
   lastError?: string;       // Description of last failure
 }
 
@@ -95,6 +96,7 @@ export function enqueueMutation(
     updatedAt,
     retryCount: 0,
     nextRetryAt: Date.now(), // eligible immediately
+    queuedAt: Date.now(),
   };
 
   if (existingIdx >= 0) {
@@ -119,6 +121,30 @@ export function dequeueMultiple(ids: string[]): void {
   const set = new Set(ids);
   const queue = getOutbox().filter(item => !set.has(item.id));
   saveOutbox(queue);
+}
+
+/**
+ * A full sync (pull, merge, push, write back) succeeded: everything that was on the device when it started is
+ * now in the cloud and merged back, so every outbox item queued before that moment is done. Items queued while
+ * the sync was running stay and trigger the next one.
+ */
+export function dequeueQueuedBefore(startedAtMs: number): number {
+  const before = getOutbox();
+  const queue = before.filter(item => item.queuedAt > startedAtMs);
+  if (queue.length !== before.length) saveOutbox(queue);
+  return before.length - queue.length;
+}
+
+/** A manual retry starts again from a clean slate: every waiting item is eligible now and its failure count is reset. */
+export function resetBackoff(): void {
+  const queue = getOutbox();
+  if (!queue.length) return;
+  saveOutbox(queue.map(item => ({ ...item, retryCount: 0, nextRetryAt: Date.now(), lastError: undefined })));
+}
+
+/** Items that used up every automatic retry: they wait for a manual retry, and the UI must say so. */
+export function getStuckItems(): OutboxItem[] {
+  return getOutbox().filter(item => item.retryCount >= MAX_RETRIES);
 }
 
 /** Record a failure for an item, applying exponential backoff */

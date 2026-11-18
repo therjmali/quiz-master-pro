@@ -203,7 +203,7 @@ async function run(label, w, h) {
     await c.ctx.close();
   }
 
-  /* ── 6d. Exam paper: black & white, no question numbers, "Ans. 1 (C)", 📖 bullets, three answer modes ── */
+  /* ── 6d. Exam paper: black & white, "Ans. - (C) text.", 📖 bullets, three answer modes ── */
   {
     const e = await newPage(w, h);
     const ep = e.page;
@@ -220,21 +220,19 @@ async function run(label, w, h) {
     await ep.locator('[data-testid="popup-answers"] [data-choice="inline"]').click(); await ep.waitForTimeout(1100);
     const t1 = await svgTxt();
     ok(`[${label}] exam paper is black & white`, (await colours()).length === 0, (await colours()).join(','));
-    ok(`[${label}] exam paper: "Ans. 1 (C) …" lines, no "Ans.1. :" and no Explanation label`, /Ans\. 1 \([A-D]\) /.test(t1) && !/Ans\.1\.|Explanation|Rationale/.test(t1));
-    ok(`[${label}] exam paper: no question numbers by default`, !/^Q?\d+\.$/m.test(t1.split('\n').filter(x => !/^\d+\.\d/.test(x)).join('\n')));
+    ok(`[${label}] exam paper: "Ans. - (C) text." lines (no question number in the answer line), no Explanation label`, /Ans\. - \([A-D]\) /.test(t1) && !/Ans\.\d|Explanation|Rationale/.test(t1));
+    ok(`[${label}] exam paper: questions are numbered Q1. Q2.`, /^Q1\.$/m.test(t1) && /^Q2\.$/m.test(t1));
     await ep.screenshot({ path: `${SHOTS}/exam_inline_${label}.png` });
     await ep.getByTestId('opt-include').click(); await ep.waitForTimeout(350);
-    ok(`[${label}] Include has a "Question numbers" switch for the exam paper`, (await ep.locator('[data-testid="popup-include"] [role="switch"][aria-label="Question numbers"]').count()) === 1);
-    await ep.locator('[data-testid="popup-include"] [role="switch"][aria-label="Question numbers"]').click(); await ep.waitForTimeout(1000);
+    ok(`[${label}] Include lists Book / AI rationale (no question-numbers switch: numbers are fixed)`, (await ep.locator('[data-testid="popup-include"] [role="switch"]').count()) >= 2 && (await ep.locator('[data-testid="popup-include"] [role="switch"][aria-label="Question numbers"]').count()) === 0);
     await ep.keyboard.press('Escape'); await ep.waitForTimeout(400);
-    ok(`[${label}] turning question numbers on prints 1. 2. 3.`, /^1\.$/m.test(await svgTxt()));
     await ep.getByTestId('answers-eye').click(); await ep.waitForTimeout(350);
     await ep.locator('[data-testid="popup-answers"] [data-choice="none"]').click(); await ep.waitForTimeout(1000);
-    ok(`[${label}] answers hidden (crossed eye): a clean paper`, !/Ans\. \d/.test(await svgTxt()));
+    ok(`[${label}] answers hidden (crossed eye): a clean paper`, !/Ans\. -/.test(await svgTxt()));
     await ep.getByTestId('answers-eye').click(); await ep.waitForTimeout(350);
     await ep.locator('[data-testid="popup-answers"] [data-choice="key"]').click(); await ep.waitForTimeout(1000);
     const t3 = await svgTxt();
-    ok(`[${label}] answers at the end: Answer Key with "Ans. 1 (C)" entries and numbered questions`, /Answer Key/.test(t3) && /Ans\. 1 \([A-D]\)/.test(t3) && /^1\.$/m.test(t3));
+    ok(`[${label}] answers at the end: an Answer Key follows the numbered questions`, /Answer Key/.test(t3) && /^Q1\.$/m.test(t3));
     ok(`[${label}] exam preview: no JS errors`, e.errs.length === 0, e.errs.slice(0, 2).join(' | '));
     await e.ctx.close();
   }

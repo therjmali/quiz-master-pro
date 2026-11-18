@@ -266,6 +266,8 @@ function AppScreens({
   const [editingActiveQuiz, setEditingActiveQuiz] = useState(false);
   const reportPreviewOriginRef = useRef<Screen>('results');
   const screenRef = useRef<Screen>('dashboard');
+  // lets platform code (e.g. the reload after remote data) know when the person is in the middle of a quiz
+  useEffect(() => { document.documentElement.dataset.qmpScreen = screen; }, [screen]);
 
   const [hideBadge, setHideBadge] = useState(() => {
     try { return localStorage.getItem('qmp_hide_zite_badge') === 'true'; } catch { return false; }
