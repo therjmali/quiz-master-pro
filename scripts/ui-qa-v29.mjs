@@ -87,7 +87,7 @@ async function run(label, w, h) {
   const ys = await fb.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y)));
   ok(`[${label}] status filters sit on one line, capsule shaped`, new Set(ys).size === 1 && await fb.first().evaluate(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 16));
   const ob = await page.getByTestId('review-options').locator('> *').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return Math.round(r.y + r.height / 2); }));
-  ok(`[${label}] view options (Answers, Rationale, level, Explain) on one line`, Math.max(...ob) - Math.min(...ob) <= 3 && ob.length === 4, `${ob.length} items`);
+  ok(`[${label}] view options (Rationale, level, Explain) on one line`, Math.max(...ob) - Math.min(...ob) <= 3 && ob.length === 3, `${ob.length} items`);
   const head = page.getByTestId('review-card-header').first();
   const hy = await head.locator('> *').evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y + e.getBoundingClientRect().height / 2)));
   const hText = await head.innerText();
