@@ -321,7 +321,7 @@ function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: nu
     y += Math.max(1, lines.length) * optLH + 1.5 * sc;
   });
 
-  /* inline answer line: bold, color logic (green if correct, red if wrong, green if skipped) */
+  /* inline answer line: always bold green, never a sentence about the pick */
   if (inline) {
     const idxOf = (txt: string) => (it.options ?? []).findIndex(o => o.trim() === txt.trim());
     const ansSummary = (it.correct ?? []).map(c => {
@@ -329,9 +329,7 @@ function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: nu
       return i >= 0 ? `(${LETTER(i)}) ${c}` : c;
     }).join(', ');
     const ansColor = T.okInk;
-    const ansLine = (it.status === 'wrong' && it.user)
-      ? `Ans. - ${ansSummary}. (You answered: ${it.user})`
-      : `Ans. - ${ansSummary}.`;
+    const ansLine = `Ans. - ${ansSummary}.`; /* your own pick shows as the red ✗ option, never as a sentence */
     const ansLines = wrap(set, ansLine, Math.max(20, rightEdge - optX), fOpt, true, 4);
     ansLines.forEach((ln, li) => {
       ops.push(txt(optX, y + fOpt * 0.95 + li * optLH, ln, { bold: true, size: fOpt, color: ansColor }));

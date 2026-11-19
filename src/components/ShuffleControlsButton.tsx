@@ -7,6 +7,8 @@ interface Props {
   shuffleOptions: boolean;
   onToggleQuestions: (v: boolean) => void;
   onToggleOptions: (v: boolean) => void;
+  /** Sets both switches in ONE update (two separate calls would overwrite each other with stale settings). */
+  onSetBoth: (questions: boolean, options: boolean) => void;
 }
 
 function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (v: boolean) => void; id?: string }) {
@@ -29,7 +31,7 @@ function ToggleSwitch({ checked, onChange, id }: { checked: boolean; onChange: (
   );
 }
 
-export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions, onToggleQuestions, onToggleOptions }: Props) {
+export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions, onToggleQuestions, onToggleOptions, onSetBoth }: Props) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const isOriginal = !shuffleQuestions && !shuffleOptions;
@@ -115,11 +117,11 @@ export default function ShuffleControlsButton({ shuffleQuestions, shuffleOptions
 
         {/* Quick actions */}
         <div className="flex gap-2 px-3 pb-3">
-          <button onClick={() => { onToggleQuestions(false); onToggleOptions(false); }} disabled={isOriginal}
+          <button onClick={() => onSetBoth(false, false)} disabled={isOriginal}
             className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-emerald-500/8 border-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15">
             📖 Original
           </button>
-          <button onClick={() => { onToggleQuestions(true); onToggleOptions(true); }} disabled={isFullShuffle}
+          <button onClick={() => onSetBoth(true, true)} disabled={isFullShuffle}
             className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border transition-all disabled:opacity-30 disabled:cursor-not-allowed bg-blue-500/8 border-blue-500/15 text-blue-600 dark:text-blue-300 hover:bg-blue-500/15">
             🔀 Full Shuffle
           </button>

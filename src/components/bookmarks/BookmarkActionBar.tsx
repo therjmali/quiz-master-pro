@@ -5,6 +5,7 @@ import { FileNode } from '../../utils/fileTree';
 import { QuizQuestion } from '../../types/quiz';
 import type { BookmarkStats } from './bookmarkAnalytics';
 
+import { writeClipboardText } from '../../platform/clipboard';
 interface Props {
   bookmarks: FileNode[];
   stats: BookmarkStats;
@@ -37,7 +38,7 @@ function copyForAI(bookmarks: FileNode[]) {
     return `${i + 1}. ${d.question}\n${opts}\n   Answer: ${d.correctAnswer}${d.userAnswer ? `\n   Your answer: ${d.userAnswer} (${status})` : `\n   ${status}`}${d.rationale ? `\n   Rationale:\n   ${formatRationale(d.rationale).replace(/\n/g, '\n   ')}` : ''}${(d as any).aiRationale ? `\n   AI Explanation:\n   ${formatRationale((d as any).aiRationale).replace(/\n/g, '\n   ')}` : ''}`;
   }).join('\n\n');
   const text = `📋 Bookmarked Questions (${items.length})\n${'─'.repeat(40)}\n\n${lines}\n\n${'─'.repeat(40)}\nPlease analyze these questions. Help me understand the concepts, identify patterns in my mistakes, and suggest what I should study more.`;
-  navigator.clipboard.writeText(text)
+  writeClipboardText(text)
     .then(() => toast.success(`📋 ${items.length} questions copied for AI!`))
     .catch(() => toast.error('Copy failed'));
 }

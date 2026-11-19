@@ -36,6 +36,7 @@ import {
 import QuizExportImportModal from '../QuizExportImportModal';
 import SearchInput, { SearchEmptyState } from '../shared/SearchInput';
 
+import { writeClipboardText } from '../../platform/clipboard';
 interface Props {
   onPractice: (questions: QuizQuestion[]) => void;
   onViewResult?: (result: QuizResult) => void;
@@ -1166,7 +1167,7 @@ export default function FileManager({ onPractice, onViewResult, history = [], on
       ...(ctxMatchedResult ? [{ label: 'Share Result', icon: <Share2 className="w-3.5 h-3.5" />, onClick: async () => {
         const text = `${ctxMatchedResult.quizTitle || 'Quiz'} — ${ctxMatchedResult.percentage}% (${ctxMatchedResult.correct}✓ ${ctxMatchedResult.wrong}✗)`;
         if (navigator.share) { try { await navigator.share({ title: 'Quiz Result', text }); } catch {} }
-        else { await navigator.clipboard.writeText(text); toast.success('📋 Copied to clipboard!'); }
+        else { await writeClipboardText(text); toast.success('📋 Copied to clipboard!'); }
       } }] : []),
       { label: 'Export Quiz', icon: <Download className="w-3.5 h-3.5" />, onClick: () => {
         if (ctxMatchedResult) { setExportQuizResult(ctxMatchedResult); }

@@ -10,6 +10,7 @@ import { buildRevisionSheetHtml, buildRevisionSheetText } from '../../utils/repo
 import { exportSmartReport, exportTextReport, wrapHtmlForWord } from '../../utils/reports/htmlReportBuilder';
 import GenerationProgressOverlay from '../GenerationProgressOverlay';
 
+import { writeClipboardText } from '../../platform/clipboard';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -56,7 +57,7 @@ export default function RevisionNotesModal({ open, onClose, bookmarks, subject, 
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(notes);
+    writeClipboardText(notes);
     toast.success('📋 Copied to clipboard!');
   };
 

@@ -8,6 +8,7 @@ import AiRationaleText from '../AiRationaleText';
 import QuestionImage from '../QuestionImage';
 import DisputeModal from './DisputeModal';
 import { getDispute } from '../../utils/disputes';
+import { answerLineText, optionVisuals, reviewStatus, type OptionVisual } from '../../utils/reviewOptions';
 
 interface Props {
   q: QuizQuestion;
@@ -30,29 +31,29 @@ function MultilineText({ text }: { text: string }) {
 interface ReviewOptionItemProps {
   opt: string;
   index: number;
-  isCorrectOption: boolean;
-  isUserWrongSelection: boolean;
+  visual: OptionVisual;
 }
 
-function ReviewOptionItem({ opt, index, isCorrectOption, isUserWrongSelection }: ReviewOptionItemProps) {
+/** Colour + icon only. No sentence ever explains the state. */
+function ReviewOptionItem({ opt, index, visual }: ReviewOptionItemProps) {
   const letter = String.fromCharCode(65 + index);
 
   let containerClass = 'bg-background/60 border-border text-foreground/85 font-normal';
   let letterClass = 'text-foreground/70 font-semibold';
   let icon: React.ReactNode = null;
 
-  if (isCorrectOption) {
+  if (visual === 'correct') {
     containerClass = 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-900 dark:text-green-200 font-bold';
     letterClass = 'text-green-950 dark:text-green-100 font-bold';
-    icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" aria-label="Correct answer">✅</span>;
-  } else if (isUserWrongSelection) {
+    icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" role="img" aria-label="Correct answer">✅</span>;
+  } else if (visual === 'wrong') {
     containerClass = 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-900 dark:text-red-200 font-bold';
     letterClass = 'text-red-950 dark:text-red-100 font-bold';
-    icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" aria-label="Your incorrect answer">❌</span>;
+    icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" role="img" aria-label="Your incorrect answer">❌</span>;
   }
 
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${containerClass}`}>
+    <div className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${containerClass}`} data-option-state={visual}>
       <span className="text-sm leading-snug flex-1 min-w-0 break-words">
         <span className={`mr-1.5 text-xs ${letterClass}`}>({letter})</span>
         {opt}
@@ -94,11 +95,11 @@ function ReviewCardInner({
     if (cached && cached !== aiRationale) setAiRationale(cached);
   }, [rationaleCache, q.question]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const isSkipped = userAnswer === null || userAnswer === undefined;
-  const isCorrect = !isSkipped && (userAnswer === q.correctAnswer || (q.correctAnswers?.includes(userAnswer) ?? false));
-  const isWrong   = !isCorrect && !isSkipped;
-  const status    = isCorrect ? 'correct' : isSkipped ? 'skipped' : 'wrong';
+  const status    = reviewStatus(q, userAnswer);
+  const isSkipped = status === 'skipped';
+  const isCorrect = status === 'correct';
   const opts      = q.shuffledOpts || q.options;
+  const visuals   = optionVisuals(q, opts, userAnswer);
 
   const statusColor = isCorrect ? 'text-emerald-500' : isSkipped ? 'text-amber-500' : 'text-red-500';
   const statusDot   = isCorrect ? 'bg-emerald-500' : isSkipped ? 'bg-amber-500' : 'bg-red-500';
@@ -175,32 +176,14 @@ function ReviewCardInner({
 
       {/* Options: 2x2 when short, stacked when long */}
       <div className={`mb-4 ${shortOpts && opts.length === 4 ? 'grid grid-cols-2 gap-2' : 'space-y-2'}`}>
-        {opts.map((opt, i) => {
-          const isThisCorrect = opt === q.correctAnswer || (q.correctAnswers?.includes(opt) ?? false);
-          const isThisUserWrong = isWrong && opt === userAnswer;
-
-          return (
-            <ReviewOptionItem
-              key={i}
-              opt={opt}
-              index={i}
-              isCorrectOption={isThisCorrect}
-              isUserWrongSelection={isThisUserWrong}
-            />
-          );
-        })}
+        {opts.map((opt, i) => (
+          <ReviewOptionItem key={i} opt={opt} index={i} visual={visuals[i]} />
+        ))}
       </div>
 
-      {/* Inline Answer Line: immediately below options, bold, color-coded */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs">
-        <span className="font-bold text-green-700 dark:text-green-400">
-          Ans. - ({String.fromCharCode(65 + Math.max(0, opts.indexOf(q.correctAnswer)))}) {q.correctAnswer}.
-        </span>
-        {isWrong && userAnswer && (
-          <span className="text-[11px] text-foreground/60 ml-auto flex-shrink-0">
-            (You answered: <span className="font-bold text-red-600 dark:text-red-400">{userAnswer}</span>)
-          </span>
-        )}
+      {/* Inline answer line: bold green, always. Your own pick is shown by the red ❌ option above. */}
+      <div className="mb-3 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs" data-testid="review-answer-line">
+        <span className="font-bold text-green-700 dark:text-green-400">{answerLineText(q, opts)}</span>
       </div>
 
       {/* Rationale */}

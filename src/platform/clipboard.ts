@@ -19,41 +19,39 @@ const getNativeBridge = (): NativeClipboardBridge | undefined => {
  * On Web / PWA, uses standard `navigator.clipboard.readText()`.
  */
 export async function readClipboardText(): Promise<string> {
-  // 1. Android Native JavascriptInterface bridge (synchronous, direct Android ClipboardManager access)
+  const native = Capacitor.isNativePlatform();
+
+  // 1. Android JavascriptInterface bridge (direct ClipboardManager, no WebView permission involved).
+  //    An empty string may just mean "timed out", so it is not final: the next method gets a try.
   const bridge = getNativeBridge();
   if (bridge?.readClipboard) {
     try {
       const val = bridge.readClipboard();
-      if (typeof val === 'string') return val;
+      if (typeof val === 'string' && val !== '') return val;
     } catch (e) {
       console.warn('NativeBridge readClipboard error:', e);
     }
   }
 
-  // 2. Capacitor native plugin bridge (@capacitor/clipboard)
-  if (Capacitor.isNativePlatform() || Capacitor.isPluginAvailable('Clipboard')) {
+  // 2. @capacitor/clipboard (native plugin; also falls back to the web API inside the plugin on web)
+  if (native || Capacitor.isPluginAvailable('Clipboard')) {
     try {
       const res = await Clipboard.read();
-      if (res && typeof res.value === 'string') {
-        return res.value;
-      }
+      // an image on the clipboard comes back as a data: URL; only plain text can be pasted into the box
+      if (res && typeof res.value === 'string' && !String(res.type || '').startsWith('image')) return res.value;
       return '';
     } catch (e) {
       console.warn('Native Clipboard.read error:', e);
-      if (Capacitor.isNativePlatform()) {
-        return '';
-      }
+      if (native) return '';
     }
   }
 
-  // 3. Web / PWA standard navigator.clipboard
+  // 3. Web / PWA: navigator.clipboard (needs a user gesture and permission; may throw)
   if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
     try {
       return await navigator.clipboard.readText();
     } catch (e) {
-      if (Capacitor.isNativePlatform() || bridge?.readClipboard) {
-        return '';
-      }
+      if (native || bridge?.readClipboard) return '';
       throw e;
     }
   }

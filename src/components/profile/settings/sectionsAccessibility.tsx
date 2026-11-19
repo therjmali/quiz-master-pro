@@ -6,6 +6,7 @@ import { Btn, Card, Pill } from './platformUi';
 import { toast } from 'sonner';
 import { SettingsSection, SettingRow } from './controls';
 import type { SectionProps } from './sectionsA';
+import { writeClipboardText } from '../../../platform/clipboard';
 import {
   ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_PRESETS, ZOOM_STEP,
   clampZoom, resetZoom, setZoom, useZoom, zoomIn, zoomOut,
@@ -120,7 +121,7 @@ export function DiagnosticsPanel() {
   const copy = async () => {
     const text = formatDiagnostics(report ?? await collectDiagnostics());
     try {
-      await navigator.clipboard.writeText(text);
+      await writeClipboardText(text);
       setCopied(true);
       toast.success('Report copied - paste it in a message');
       setTimeout(() => setCopied(false), 2500);

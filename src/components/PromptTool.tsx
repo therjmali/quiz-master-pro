@@ -10,6 +10,7 @@ import { Wand2, X, Send, Loader2, Copy, CheckCheck } from 'lucide-react';
 import Overlay from './ui/Overlay';
 import { toast } from 'sonner';
 
+import { writeClipboardText } from '../platform/clipboard';
 const PROMPT_TEMPLATES = [
   { emoji: '📝', label: 'Generate MCQs', prompt: 'Generate 10 MCQ questions with 4 options each from the following notes:\n\n' },
   { emoji: '📖', label: 'Summarize Notes', prompt: 'Summarize the following study notes into key bullet points:\n\n' },
@@ -59,7 +60,7 @@ export default function PromptTool() {
   const handleCopy = async () => {
     if (!result) return;
     try {
-      await navigator.clipboard.writeText(result);
+      await writeClipboardText(result);
       setCopied(true);
       toast.success('Copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);

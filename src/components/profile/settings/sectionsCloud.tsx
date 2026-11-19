@@ -20,6 +20,7 @@ import { SettingsSection, SettingRow, SubHeading, Toggle } from './controls';
 import { Btn, Card, Confirm, Pill, TextField, formatBytes, timeAgo } from './platformUi';
 import type { SectionProps } from './sectionsA';
 
+import { writeClipboardText } from '../../../platform/clipboard';
 const PHASE_LABEL: Record<SyncPhase, { text: string; tone: 'neutral' | 'good' | 'warn' | 'bad' | 'info' }> = {
   disabled: { text: 'Off', tone: 'neutral' }, idle: { text: 'Ready', tone: 'info' }, syncing: { text: 'Syncing', tone: 'info' },
   synced: { text: 'Up to date', tone: 'good' }, paused: { text: 'Paused', tone: 'warn' }, pending: { text: 'Changes waiting', tone: 'warn' },
@@ -281,7 +282,7 @@ function ProfileCard() {
 function SetupCard() {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(SCHEMA_SQL); setCopied(true); toast.success('SQL copied'); setTimeout(() => setCopied(false), 2500); }
+    try { await writeClipboardText(SCHEMA_SQL); setCopied(true); toast.success('SQL copied'); setTimeout(() => setCopied(false), 2500); }
     catch { toast.error('Could not copy - open supabase/quiz_schema.sql in the repository instead'); }
   };
   return (

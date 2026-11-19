@@ -273,10 +273,7 @@ function questionCard(it: ReportItem, style: ReportStyle): string {
       return i >= 0 ? `(${L(i)}) ${c}` : c;
     }).join(', ');
     const ansColor = '#15803d';
-    const wrongAns = (it.status === 'wrong' && it.user)
-      ? ` <span class="wrong-ans" style="color:#b91c1c;font-weight:600;font-size:11px;">(You answered: ${esc(it.user)})</span>`
-      : '';
-    inlineAnsHtml = `<div class="ans-line" style="font-weight:700;color:${ansColor};margin:4px 0 6px 0;font-size:12px;">Ans. - ${esc(ansSummary)}.${wrongAns}</div>`;
+    inlineAnsHtml = `<div class="ans-line" style="font-weight:700;color:${ansColor};margin:4px 0 6px 0;font-size:12px;">Ans. - ${esc(ansSummary)}.</div>`;
   }
   const rat = (emoji: string, text: string | undefined) => {
     const bullets = rationaleBullets(text);

@@ -3,6 +3,7 @@ import Overlay from '../ui/Overlay';
 import { X, Copy, Check } from 'lucide-react';
 import { MCQ_SAMPLE, MCQ_RULES } from '../../utils/quizParser';
 
+import { writeClipboardText } from '../../platform/clipboard';
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -121,7 +122,7 @@ export default function FormatGuideModal({ open, onClose }: Props) {
   if (!open) return null;
 
   const handleCopyExample = () => {
-    navigator.clipboard.writeText(EXAMPLE_MCQ).then(() => {
+    writeClipboardText(EXAMPLE_MCQ).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }).catch(() => {});

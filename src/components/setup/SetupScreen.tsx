@@ -689,6 +689,7 @@ export default function SetupScreen({
             shuffleOptions={settings.shuffleOptions}
             onToggleQuestions={v => set({ shuffleQuestions: v })}
             onToggleOptions={v => set({ shuffleOptions: v })}
+            onSetBoth={(q, o) => set({ shuffleQuestions: q, shuffleOptions: o })}
           />
           {featureVisibility?.photoQuiz !== false && (
             <button
@@ -813,7 +814,7 @@ export default function SetupScreen({
                     toast.error('Clipboard is empty');
                   }
                 } catch {
-                  toast.error('Clipboard blocked — paste manually (Ctrl+V).');
+                  toast.error('Clipboard blocked — long-press the box and tap Paste (Ctrl+V on a computer).');
                 }
               }}
               disabled={loading}

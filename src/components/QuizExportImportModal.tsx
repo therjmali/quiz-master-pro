@@ -15,7 +15,7 @@ import { loadFullResults } from '../utils/reports/loadFull';
 import { storeQuizDetail } from '../hooks/useHistorySync';
 import { getQuizDetail } from 'zitejs/api';
 import { useAuth } from 'zitejs/auth';
-import { readClipboardText } from '../platform/clipboard';
+import { readClipboardText, writeClipboardText } from '../platform/clipboard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -358,7 +358,7 @@ function ExportPanel({ history, selectedQuiz, onClose, fetchFullDetail, isLogged
       toast.success('📝 Text exported!');
     } else if (format === 'clipboard') {
       const text = questionsToText(allQuestions, title);
-      navigator.clipboard.writeText(text).then(() => {
+      writeClipboardText(text).then(() => {
         setCopied(true);
         toast.success('📋 Copied to clipboard!');
         setTimeout(() => setCopied(false), 2000);

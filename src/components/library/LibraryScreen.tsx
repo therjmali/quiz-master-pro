@@ -27,6 +27,7 @@ import FileManager from './FileManager';
 import QuizExportImportModal from '../QuizExportImportModal';
 import { loadFileTree, saveFileTree, findNode as findNodeInTree, createFile, findDuplicateFile, createFolder as createFolderInTree, ROOT_ID, FileNode, getAllFiles, updateNode as updateNodeInTree } from '../../utils/fileTree';
 
+import { writeClipboardText } from '../../platform/clipboard';
 interface Props {
   history: QuizResult[];
   onViewResult: (r: QuizResult) => void;
@@ -159,7 +160,7 @@ function LibraryCardBody({ result, idx, isPinned, onView, onDelete, onPractice, 
     if (navigator.share) {
       try { await navigator.share({ title: 'Quiz Result', text }); } catch {}
     } else {
-      await navigator.clipboard.writeText(text);
+      await writeClipboardText(text);
       toast.success('📋 Copied to clipboard!');
     }
   };

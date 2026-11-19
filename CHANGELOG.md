@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.10.0] - 2026-11-19
+
+Review cards say it with colour and icon only, the Shuffle quick buttons actually work, and every copy/paste goes through the native clipboard.
+
+### Changed
+- **Review / report cards: status by colour + icon only.** The `(You answered: …)` sentence is gone from the in-app review cards and from both PDF paths (the PDF itself and its preview / print HTML). What you picked is shown on the option itself, in the same way everywhere:
+  - ✅ correct: the picked option is green with ✅.
+  - ❌ wrong: the picked option is red with ❌, the right option is green with ✅.
+  - ⏭️ skipped: only the right option is green with ✅ (nothing red).
+  - Multi-answer questions mark every right option ✅; a repeated option text marks only the first copy as the wrong pick; the `Ans. - (B) …` line is always bold green and lists every right letter.
+- The option rules live in one place, `src/utils/reviewOptions.ts` (unit-tested), and `ReviewCard` only draws them. Rows keep the same height in every state (no layout shift) in Light and Dark.
+- In the PDF the "Your answer" switch is now respected: the wrong pick is marked with ✗ only when it is on (the old sentence ignored the switch).
+
+### Fixed
+- **Shuffle "📖 Original" and "🔀 Full Shuffle" did not work.** Each button called two setters in a row and the second one overwrote the first with stale settings, so Full Shuffle only turned on Shuffle Options and Original left Shuffle Questions on. They now set both switches in one update (`onSetBoth`).
+- **Paste:** the native Android bridge returning an empty string (for example a timeout) no longer ends the paste; `@capacitor/clipboard` and then the web API are tried. A picture on the clipboard is ignored instead of pasting its data URL. The error toast now says what to do on a phone ("long-press the box and tap Paste").
+- **Copy buttons everywhere** (error report, share card, Library, file manager, SQL snippet, prompt tool, revision notes, bookmarks, format guide, exam poster, accessibility) now use `platform/clipboard` (native bridge → `@capacitor/clipboard` → web) instead of `navigator.clipboard` directly.
+
+### Verified (no change needed)
+- The Answers show / hide modal on the review bar was already removed in 3.7.0; answers are always shown there. A contract check now keeps it removed. The report preview's own answers control (after each / at the end / hidden) and the Create Quiz preview eye are separate, deliberate controls and stay.
+
+### Added
+- `scripts/ui-qa-v310.mjs` (`npm run test:ui:v310`, 103 checks, real Chrome with touch, Light + Dark, phone + tablet): review states for correct / wrong / skipped / multi-answer, no "You answered", no Answers control, every Rationale and Shuffle switch, and the paste paths (native bridge, bridge empty then web API, web API only, blocked, empty).
+- Unit tests for the option states and for the PDF / preview HTML wording; `verify-repo` contract checks for all of the above.
+
 ## [3.9.0] - 2026-11-17
 
 Cross-device sync audit: the outbox that never emptied, a Realtime subscription that could never connect, six syncs per resume, and a header badge that said "Saved" while offline.

@@ -6,6 +6,7 @@ import FlipCard from './FlipCard';
 import type { ExamDate } from '../../utils/examDates';
 import type { QuizResult } from '../../types/quiz';
 
+import { writeClipboardText } from '../../platform/clipboard';
 /* ── Status badge logic ── */
 function statusBadge(days: number, avgScore: number) {
   if (avgScore >= 80) return { emoji: '🔥', label: 'Exam Ready', cls: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' };
@@ -131,7 +132,7 @@ export default function ExamPosterCard({ exam, history = [], onEdit, onPracticeS
     if (navigator.share) {
       navigator.share({ title: exam.label || exam.subject, text }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(text);
+      writeClipboardText(text);
       toast.success('Countdown copied to clipboard!');
     }
   };

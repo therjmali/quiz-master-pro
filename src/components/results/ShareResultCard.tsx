@@ -5,6 +5,7 @@ import { QuizResult } from '../../types/quiz';
 import { formatTime } from '../../utils/scoring';
 import Overlay from '../ui/Overlay';
 
+import { writeClipboardText } from '../../platform/clipboard';
 interface Props {
   result: QuizResult;
   onClose: () => void;
@@ -376,7 +377,7 @@ export default function ShareResultCard({ result, onClose }: Props) {
     const title = percentage >= 90 ? 'Outstanding!' : percentage >= 70 ? 'Great Job!' : percentage >= 50 ? 'Good Effort!' : 'Keep Practicing!';
     const text = `📊 Quiz Master Pro Results\n${emoji} ${title}\n\nScore: ${netScore}/${maxScore} (${percentage}%)\n✓ Correct: ${correct} | ✗ Wrong: ${wrong} | ⏭ Skipped: ${skipped}\nAccuracy: ${accuracy}% | Time: ${formatTime(timeTaken)}`;
     try {
-      await navigator.clipboard.writeText(text);
+      await writeClipboardText(text);
       setCopied(true);
       toast.success('Copied to clipboard!');
       setTimeout(() => setCopied(false), 2000);

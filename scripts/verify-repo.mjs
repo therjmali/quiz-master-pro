@@ -297,6 +297,13 @@ if (exists('.github/workflows/ci.yml')) {
   check('hardware back is handled by one chain', read('src/platform/backButton.ts').includes('export function handleBack') && read('src/main.tsx').includes('initBackButton'), 'back chain missing');
   check('the master report template exists and is dispatched', read('src/utils/reports/pdf/generate.ts').includes('layoutMasterReport') && read('src/utils/reports/pdf/types.ts').includes("template: 'master'"), 'master template not wired');
   check('MainActivity captures widget deep-link intents', act.includes('captureWidgetIntent') && act.includes('consumePendingWidgetAction'), 'missing widget intent bridge');
+  // v3.10 contracts
+  const reviewCardSrc = read('src/components/results/ReviewCard.tsx'), reviewSecSrc = read('src/components/results/ReviewSection.tsx');
+  check('review cards show status as colour + icon only (shared option-state helper, no "You answered" sentence anywhere)', exists('src/utils/reviewOptions.ts') && reviewCardSrc.includes('optionVisuals') && !/You answered/.test(reviewCardSrc) && !/You answered/.test(read('src/utils/reports/pdf/masterTemplate.ts')) && !/You answered/.test(read('src/utils/reports/pdf/masterHtml.ts')), 'a "You answered" sentence is back, or the review card no longer uses reviewOptions');
+  check('the review bar has no Answers show/hide modal (answers are always shown)', !reviewSecSrc.includes('review-opt-answers') && !reviewSecSrc.includes('qmp_show_answers_inline') && !/Show or hide the correct answers/.test(reviewSecSrc), 'the Answers modal is back');
+  const clipUsers = ui.filter(x => /navigator\.clipboard\.(writeText|readText)/.test(x.t) && !/platform\/clipboard\.ts$/.test(x.f)).map(x => x.f);
+  check('every clipboard read / write goes through platform/clipboard (native bridge + @capacitor/clipboard)', clipUsers.length === 0 && read('src/platform/clipboard.ts').includes("from '@capacitor/clipboard'") && /"@capacitor\/clipboard"/.test(read('package.json')), clipUsers.join(', ') || 'plugin import or dependency missing');
+  check('Shuffle quick actions set both switches in one update (two calls overwrite each other)', read('src/components/ShuffleControlsButton.tsx').includes('onSetBoth(true, true)') && read('src/components/ShuffleControlsButton.tsx').includes('onSetBoth(false, false)') && read('src/components/setup/SetupScreen.tsx').includes('onSetBoth='), 'Original / Full Shuffle are back to two separate setters');
 }
 
 // ---------------------------------------------------------------- .gitignore hygiene

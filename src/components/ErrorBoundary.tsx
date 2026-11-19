@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Copy, CheckCircle2 } from 'lucide-react';
 
+import { writeClipboardText } from '../platform/clipboard';
 interface Props {
   children: ReactNode;
   /** Screen name for error reporting */
@@ -40,7 +41,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   handleCopyError = () => {
     const text = `Screen: ${this.props.screenName || 'Unknown'}\nError: ${this.state.error?.message || 'Unknown'}\nStack: ${this.state.error?.stack?.slice(0, 500) || 'N/A'}`;
-    navigator.clipboard.writeText(text).then(() => {
+    writeClipboardText(text).then(() => {
       this.setState({ copied: true });
       setTimeout(() => this.setState({ copied: false }), 2000);
     }).catch(() => {});

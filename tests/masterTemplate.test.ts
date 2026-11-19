@@ -230,3 +230,16 @@ test('master template: status cards - tints, icons, difficulty dots, ✓ on the 
   assert.ok(texts.some(t => /^Ans\. - /.test(t)), 'inline answer line on card');
   assert.ok(!texts.some(t => /^(Explanation|AI explanation|Rationale):/.test(t)), 'no explanation labels on the cards');
 });
+
+test('master template: a wrong answer never prints a "You answered" sentence (PDF text, preview HTML) - the red cross is the only signal', () => {
+  const items = [item(1), item(2, { status: 'wrong', user: 'Gamma' }), item(3, { status: 'skipped', user: null })];
+  const withUser = layoutMasterReport(doc(items), style, set);
+  const texts = flat(withUser.pages, 'text').map(o => o.text);
+  assert.ok(!texts.some((t: string) => /You answered|Your answer/i.test(t)), 'no sentence about the pick');
+  assert.equal(texts.filter((t: string) => /^Ans\. - \(B\) Beta\.$/.test(t)).length, 3, 'every answer line is just Ans. - (B) Beta. (green), whatever the status');
+  const crosses = withUser.pages.flatMap(p => p.ops).filter(o => o.t === 'line' && o.color === '#dc2626' && o.cap === 'round' && o.x1 > 250).length;
+  assert.equal(crosses, 2, 'the wrong pick is still crossed (two strokes)');
+  const html = docToMasterHtml(doc(items), style);
+  assert.ok(!/You answered/.test(html), 'preview / print HTML has no "You answered" either');
+  assert.ok(!/wrong-ans/.test(html));
+});
