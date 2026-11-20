@@ -1,6 +1,6 @@
 /**
  * UI regression for v3.10 (real Chrome, touch emulation, Light + Dark):
- *  - review cards: colour + icon only (correct / wrong / skipped / multi-answer), no "(You answered: …)" anywhere
+ *  - review cards: colour + icon only (correct / wrong / skipped / multi-answer); the answer is the bold green option, no "(You answered: …)" and no separate "Ans. -" line
  *  - the Answers show/hide modal is gone from the review options (answers are always shown)
  *  - Shuffle (Create Quiz) and Rationale (report panel + review popup) switches really switch, in Light and Dark
  *  - Paste: native bridge, web fallback, blocked and empty clipboard
@@ -55,15 +55,16 @@ async function reviewSuite(label, w, h, theme) {
   ok(`[${label}] four review cards`, (await cards.count()) === 4, String(await cards.count()));
   const states = async (i) => cards.nth(i).locator('[data-option-state]').evaluateAll(els => els.map(e => e.getAttribute('data-option-state')));
   const icons = async (i) => cards.nth(i).locator('[data-option-state] [role="img"]').evaluateAll(els => els.map(e => e.textContent));
-  const ansLine = async (i) => (await cards.nth(i).getByTestId('review-answer-line').innerText()).trim();
 
   ok(`[${label}] A correct: picked option green ✅, nothing red`, JSON.stringify(await states(0)) === '["neutral","correct","neutral","neutral"]' && JSON.stringify(await icons(0)) === '["✅"]', JSON.stringify(await states(0)));
   ok(`[${label}] B wrong: pick red ❌ + right option green ✅`, JSON.stringify(await states(1)) === '["wrong","correct","neutral","neutral"]' && JSON.stringify(await icons(1)) === '["❌","✅"]', JSON.stringify(await icons(1)));
   ok(`[${label}] C skipped: only ✅ on the right option, no ❌, no red`, JSON.stringify(await states(2)) === '["neutral","correct","neutral","neutral"]' && JSON.stringify(await icons(2)) === '["✅"]');
   ok(`[${label}] D multi-answer wrong: both right options ✅, the pick ❌`, JSON.stringify(await states(3)) === '["neutral","correct","correct","wrong"]' && (await icons(3)).filter(x => x === '✅').length === 2 && (await icons(3)).filter(x => x === '❌').length === 1);
-  ok(`[${label}] answer line is plain "Ans. - (B) …" on every status`, (await ansLine(0)) === 'Ans. - (B) Beta blocker.' && (await ansLine(1)) === 'Ans. - (B) Beta blocker.' && (await ansLine(2)) === 'Ans. - (B) Beta blocker.' && (await ansLine(3)) === 'Ans. - (B) Beta blocker, (C) Gamma globulin.', await ansLine(1));
+  const weights = await cards.nth(1).locator('[data-option-state]').evaluateAll(els => els.map(e => ({ st: e.getAttribute('data-option-state'), w: Number(getComputedStyle(e).fontWeight) })));
+  ok(`[${label}] the answer sits INSIDE its option: right + wrong pick bold, the others regular`, weights.every(x => x.st === 'neutral' ? x.w <= 500 : x.w >= 700), JSON.stringify(weights));
   const body = await page.locator('body').innerText();
   ok(`[${label}] no "(You answered: …)" text anywhere on the screen`, !/You answered/i.test(body));
+  ok(`[${label}] no separate "Ans. - …" line under any card`, (await page.getByTestId('review-answer-line').count()) === 0 && !/Ans\. -/.test(body));
   const optText = await page.getByTestId('review-options').innerText();
   ok(`[${label}] no Answers show/hide control (answers are always shown)`, (await page.getByTestId('review-opt-answers').count()) === 0 && !/Answers/.test(optText) && !/Show answers|Hide answers/.test(body), optText.replace(/\n/g, ' | '));
   // no layout shift: every option row of the wrong card has the same height whatever its state

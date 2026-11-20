@@ -60,3 +60,15 @@ export function markedOptions(it: ReportItem, opts: { inlineAnswers: boolean; sh
   });
   return { ok, no };
 }
+
+/**
+ * Which option TEXTS are drawn bold + coloured (green = the answer, red = your wrong pick). This replaces the old separate
+ * "Ans. - (B) …" line, so unlike the check marks it also covers an item without a status (the answer must still show somewhere).
+ * Only when answers are shown after each question.
+ */
+export function emphasisOptions(it: ReportItem, opts: { inlineAnswers: boolean; showUserAnswer: boolean }): { ok: boolean[]; no: boolean[] } {
+  if (!opts.inlineAnswers) return { ok: it.options.map(() => false), no: it.options.map(() => false) };
+  const m = markedOptions(it, opts);
+  const ok = it.options.map(o => it.correct.some(c => c.trim() === o.trim()));
+  return { ok, no: m.no };
+}

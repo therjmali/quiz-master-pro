@@ -41,11 +41,3 @@ export function optionVisuals(q: Pick<QuizQuestion, 'correctAnswer' | 'correctAn
     return 'neutral';
   });
 }
-
-/** "(D) text" parts for the `Ans. - …` line; falls back to the bare answer when it is not among the options. */
-export function answerLineText(q: Pick<QuizQuestion, 'correctAnswer' | 'correctAnswers'>, opts: string[]): string {
-  const parts: string[] = [];
-  opts.forEach((o, i) => { if (isCorrectOption(q, o)) parts.push(`(${String.fromCharCode(65 + i)}) ${o}`); });
-  const body = parts.length ? parts.join(', ') : q.correctAnswer;
-  return `Ans. - ${body}.`;
-}

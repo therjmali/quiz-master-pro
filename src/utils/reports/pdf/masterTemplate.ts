@@ -20,7 +20,7 @@ import { measureText, type FontSet } from './fontSet';
 import { PAPER, wrapSpans, type Span } from './layout';
 import type { Block } from './markdown';
 import type { LaidOutReport, Op, Page, ReportDoc, ReportItem, ReportStyle } from './types';
-import { levelOf, markedOptions, rationaleBullets } from './cardModel';
+import { levelOf, markedOptions, emphasisOptions, rationaleBullets } from './cardModel';
 import { decorOps } from './icons';
 
 /* ───────────────────────────── design tokens ───────────────────────────── */
@@ -263,7 +263,7 @@ function statsBar(doc: ReportDoc, set: FontSet, pageW: number, y: number): { ops
 /**
  * One question as a status card:
  *   [status icon] Q1. [difficulty dot] question text
- *   (A) option                      (B) option  ✓      <- green check on the answer of attempted questions
+ *   (A) option                      (B) option  ✓      <- the answer: bold green + check; a wrong pick: bold red + cross (no separate "Ans. -" line)
  *   ─────────── divider ───────────
  *   📖 • rationale bullet            (original bullets only, no text label)
  * Icons are vector shapes (the bundled fonts have no emoji), so the PDF and the preview match exactly.
@@ -307,35 +307,23 @@ function questionCard(it: ReportItem, style: ReportStyle, set: FontSet, colW: nu
   /* options: a list, green check on the right */
   const opts = it.options ?? [];
   const marks = markedOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
+  const emph = emphasisOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
   const markR = fOpt * 0.5;
   const markW = marks.ok.some(Boolean) || marks.no.some(Boolean) ? markR * 2 + 8 : 0;
   const optX = textX + 3;
   const hang = wOf(set, '(A) ', true, fOpt);
   const optLH = fOpt * 1.34;
   opts.forEach((o, i) => {
-    const lines = wrap(set, o || '—', Math.max(20, rightEdge - optX - hang - markW), fOpt, false, 24);
+    /* the answer is the bold green option, your wrong pick the bold red one; there is no separate "Ans. -" line */
+    const bold = emph.ok[i] || emph.no[i];
+    const ink = emph.ok[i] ? T.okInk : emph.no[i] ? T.noInk : T.ink2;
+    const lines = wrap(set, o || '—', Math.max(20, rightEdge - optX - hang - markW), fOpt, bold, 24);
     const base = y + fOpt * 0.95;
-    ops.push(txt(optX, base, `(${LETTER(i)})`, { bold: true, size: fOpt, color: T.ink }));
-    lines.forEach((ln, li) => ops.push(txt(optX + hang, base + li * optLH, ln, { size: fOpt, color: T.ink2 })));
+    ops.push(txt(optX, base, `(${LETTER(i)})`, { bold: true, size: fOpt, color: bold ? ink : T.ink }));
+    lines.forEach((ln, li) => ops.push(txt(optX + hang, base + li * optLH, ln, { bold, size: fOpt, color: ink })));
     if (marks.ok[i] || marks.no[i]) ops.push(...decorOps({ k: 'mark', mark: marks.ok[i] ? 'ok' : 'no', cx: rightEdge - markR, r: markR }, 0, base - fOpt * 0.36));
     y += Math.max(1, lines.length) * optLH + 1.5 * sc;
   });
-
-  /* inline answer line: always bold green, never a sentence about the pick */
-  if (inline) {
-    const idxOf = (txt: string) => (it.options ?? []).findIndex(o => o.trim() === txt.trim());
-    const ansSummary = (it.correct ?? []).map(c => {
-      const i = idxOf(c);
-      return i >= 0 ? `(${LETTER(i)}) ${c}` : c;
-    }).join(', ');
-    const ansColor = T.okInk;
-    const ansLine = `Ans. - ${ansSummary}.`; /* your own pick shows as the red ✗ option, never as a sentence */
-    const ansLines = wrap(set, ansLine, Math.max(20, rightEdge - optX), fOpt, true, 4);
-    ansLines.forEach((ln, li) => {
-      ops.push(txt(optX, y + fOpt * 0.95 + li * optLH, ln, { bold: true, size: fOpt, color: ansColor }));
-    });
-    y += Math.max(1, ansLines.length) * optLH + 2 * sc;
-  }
 
   /* rationale: divider + 📖 (and 🤖) bullets, no text labels */
   if (inline) {

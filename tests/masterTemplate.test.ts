@@ -104,7 +104,7 @@ test('master template: answer modes — inline prints answers, key prints a key,
   const inlineRep = layoutMasterReport(doc(items), style, set);
   const inline = flat(inlineRep.pages, 'text').map(o => o.text);
   assert.ok(inline.some(t => t.includes('Because the enzyme')), 'inline: the rationale bullets follow each question');
-  assert.ok(inline.some(t => /^Ans\. - /.test(t)), 'inline: answer line formatted as Ans. - (C)');
+  assert.ok(!inline.some(t => /^Ans\. - /.test(t)), 'inline: no separate "Ans. -" line, the answer sits in its option');
   assert.ok(!inline.some(t => /^(Explanation|Rationale|Your answer):/.test(t)), 'no text labels in the card format');
   assert.equal(lines(inlineRep, '#16a34a'), 4, 'a green check (two strokes) on the answer of each of the 2 attempted questions');
   assert.equal(lines(inlineRep, '#dc2626'), 2, 'the wrong pick of question 2 is crossed');
@@ -227,7 +227,7 @@ test('master template: status cards - tints, icons, difficulty dots, ✓ on the 
   const texts = ops.filter(o => o.t === 'text').map((o: any) => o.text as string);
   for (const q of ['Q1.', 'Q2.', 'Q3.']) assert.ok(texts.includes(q));
   assert.ok(texts.some(t => t.includes('Point A')) && texts.some(t => t.includes('Point B')) && texts.some(t => t.includes('One paragraph.')));
-  assert.ok(texts.some(t => /^Ans\. - /.test(t)), 'inline answer line on card');
+  assert.ok(!texts.some(t => /^Ans\. - /.test(t)), 'no separate answer line on the card: the answer is the bold green option');
   assert.ok(!texts.some(t => /^(Explanation|AI explanation|Rationale):/.test(t)), 'no explanation labels on the cards');
 });
 
@@ -236,10 +236,19 @@ test('master template: a wrong answer never prints a "You answered" sentence (PD
   const withUser = layoutMasterReport(doc(items), style, set);
   const texts = flat(withUser.pages, 'text').map(o => o.text);
   assert.ok(!texts.some((t: string) => /You answered|Your answer/i.test(t)), 'no sentence about the pick');
-  assert.equal(texts.filter((t: string) => /^Ans\. - \(B\) Beta\.$/.test(t)).length, 3, 'every answer line is just Ans. - (B) Beta. (green), whatever the status');
+  assert.ok(!texts.some((t: string) => /^Ans\./.test(t)), 'no separate Ans. - line on any status');
+  const optOps = (txt: string) => flat(withUser.pages, 'text').filter(o => o.text === txt);
+  const betas = optOps('Beta');
+  assert.equal(betas.length, 3, 'the answer option is drawn once per card');
+  assert.ok(betas.every(o => o.bold === true && String(o.color).toLowerCase() === '#15803d'), 'the answer is bold green on correct, wrong AND skipped cards');
+  const gammaRed = optOps('Gamma').filter(o => o.bold === true && String(o.color).toLowerCase() === '#b91c1c');
+  assert.equal(gammaRed.length, 1, 'the wrong pick is bold red (only on the wrong card)');
+  assert.ok(optOps('Alpha').every(o => !o.bold), 'other options stay regular');
   const crosses = withUser.pages.flatMap(p => p.ops).filter(o => o.t === 'line' && o.color === '#dc2626' && o.cap === 'round' && o.x1 > 250).length;
   assert.equal(crosses, 2, 'the wrong pick is still crossed (two strokes)');
   const html = docToMasterHtml(doc(items), style);
   assert.ok(!/You answered/.test(html), 'preview / print HTML has no "You answered" either');
-  assert.ok(!/wrong-ans/.test(html));
+  assert.ok(!/wrong-ans/.test(html) && !/ans-line/.test(html) && !/Ans\. - /.test(html), 'no separate answer line in the preview HTML');
+  assert.equal((html.match(/class="opt is-ok"/g) || []).length, 3, 'preview HTML: the answer option is flagged on every card');
+  assert.equal((html.match(/class="opt is-no"/g) || []).length, 1, 'preview HTML: only the wrong pick is flagged red');
 });

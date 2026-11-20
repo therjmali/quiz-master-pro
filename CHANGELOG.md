@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.11.0] - 2026-11-20
+
+The answer now lives inside its option. No separate `Ans. - (B) …` line under the question any more.
+
+### Changed
+- **Review cards (All / Correct / Wrong / Skipped):** the separate answer line under the options is gone. The right option is bold green with ✅, your wrong pick is bold red with ❌, everything else stays regular. Skipped cards show only the bold green answer. Multi-answer questions show every right option bold green. Rows keep one height in every state, so nothing jumps.
+- **Colour report (PDF and its preview / print HTML):** same rule. The answer option is bold green with the ✓ mark, a wrong pick is bold red with the ✗ mark (when "Your answer" is on). The card is shorter, so more questions fit per page. An item without a status (a blank paper with answers after each question) still shows its answer, bold green, with no check.
+- **Premium finish on the option rows:** the answer and the wrong pick get a firmer border and a soft coloured glow in Light and Dark; text contrast stays at 4.5:1 or better.
+- Kept on purpose: the black-and-white exam paper and the plain / classic exports still print `Ans. - (C) text.`, because without colour that line is what carries the answer.
+
+### Added
+- `emphasisOptions()` in `cardModel` (one rule for the PDF and the preview), unit tests for it, updated template tests, an updated `ui-qa-v310` check (answer is bold inside the option, no `Ans. -` anywhere), and a `verify-repo` contract that keeps the line out.
+
 ## [3.10.0] - 2026-11-19
 
 Review cards say it with colour and icon only, the Shuffle quick buttons actually work, and every copy/paste goes through the native clipboard.

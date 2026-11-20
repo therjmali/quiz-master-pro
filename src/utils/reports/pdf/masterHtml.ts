@@ -12,7 +12,7 @@
  */
 import { parseInline } from './markdown';
 import type { ReportDoc, ReportItem, ReportStyle } from './types';
-import { AI_EMOJI, BOOK_EMOJI, DIFF_EMOJI, STATUS_EMOJI, levelOf, markedOptions, rationaleBullets } from './cardModel';
+import { AI_EMOJI, BOOK_EMOJI, DIFF_EMOJI, STATUS_EMOJI, levelOf, markedOptions, emphasisOptions, rationaleBullets } from './cardModel';
 
 const esc = (s: unknown) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -125,6 +125,7 @@ body{margin:0;background:#EEF1F6;color:var(--ink);
 .opt .ot b{font-weight:800;color:var(--ink)}
 .opt .mk{flex:none;font-weight:800;font-size:13px;line-height:1.3}
 .opt .mk.ok{color:#16A34A}.opt .mk.no{color:#DC2626}
+.opt.is-ok .ot,.opt.is-ok .ot b{font-weight:800;color:#15803D}.opt.is-no .ot,.opt.is-no .ot b{font-weight:800;color:#B91C1C}
 hr.div{border:0;border-top:1px solid;margin:10px 0 8px}
 .card.ok hr.div{border-color:var(--ok-bd)}.card.no hr.div{border-color:var(--no-bd)}.card.sk hr.div{border-color:var(--sk-bd)}.card.un hr.div{border-color:#E2E8F0}
 .rat{display:flex;gap:7px;align-items:flex-start;margin:0 0 4px}
@@ -185,6 +186,7 @@ hr.div{border:0;border-top:1px solid;margin:10px 0 8px}
   body{background:#07070B}.page{background:#0E0E14}
   .key,.md{background:#14141C}.card.un{background:#14141C;border-color:rgba(229,231,235,.14)}
   .opt .mk.ok{color:#4ADE80}.opt .mk.no{color:#F87171}
+  .opt.is-ok .ot,.opt.is-ok .ot b{color:#4ADE80}.opt.is-no .ot,.opt.is-no .ot b{color:#F87171}
 }
 @media (max-width:820px){
   .page{padding:14px 12px 20px}
@@ -259,22 +261,14 @@ function questionCard(it: ReportItem, style: ReportStyle): string {
   const options = it.options ?? [];
   const lvl = levelOf(it.difficulty);
   const m = markedOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
+  const em = emphasisOptions(it, { inlineAnswers: inline, showUserAnswer: style.showUserAnswer });
   const icon = it.status === 'correct' || it.status === 'wrong' || it.status === 'skipped' ? STATUS_EMOJI[it.status] : '';
   const label = it.status === 'correct' ? 'Correct' : it.status === 'wrong' ? 'Incorrect' : it.status === 'skipped' ? 'Skipped' : '';
 
   const head = `<div class="qh">${icon ? `<span class="st" role="img" aria-label="${label}">${icon}</span>` : ''}<span class="qn">Q${it.n}.</span>${lvl ? `<span class="dl" role="img" aria-label="${lvl}">${DIFF_EMOJI[lvl]}</span>` : ''}<span class="qt">${esc(it.question || '(no question text)')}</span></div>`;
   const opts = options.length
-    ? `<div class="opts">${options.map((o, i) => `<div class="opt"><span class="ot"><b>(${L(i)})</b> ${esc(o)}</span>${m.ok[i] ? '<span class="mk ok" aria-label="Correct answer">✓</span>' : m.no[i] ? '<span class="mk no" aria-label="Your answer">✗</span>' : ''}</div>`).join('')}</div>`
+    ? `<div class="opts">${options.map((o, i) => `<div class="opt${em.ok[i] ? ' is-ok' : em.no[i] ? ' is-no' : ''}"><span class="ot"><b>(${L(i)})</b> ${esc(o)}</span>${m.ok[i] ? '<span class="mk ok" aria-label="Correct answer">✓</span>' : m.no[i] ? '<span class="mk no" aria-label="Your answer">✗</span>' : ''}</div>`).join('')}</div>`
     : '';
-  let inlineAnsHtml = '';
-  if (inline) {
-    const ansSummary = (it.correct ?? []).map(c => {
-      const i = options.findIndex(o => o.trim() === c.trim());
-      return i >= 0 ? `(${L(i)}) ${c}` : c;
-    }).join(', ');
-    const ansColor = '#15803d';
-    inlineAnsHtml = `<div class="ans-line" style="font-weight:700;color:${ansColor};margin:4px 0 6px 0;font-size:12px;">Ans. - ${esc(ansSummary)}.</div>`;
-  }
   const rat = (emoji: string, text: string | undefined) => {
     const bullets = rationaleBullets(text);
     return bullets.length ? `<div class="rat"><span class="ic" aria-hidden="true">${emoji}</span><ul>${bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul></div>` : '';
@@ -283,7 +277,6 @@ function questionCard(it: ReportItem, style: ReportStyle): string {
   return `<article class="card ${st.cls}">
   ${head}
   ${opts}
-  ${inlineAnsHtml}
   ${rationale ? `<hr class="div">${rationale}` : ''}
 </article>`;
 }

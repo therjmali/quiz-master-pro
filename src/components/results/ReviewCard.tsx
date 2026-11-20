@@ -8,7 +8,7 @@ import AiRationaleText from '../AiRationaleText';
 import QuestionImage from '../QuestionImage';
 import DisputeModal from './DisputeModal';
 import { getDispute } from '../../utils/disputes';
-import { answerLineText, optionVisuals, reviewStatus, type OptionVisual } from '../../utils/reviewOptions';
+import { optionVisuals, reviewStatus, type OptionVisual } from '../../utils/reviewOptions';
 
 interface Props {
   q: QuizQuestion;
@@ -43,11 +43,11 @@ function ReviewOptionItem({ opt, index, visual }: ReviewOptionItemProps) {
   let icon: React.ReactNode = null;
 
   if (visual === 'correct') {
-    containerClass = 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800/40 text-green-900 dark:text-green-200 font-bold';
+    containerClass = 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700/50 text-green-900 dark:text-green-200 font-bold shadow-[0_2px_10px_-4px_rgba(22,163,74,0.45)]';
     letterClass = 'text-green-950 dark:text-green-100 font-bold';
     icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" role="img" aria-label="Correct answer">✅</span>;
   } else if (visual === 'wrong') {
-    containerClass = 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/40 text-red-900 dark:text-red-200 font-bold';
+    containerClass = 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-700/50 text-red-900 dark:text-red-200 font-bold shadow-[0_2px_10px_-4px_rgba(220,38,38,0.45)]';
     letterClass = 'text-red-950 dark:text-red-100 font-bold';
     icon = <span className="ml-auto flex-shrink-0 text-base leading-none select-none" role="img" aria-label="Your incorrect answer">❌</span>;
   }
@@ -181,15 +181,12 @@ function ReviewCardInner({
         ))}
       </div>
 
-      {/* Inline answer line: bold green, always. Your own pick is shown by the red ❌ option above. */}
-      <div className="mb-3 rounded-xl border border-border bg-background/50 px-3 py-2 text-xs" data-testid="review-answer-line">
-        <span className="font-bold text-green-700 dark:text-green-400">{answerLineText(q, opts)}</span>
-      </div>
+      {/* No separate answer line: the answer is the bold green option above (✅), your own wrong pick the bold red one (❌). */}
 
       {/* Rationale */}
       <div className={`grid transition-all duration-300 ease-in-out ${ratOpen ? 'mb-3 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
         <div className="overflow-hidden">
-          {/* divider, then 📖 + the original bullets (and 🤖 + the AI bullets); no "Ans." line and no text labels */}
+          {/* divider, then 📖 + the original bullets (and 🤖 + the AI bullets); no answer line and no text labels */}
           <div className="border-t border-foreground/10 pt-3" data-testid="rationale-box">
             {effBook && (
               <div className="flex items-start gap-2">

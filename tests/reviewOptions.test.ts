@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { answerLineText, isCorrectOption, optionVisuals, reviewStatus } from '../src/utils/reviewOptions';
+import { isCorrectOption, optionVisuals, reviewStatus } from '../src/utils/reviewOptions';
 
 const opts = ['Alpha drug', 'Beta blocker', 'Gamma globulin', 'Delta agent'];
 const q = { correctAnswer: 'Beta blocker' };
@@ -45,11 +45,4 @@ test('comparison ignores stray whitespace', () => {
 
 test('a pick that is not among the options never produces a red row and never throws', () => {
   assert.deepEqual(optionVisuals(q, opts, 'Something removed by an edit'), ['neutral', 'correct', 'neutral', 'neutral']);
-});
-
-test('answer line: letter + text, all right answers, and no "You answered" sentence', () => {
-  assert.equal(answerLineText(q, opts), 'Ans. - (B) Beta blocker.');
-  assert.equal(answerLineText({ correctAnswer: 'Beta blocker', correctAnswers: ['Beta blocker', 'Gamma globulin'] }, opts), 'Ans. - (B) Beta blocker, (C) Gamma globulin.');
-  assert.equal(answerLineText({ correctAnswer: 'Orphan' }, opts), 'Ans. - Orphan.');
-  assert.ok(!/You answered/.test(answerLineText(q, opts)));
 });

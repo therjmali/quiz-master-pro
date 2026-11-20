@@ -10,7 +10,7 @@ import { docToHtml, docToText } from '../src/utils/reports/pdf/formats';
 import { markdownToBlocks, parseInline } from '../src/utils/reports/pdf/markdown';
 import { DEFAULT_STYLE, type ReportDoc } from '../src/utils/reports/pdf/types';
 import { sanitizePrefs } from '../src/utils/reports/reportPrefs';
-import { CARD_TONES, DIFF_EMOJI, STATUS_EMOJI, isCardItem, levelOf, markedOptions, rationaleBullets } from '../src/utils/reports/pdf/cardModel';
+import { CARD_TONES, DIFF_EMOJI, STATUS_EMOJI, emphasisOptions, isCardItem, levelOf, markedOptions, rationaleBullets } from '../src/utils/reports/pdf/cardModel';
 import { nodeFontSource } from './helpers/nodeFonts';
 
 /** Fake fonts: every glyph is 0.5em wide; the "greek" face only covers Greek. */
@@ -184,6 +184,11 @@ test('card model: status icons, difficulty emoji, check marks and rationale bull
   assert.deepEqual(markedOptions({ ...base, user: null, status: 'skipped' }, on).no, [false, false, false, false]);
   assert.deepEqual(markedOptions({ ...base, user: null, status: 'unknown' }, on).ok, [false, false, false, false], 'no status (a blank paper): no check');
   assert.deepEqual(markedOptions({ ...base, user: 'B1', status: 'correct' }, { ...on, inlineAnswers: false }).ok, [false, false, false, false], 'answers at the end / hidden: no check');
+  assert.deepEqual(emphasisOptions({ ...base, user: 'D1', status: 'wrong' }, on), { ok: [false, true, false, false], no: [false, false, false, true] }, 'answer bold green, wrong pick bold red');
+  assert.deepEqual(emphasisOptions({ ...base, user: null, status: 'skipped' }, on), { ok: [false, true, false, false], no: [false, false, false, false] }, 'skipped: only the answer');
+  assert.deepEqual(emphasisOptions({ ...base, user: null, status: 'unknown' }, on).ok, [false, true, false, false], 'no status: the answer still shows (no separate line any more)');
+  assert.deepEqual(emphasisOptions({ ...base, user: 'D1', status: 'wrong' }, { ...on, showUserAnswer: false }).no, [false, false, false, false]);
+  assert.deepEqual(emphasisOptions({ ...base, user: 'B1', status: 'correct' }, { ...on, inlineAnswers: false }), { ok: [false, false, false, false], no: [false, false, false, false] }, 'answers at the end / hidden: nothing emphasised');
   assert.equal(isCardItem({ ...base, user: null, status: 'skipped' }, 'all'), true);
   assert.equal(isCardItem({ ...base, user: null, status: 'skipped' }, 'exam'), false);
   assert.equal(isCardItem({ ...base, user: null, status: 'unknown' }, 'all'), false);
