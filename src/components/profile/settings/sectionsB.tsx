@@ -16,6 +16,7 @@ import {
 } from '@project/components/ui/alert-dialog';
 import { useProfileStore } from '../../../hooks/useProfileStore';
 import { getHapticsEnabled, setHapticsEnabled } from '../../../utils/haptics';
+import { isImmersiveEnabled, setImmersiveEnabled } from '../../../platform/immersive';
 import {
   getPreferredEmail, setPreferredEmail, isValidEmail, getWeeklyEmailEnabled, setWeeklyEmailEnabled,
 } from '../../../utils/preferredEmail';
@@ -186,12 +187,16 @@ export const NotificationsSection = memo(function NotificationsSection({ open, o
 export const GesturesSection = memo(function GesturesSection({ open, onToggle }: SectionProps) {
   const [haptics, setHaptics] = useState(getHapticsEnabled);
   const apply = (v: boolean) => { setHaptics(v); setHapticsEnabled(v); if (v) navigator.vibrate?.(10); };
+  const [immersive, setImmersive] = useState(isImmersiveEnabled);
+  const applyImmersive = (v: boolean) => { setImmersive(v); setImmersiveEnabled(v); };
   return (
     <SettingsSection id="gestures" icon={<Hand className="w-4 h-4" />} open={open} onToggle={onToggle}
-      onReset={() => { apply(true); toast.success('Gestures reset to defaults'); }}>
+      onReset={() => { apply(true); applyImmersive(true); toast.success('Gestures reset to defaults'); }}>
       <SubHeading>Feedback</SubHeading>
       <SettingRow id="haptics" title="Vibration feedback" hint="Subtle vibrations on taps, swipes and actions"
         control={<Toggle label="Vibration feedback" checked={haptics} onChange={v => { apply(v); toast.success(v ? 'Haptics enabled' : 'Haptics disabled'); }} />} />
+      <SettingRow id="immersive" title="Immersive quiz mode" hint="Hide the status bar (clock, battery, network) while a quiz is open (Android app)"
+        control={<Toggle label="Immersive quiz mode" checked={immersive} onChange={v => { applyImmersive(v); toast.success(v ? 'Status bar hidden during quizzes' : 'Status bar stays visible'); }} />} />
       <SubHeading>Shortcuts</SubHeading>
       <div id="setting-gestureGuide" data-setting-id="gestureGuide" className="setting-row py-3 scroll-mt-28 rounded-lg">
         <GestureShortcutsPanel />

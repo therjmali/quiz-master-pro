@@ -1,4 +1,3 @@
-import { removeDraftForQuiz } from '../utils/drafts';
 import {
   createContext,
   useContext,
@@ -8,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { resetCreateFormIfOwnQuiz } from '../utils/createForm';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { QuizQuestion, QuizSettings, QuizResult, AIPrefs, Screen } from '../types/quiz';
@@ -78,6 +78,8 @@ interface QuizProviderProps {
   onResultReady: (result: QuizResult, id?: string) => void;
   /** Current screen for timer/session guards */
   screen: Screen;
+  /** Called after a quiz made from the Create form is finished, so the form (name, text) starts empty again */
+  onCreateFormReset?: () => void;
 }
 
 export function QuizProvider({
@@ -87,6 +89,7 @@ export function QuizProvider({
   onSaveResult,
   onResultReady,
   screen,
+  onCreateFormReset,
 }: QuizProviderProps) {
   const navigate = useNavigate();
   const quiz = useQuizSession(settingsRef);
@@ -175,8 +178,8 @@ export function QuizProvider({
   const doFinishQuiz = useCallback(
     (save = true) => {
       if (quiz.timerRef.current) clearInterval(quiz.timerRef.current);
-      localStorage.removeItem(quiz.SESSION_KEY);
-      removeDraftForQuiz(quiz.quizDataRef.current); // finished: no longer a draft
+      quiz.markFinished(); // no resume session, no draft, and nothing re-creates them while the results are open
+      if (resetCreateFormIfOwnQuiz(quiz.quizDataRef.current)) onCreateFormReset?.(); // fresh Create form for the next quiz
       quiz.setHasSavedSession(false);
       const result = quiz.buildResult(quiz.confidenceLevels);
       onResultReady(result);
@@ -210,7 +213,7 @@ export function QuizProvider({
       navigate(SCREEN_PATHS.results);
       requestAnimationFrame(() => window.scrollTo(0, 0));
     },
-    [quiz, onSaveResult, onResultReady, navigate],
+    [quiz, onSaveResult, onResultReady, onCreateFormReset, navigate],
   );
 
   useEffect(() => {

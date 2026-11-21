@@ -374,6 +374,9 @@ export function useHistorySync(user: any, isLoading: boolean) {
     // Create summary for the history list
     // Store as lightweight summary in history (no quizData/userAnswers in list)
     const summary: QuizResult = {
+      // The permanent id made when the quiz was finished: a record keeps one identity for life (editing its date
+      // used to change its `ts_<date>` key, which parked it in Trash and orphaned its questions).
+      id: result.id,
       totalQuestions: result.totalQuestions,
       quizData: [], userAnswers: [],
       score: result.score,
@@ -409,6 +412,7 @@ export function useHistorySync(user: any, isLoading: boolean) {
     // Always store full quiz detail in IDB for offline combined reports
     const detailKey = String(result.timestamp);
     storeQuizDetail(detailKey, result).catch(() => {});
+    if (result.id) storeQuizDetail(String(result.id), result).catch(() => {});
 
     if (userRef.current) {
       setSyncStatus('syncing');

@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.12.0] - 2026-11-20
+
+Library edits no longer break quizzes, finished quizzes leave Drafts, immersive quiz screen, and a block-per-question progress bar.
+
+### Fixed
+- **Editing a quiz in the Library (name, date, time) duplicated it.** Root cause: a quiz without a permanent id was identified by its date (`ts_<date>_<n>`). Changing the date changed the identity, so the history store parked the old record in Trash (as "removed"), and the edited copy was a new record whose saved questions were still filed under the old date, so it would not open. Now:
+  - An edit is one immutable update of the one record (`utils/historyEdit.ts`). A quiz that never had an id gets a permanent UUID *before* its date changes; the edit is saved without sending anything to Trash.
+  - Everything filed under the old key follows the record: its saved questions (by id and by date), pin, rating, revision sheet, negative-marking state, folder link and the practice attempts that point at it.
+  - Every new result keeps the permanent id made when the quiz finished (it was dropped before), and its questions are stored under the id as well as the date.
+  - Offline builds open a quiz from the questions on the device first, with the name, subject, notes and date from the Library record, so an edited quiz opens at once.
+  - **Repair of quizzes already damaged by the old edit:** the edited copy gets its questions back from the trashed original and the leftover leaves Trash (only on an exact match of question count, correct, wrong, skipped, score and time; ambiguous cases are never guessed). A toast says how many were repaired.
+- **Completed quizzes stayed in Drafts.** Root cause: after finishing, the questions stay loaded for the results screen, so when the app went to the background (or the page hid, or the timer ticked) the draft and the resume session were saved again. A finished quiz is now marked finished: nothing re-creates its draft or session until a new quiz starts. Drafts that old versions left behind (same title, question count, answered count and time as a finished attempt, saved after it) are removed on start and after a sync.
+- **The Create Quiz form stayed filled after an attempt.** Finishing the quiz that was started from the form now empties the form text and the quiz name. Practising mistakes or finishing a quiz started elsewhere never wipes text typed for another quiz.
+
+### Added
+- **Immersive quiz mode (Android app):** the system status bar (clock, battery, network) is hidden while a quiz is open and restored when you leave it (`@capacitor/status-bar`, one effect with cleanup, hidden again when the app returns from the background). Settings -> Gestures & Shortcuts -> "Immersive quiz mode" turns it off. No-op on the web.
+- **Segmented progress bar:** one equal-width block per question; grey = not attempted, primary colour = attempted, an outlined block shows where you are. Quizzes with more than 60 questions are grouped so blocks stay readable (a group fills in proportion). `role="progressbar"` with the answered count for screen readers.
+
+### Checked, no change
+- **Exam mode timer:** the exam clock already scales with the question count: Exam mode gives each question 1 minute and locks/advances at the end of it (so the whole exam is at most questions x 60 s), and the total-timer option uses `totalMinutesPerQuestion x questions`. Replacing the per-question lock with one shared countdown would let a slow question eat the rest of the exam, so it was kept. Unit tests now pin both rules.
+
+### Tests
+- `scripts/ui-qa-v312.mjs` (`npm run test:ui:v312`, real Chrome with touch): edit of a legacy record and of a record with an id (no duplicate, nothing in Trash, opens), repair of a damaged edit, zombie and real drafts, segmented bar (count, colours, equal width, current block, answering), StatusBar hide/show through a faked native bridge, Create form cleared and no draft after backgrounding.
+- Unit tests for edit/key migration/repair, draft cleanup, segment building, the Create form reset and the exam timer; `verify-repo` contract checks for all of it.
+
 ## [3.11.0] - 2026-11-20
 
 The answer now lives inside its option. No separate `Ans. - (B) …` line under the question any more.

@@ -111,6 +111,7 @@ npm run test:offline   # real-Chrome test: install SW, go offline, reload, deep 
 | `npm run verify:dist` | Checks the build: no remote scripts/styles, SPA fallback, precache covers every file, service worker stamped |
 | `npm run test:ui:v33` | Real-Chrome test of widgets in Settings, Light/Dark, the AI switch, the preview answer toggle and a Light-vs-Dark text audit (after `npm run build`) |
 | `npm run test:ui:v310` | Real-Chrome test (Light + Dark, phone + tablet) of the review option states (✅ / ❌ / skipped / multi-answer, no "You answered"), the Rationale and Shuffle switches and every Paste path (after `npm run build`) |
+| `npm run test:ui:v312` | Real-Chrome test of Library edit (no duplicate, nothing in Trash, still opens), damaged-edit repair, finished quizzes not in Drafts, the segmented progress bar, immersive status-bar calls and the Create form reset (after `npm run build`) |
 | `npm run test:offline` | Headless Chrome offline test, screenshots in `test-results/` |
 | `scripts/android-prepare.sh` | Generates the native project, branding, version numbers |
 | `scripts/verify-apk.sh` | Static APK inspection (used by CI) |

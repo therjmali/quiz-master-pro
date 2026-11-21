@@ -64,6 +64,12 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
   }, []);
 
   const lastDraftAtRef = useRef(0);
+  /**
+   * True once the quiz was finished. The questions stay loaded for the results screen, so without this the
+   * "save when the app goes to the background / page hides / every 15 s" handlers re-created the draft and the
+   * resume session of a quiz that was already completed.
+   */
+  const finishedRef = useRef(false);
   const sessionBlob = useCallback((): SessionBlob => ({
     quizData: quizDataRef.current, settings: settingsRef.current,
     currentIndex: currentIdxRef.current, userAnswers: userAnswersRef.current,
@@ -74,7 +80,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
   }), [settingsRef]);
   /** Keeps the quiz in Drafts (max 5, one per quiz, synced). `force` skips the 45 s throttle used while answering. */
   const saveDraftNow = useCallback((force = false) => {
-    if (!quizDataRef.current.length) return null;
+    if (finishedRef.current || !quizDataRef.current.length) return null;
     if (!force && Date.now() - lastDraftAtRef.current < 45_000) return null;
     lastDraftAtRef.current = Date.now();
     return upsertDraft(sessionBlob());
@@ -82,7 +88,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
 
   // Save session to localStorage during quiz — uses ONLY refs so it's never stale
   const saveSessionToStorage = useCallback((screen: Screen) => {
-    if (screen !== 'quiz' || !quizDataRef.current.length) return;
+    if (finishedRef.current || screen !== 'quiz' || !quizDataRef.current.length) return;
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({
         quizData: quizDataRef.current, settings: settingsRef.current,
@@ -97,7 +103,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
 
   // Immediate save helper — can be called from anywhere without screen arg
   const saveSessionNow = useCallback((forceDraft = false) => {
-    if (!quizDataRef.current.length) return;
+    if (finishedRef.current || !quizDataRef.current.length) return;
     saveDraftNow(forceDraft);
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({
@@ -161,6 +167,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
 
   const startQuiz = useCallback((questions: QuizQuestion[], practiceMeta?: { attemptType?: 'main' | 'practice'; attemptNumber?: number; parentQuizTimestamp?: number; parentQuizId?: string }) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    finishedRef.current = false; // a new run of a quiz
     localStorage.removeItem(SESSION_KEY);
     setHasSavedSession(false);
     questionTimingsRef.current = [];
@@ -194,6 +201,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     try {
       const raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return false;
+      finishedRef.current = false;
       const { quizData: qd, settings: qs, currentIndex: ci, userAnswers: ua,
         flaggedQuestions: fq, accumulatedTime: at, timeLeftPerQ: tl,
         forcedNext: fn, totalTimeLeft: ttl, targetFolderId: savedFolderId } = JSON.parse(raw);
@@ -255,6 +263,14 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     lastDraftAtRef.current = Date.now();
     return handleResumeSession();
   }, [handleResumeSession]);
+
+  /** The quiz is done: from now on nothing may turn it back into a draft or a resumable session. */
+  const markFinished = useCallback(() => {
+    finishedRef.current = true;
+    if (timerRef.current) clearInterval(timerRef.current);
+    localStorage.removeItem(SESSION_KEY);
+    removeDraftForQuiz(quizDataRef.current);
+  }, []);
 
   const discardSession = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
@@ -346,7 +362,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
     forcedNextRef, isPausedRef, totalTimeLeftRef, timeLeftPerQRef, timerRef,
     questionTimingsRef, questionStartAccRef, doFinishQuizRef,
     // Actions
-    startQuiz, handleResumeSession, resumeFromDraft, saveDraftNow, handleExitQuiz, handleToggleFlag,
+    startQuiz, handleResumeSession, resumeFromDraft, saveDraftNow, handleExitQuiz, handleToggleFlag, markFinished,
     handleTimeExpired, recordCurrentQuestionTime, buildResult,
     saveSessionToStorage, saveSessionNow, discardSession,
     SESSION_KEY,

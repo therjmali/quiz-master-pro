@@ -3237,13 +3237,14 @@ html[data-dock-hidden="true"] .cq-cta-bar { bottom: calc(14px + var(--qmp-inset-
 }
 .qh-menu-item:hover, .qh-menu-item:focus-visible { background: hsl(var(--foreground) / 0.06); outline: none; }
 .qh-menu-item.is-danger { color: #ef4444; }
-.qh-track { position: relative; height: 3px; background: hsl(var(--foreground) / 0.08); }
-.qh-fill { position: absolute; inset: 0 auto 0 0; border-radius: 0 3px 3px 0; background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent))); transition: width 0.5s ease; }
-.qh-marker {
-  position: absolute; top: 50%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%;
-  background: hsl(var(--foreground)); box-shadow: 0 0 0 2px hsl(var(--background)); transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@media (prefers-reduced-motion: reduce) { .qh-fill, .qh-marker, .qh-btn, .qh-chev { transition: none; } .qh-menu, .qh-saved { animation: none; } }
+/* Segmented progress: one block per question. Neutral = not attempted, primary = attempted, outlined = where you are. */
+.qh-seg-track { display: flex; gap: 3px; padding: 4px 3px; height: 14px; align-items: stretch; background: transparent; }
+.qh-seg-track.is-dense { gap: 1px; }
+.qh-seg { flex: 1 1 0; min-width: 0; border-radius: 3px; background: hsl(var(--foreground) / 0.14); transition: background-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease; }
+.qh-seg.is-done { background: hsl(var(--primary)); }
+.qh-seg.is-part { background: linear-gradient(90deg, hsl(var(--primary)) var(--fill, 50%), hsl(var(--foreground) / 0.14) var(--fill, 50%)); }
+.qh-seg.is-cur { box-shadow: 0 0 0 1.5px hsl(var(--background)), 0 0 0 3px hsl(var(--foreground) / 0.55); transform: scaleY(1.35); }
+@media (prefers-reduced-motion: reduce) { .qh-seg, .qh-btn, .qh-chev { transition: none; } .qh-menu, .qh-saved { animation: none; } }
 
 /* Preview card */
 .cq-empty { font-size: 0.8rem; font-weight: 500; line-height: 1.5; color: hsl(var(--foreground) / 0.5); }

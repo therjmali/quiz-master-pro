@@ -15,6 +15,7 @@ import { getActiveSkin, getSkinById } from '../../utils/quizSkins';
 import { formatTimeColon } from '../../utils/scoring';
 import PremiumQuestionNav from './PremiumQuestionNav';
 import PremiumHeader from './PremiumHeader';
+import { useImmersiveQuiz } from '../../hooks/useImmersiveQuiz';
 import PremiumFooter from './PremiumFooter';
 import CountdownCircle from './CountdownCircle';
 import InlineFeedbackPanel from './InlineFeedbackPanel';
@@ -215,6 +216,7 @@ export default function QuizScreen({
   confidenceLevels, onConfidenceChange,
   adaptiveDifficulty,
 }: Props) {
+  useImmersiveQuiz(); // hide the system status bar while the quiz is on screen, restore it on leaving
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -292,6 +294,7 @@ export default function QuizScreen({
   const totalTimerBg = totalTimerPct < 0.25 ? 'bg-red-500/10 border-red-500/25' : totalTimerPct < 0.5 ? 'bg-amber-500/10 border-amber-500/25' : 'bg-emerald-500/10 border-emerald-500/20';
 
   const answeredCount = useMemo(() => userAnswers.filter(a => a !== null).length, [userAnswers]);
+  const answeredFlags = useMemo(() => quizData.map((_, i) => userAnswers[i] !== null && userAnswers[i] !== undefined), [quizData, userAnswers]);
 
   // Questions the student has opened — drives the navigator's "skipped" state.
   const [visited, setVisited] = useState<Set<number>>(() => new Set([currentIndex]));
@@ -521,6 +524,7 @@ export default function QuizScreen({
           currentIndex={currentIndex}
           totalQuestions={quizData.length}
           answeredCount={answeredCount}
+          answered={answeredFlags}
           settings={settings}
           isLiveMode={isLiveMode}
           timeLeft={timeLeft}

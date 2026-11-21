@@ -147,6 +147,44 @@ export function removeDraftForQuiz(quizData: readonly { question: string }[]): v
 
 export function clearDrafts(): void { writeRaw({}); }
 
+/** Just the fields of a finished result that identify "this exact attempt". */
+export interface FinishedSummary {
+  quizTitle?: string;
+  totalQuestions?: number;
+  correct?: number;
+  wrong?: number;
+  timeTaken?: number;
+  timestamp: number;
+}
+
+/**
+ * True when `d` is only a leftover copy of an attempt that was already finished: same title, same question count,
+ * same number answered, same time on the clock (within 2 s), and saved after that attempt ended. A genuine retake
+ * in progress never matches that tightly. (Older versions re-saved a finished quiz as a draft when the app went to
+ * the background on the results screen.)
+ */
+export function isCompletedLeftover(d: Draft, history: readonly FinishedSummary[]): boolean {
+  const title = (d.session.settings?.quizTitle ?? '').trim();
+  return history.some(r =>
+    (r.quizTitle ?? '').trim() === title &&
+    r.totalQuestions === d.total &&
+    typeof r.correct === 'number' && typeof r.wrong === 'number' &&
+    r.correct + r.wrong === d.answered &&
+    Math.abs((d.session.accumulatedTime ?? 0) - (r.timeTaken ?? Number.NaN)) <= 2 &&
+    r.timestamp <= d.savedAt);
+}
+
+/** Removes drafts of quizzes that are already in History. Returns how many were removed. */
+export function purgeCompletedDrafts(history: readonly FinishedSummary[]): number {
+  if (!history.length) return 0;
+  let removed = 0;
+  for (const d of listDrafts()) {
+    if (isCompletedLeftover(d, history)) { removeDraft(d.id); removed++; }
+  }
+  return removed;
+}
+
+
 /** Live list for React; refreshes on local changes, other tabs and after a cloud merge. */
 export function useDrafts(): Draft[] {
   const [drafts, setDrafts] = useState<Draft[]>(listDrafts);

@@ -81,3 +81,31 @@ test('cloud: quiz-detail shards are keyed by month, skip items that already carr
   assert.equal(isSyncKey('qd:2026-11'), true); assert.equal(isSyncKey('qd:garbage'), false); assert.equal(isSyncKey('qmp_drafts_v1'), true);
   assert.match(describeSection('qd:2026-10')!.label, /Quiz questions - October 2026/);
 });
+
+// ── v3.12: a finished quiz must not live on as a draft ──────────────────────────────────────────────
+import { isCompletedLeftover, purgeCompletedDrafts } from '../src/utils/drafts';
+
+const finished = (over: Record<string, unknown> = {}) => ({ quizTitle: 'Quiz A', totalQuestions: 5, correct: 1, wrong: 1, timeTaken: 30, timestamp: 500, ...over });
+
+test('purge: a draft that is just the finished attempt (same title, count, answered, time, saved after the end) is removed', () => {
+  upsertDraft(blob('A', 2), 1000); // 2 answered of 5, 30 s on the clock
+  assert.equal(purgeCompletedDrafts([finished()]), 1);
+  assert.equal(listDrafts().length, 0);
+});
+
+test('purge: real unfinished progress is never removed (other quiz, other numbers, older than the attempt, retake further on)', () => {
+  upsertDraft(blob('A', 3), 1000);                       // 3 answered != 1 + 1
+  upsertDraft(blob('B', 2), 1001);                       // other title
+  assert.equal(purgeCompletedDrafts([finished()]), 0);
+  assert.equal(listDrafts().length, 2);
+  assert.equal(purgeCompletedDrafts([finished({ timestamp: 5000 })]), 0, 'saved BEFORE the attempt ended: not a leftover');
+  assert.equal(purgeCompletedDrafts([finished({ timeTaken: 400 })]), 0, 'different time on the clock');
+  assert.equal(purgeCompletedDrafts([]), 0);
+});
+
+test('isCompletedLeftover: tolerates 2 s of clock difference, not more', () => {
+  upsertDraft(blob('A', 2), 1000);
+  const d = listDrafts()[0];
+  assert.equal(isCompletedLeftover(d, [finished({ timeTaken: 32 })]), true);
+  assert.equal(isCompletedLeftover(d, [finished({ timeTaken: 33 })]), false);
+});

@@ -7,6 +7,12 @@ import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense, star
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from 'zitejs/auth';
 import { Toaster } from '@project/components/ui/sonner';
+import { markCreatedQuiz } from './utils/createForm';
+import { purgeCompletedDrafts } from './utils/drafts';
+import { hasBackend } from './platform/ai/caller';
+import { applyHistoryEdit, migrateResultKeys, resultKeyOf } from './utils/historyEdit';
+import { repairOrphanedEdits } from './utils/historyRepair';
+import { withoutHistoryTrash } from './utils/historyTrash';
 import { toast } from 'sonner';
 import { useShakeDetection } from './hooks/useShakeDetection';
 import PullToRefresh from './components/PullToRefresh';
@@ -552,6 +558,23 @@ function AppScreens({
       navigateTo('results');
       return;
     }
+    // Offline build (no server): the questions are on this device, filed under the id or the date. Local first, no waiting.
+    if (!hasBackend()) {
+      setDetailLoading(true);
+      try {
+        const { getQuizDetailFromIDB } = await import('./hooks/useHistorySync');
+        const local = (summary.id ? await getQuizDetailFromIDB(summary.id) : null) || await getQuizDetailFromIDB(String(summary.timestamp));
+        if (local && local.quizData?.length) {
+          // the Library record is the truth for name, subject, notes and date (they can be edited after the quiz)
+          setCurrentResult({ ...local, id: summary.id ?? local.id, timestamp: summary.timestamp, quizTitle: summary.quizTitle ?? local.quizTitle, subject: summary.subject ?? local.subject, notes: summary.notes ?? local.notes });
+          if (origin) setResultOrigin(origin);
+          navigateTo('results');
+          setDetailLoading(false);
+          return;
+        }
+      } catch {}
+      setDetailLoading(false);
+    }
     // Fetch full detail from server/cache
     if (summary.id) {
       setDetailLoading(true);
@@ -883,7 +906,7 @@ function AppScreens({
           <ErrorBoundary screenName="Quiz Setup" onReset={() => navigateTo('dashboard')}>
             <SetupScreen
               settings={settings} onSettingsChange={setSettings}
-              onStartQuiz={(qs, folderId) => { if (folderId) quiz.setTargetFolderId(folderId); quiz.startQuiz(qs); setScreen('quiz'); }}
+              onStartQuiz={(qs, folderId) => { if (folderId) quiz.setTargetFolderId(folderId); markCreatedQuiz(qs); quiz.startQuiz(qs); setScreen('quiz'); }}
               history={history} hasSavedSession={quiz.hasSavedSession}
               onResumeSession={editingActiveQuiz ? handleResumeAfterEdit : () => { quiz.handleResumeSession(); setScreen('quiz'); }}
               onDiscardSession={() => { quiz.discardSession(); setEditingActiveQuiz(false); }}
@@ -919,21 +942,17 @@ function AppScreens({
                     screenMetaRef.current = { ...screenMetaRef.current, settingsView: 'trash' };
                   }}
                   onEditQuiz={(id, title, subject, notes, timestamp) => {
-                    const matchedRecord = historyRef.current.find(r => (r.id && r.id === id) || (!r.id && String(r.timestamp) === id));
-                    if (!matchedRecord) { toast.error('Quiz not found'); return; }
-                    const cloudId = matchedRecord.id;
-                    const matchTs = matchedRecord.timestamp;
-                    setHistory(prev => {
-                      const updated = prev.map(r => {
-                        const isMatch = cloudId ? r.id === cloudId : (!r.id && r.timestamp === matchTs);
-                        if (!isMatch) return r;
-                        return { ...r, quizTitle: title || r.quizTitle, subject: subject || r.subject, notes: notes !== undefined ? notes : r.notes, ...(timestamp ? { timestamp } : {}) };
-                      }).sort((a, b) => b.timestamp - a.timestamp);
-                      if (!userRef.current) { try { setHistoryStore(updated); } catch {} }
-                      return updated;
-                    });
-                    if (userRef.current && cloudId) {
-                      updateQuizMeta({ id: cloudId, quizTitle: title || undefined, subject: subject || undefined, notes: notes !== undefined ? notes : undefined, ...(timestamp ? { localTimestamp: timestamp } : {}) })
+                    // An edit is an immutable UPDATE of the one record (by id), never remove + add again: see utils/historyEdit.ts
+                    const edit = applyHistoryEdit(historyRef.current, id, { quizTitle: title, subject, notes, timestamp });
+                    if (!edit) { toast.error('Quiz not found'); return; }
+                    const { history: updated, before, after } = edit;
+                    setHistory(updated);
+                    // An edit must never park the record in Trash (the store trashes whatever "disappears")
+                    if (!userRef.current) { try { withoutHistoryTrash(() => setHistoryStore(updated)); } catch {} }
+                    // Questions, pin, rating, revision sheet, negative marking and practice attempts follow the record
+                    void migrateResultKeys(before, after);
+                    if (userRef.current && before.id && hasBackend()) {
+                      updateQuizMeta({ id: before.id, quizTitle: title || undefined, subject: subject || undefined, notes: notes !== undefined ? notes : undefined, ...(timestamp ? { localTimestamp: timestamp } : {}) })
                         .then(res => { if (!res.success) toast.error('Cloud update failed'); })
                         .catch(() => toast.error('Cloud update failed — change saved locally'));
                     }
@@ -941,16 +960,15 @@ function AppScreens({
                     try {
                       const tree = loadFileTree();
                       const allFiles = getAllFiles(tree);
-                      const resultIdStr = cloudId || String(matchTs);
+                      const oldKey = resultKeyOf(before);
                       for (const f of allFiles) {
-                        if (f.sourceResultId === resultIdStr || f.sourceResultId === cloudId || (f.sourceTimestamp && f.sourceTimestamp === matchTs)) {
+                        if (f.sourceResultId === oldKey || (before.id && f.sourceResultId === before.id) || (f.sourceTimestamp && f.sourceTimestamp === before.timestamp)) {
                           const patch: Partial<Pick<FileNode, 'name' | 'tags' | 'sourceResultId' | 'sourceTimestamp'>> = {};
                           if (title) patch.name = title;
                           if (subject) patch.tags = [subject];
-                          // Keep the hard link valid: the quiz may have gained a cloud id or a new date
-                          if (cloudId && f.sourceResultId !== cloudId) patch.sourceResultId = cloudId;
-                          const newTs = timestamp || matchTs;
-                          if (f.sourceTimestamp !== newTs) patch.sourceTimestamp = newTs;
+                          // Keep the hard link valid: the quiz may have gained a permanent id or a new date
+                          if (after.id && f.sourceResultId !== after.id) patch.sourceResultId = after.id;
+                          if (f.sourceTimestamp !== after.timestamp) patch.sourceTimestamp = after.timestamp;
                           if (Object.keys(patch).length > 0) updateNodeInTree(tree, f.id, patch);
                         }
                       }
@@ -1308,6 +1326,27 @@ function AppContent() {
     localStorage.setItem('qmp_mistakes_seeded', '1');
   }, [dataLoaded, historySync.history.length]);
 
+  // Drafts of quizzes that are already finished (older versions re-saved them when the app went to the
+  // background on the results screen) are removed here, also after drafts arrive from another device.
+  useEffect(() => {
+    if (!dataLoaded) return;
+    const run = () => { try { purgeCompletedDrafts(historySync.history); } catch { /* ignore */ } };
+    run();
+    window.addEventListener('qm:cloud-data-applied', run);
+    return () => window.removeEventListener('qm:cloud-data-applied', run);
+  }, [dataLoaded, historySync.history]);
+
+  // Quizzes damaged by the old Library edit (date changed, original parked in Trash, edited copy unopenable) are
+  // re-attached to their questions once; see utils/historyRepair.ts.
+  useEffect(() => {
+    if (!dataLoaded || !historySync.history.length) return;
+    let cancelled = false;
+    repairOrphanedEdits(historySync.history).then(n => {
+      if (!cancelled && n > 0) toast.success(n === 1 ? 'Repaired 1 quiz that would not open' : `Repaired ${n} quizzes that would not open`);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [dataLoaded, historySync.history.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // QuizProvider callbacks
   const handleResultReady = useCallback((result: QuizResult, id?: string) => {
     if (id) setCurrentResult(prev => prev && prev.timestamp === result.timestamp ? { ...result, id } : result);
@@ -1325,6 +1364,7 @@ function AppContent() {
       onSaveResult={historySync.saveResult}
       onResultReady={handleResultReady}
       screen={screen}
+      onCreateFormReset={() => setSettings(s => ({ ...s, quizTitle: '' }))}
     >
       <AppScreens
         history={historySync.history} setHistory={historySync.setHistory}

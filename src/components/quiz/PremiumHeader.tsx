@@ -3,12 +3,15 @@ import { Clock, Flag, Settings2, LogOut, Pause, Play, Bookmark, Pencil, ZoomIn, 
 import { formatTimeColon } from '../../utils/scoring';
 import { QuizSettings } from '../../types/quiz';
 import CountdownCircle from './CountdownCircle';
+import SegmentedProgress from './SegmentedProgress';
 import { useZoom, ZOOM_DEFAULT } from '../../platform/zoom';
 
 interface Props {
   currentIndex: number;
   totalQuestions: number;
   answeredCount: number;
+  /** answered[i] = question i has an answer (drives the segmented progress bar) */
+  answered: readonly boolean[];
   settings: QuizSettings;
   isLiveMode: boolean;
   // Timer
@@ -61,7 +64,7 @@ function ProgressRing({ pct }: { pct: number }) {
 }
 
 export default function PremiumHeader({
-  currentIndex, totalQuestions, answeredCount, settings, isLiveMode: _isLiveMode,
+  currentIndex, totalQuestions, answeredCount, answered, settings, isLiveMode: _isLiveMode,
   timeLeft, perQTotal, accumulatedTime,
   totalTimeLeft, totalTimerColor, totalTimerBg, totalTimerPct,
   isFlagged, onToggleFlag,
@@ -95,7 +98,6 @@ export default function PremiumHeader({
 
   const perQ = settings.timerMode === 'per-question';
   const answeredPct = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0;
-  const posPct = totalQuestions > 1 ? (currentIndex / (totalQuestions - 1)) * 100 : 0;
   const left = totalQuestions - answeredCount;
   const closeAnd = (fn?: () => void) => () => { setMenuOpen(false); fn?.(); };
 
@@ -171,11 +173,8 @@ export default function PremiumHeader({
         </div>
       </div>
 
-      {/* ── Progress track: answered fill + position marker ── */}
-      <div className="qh-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalQuestions} aria-valuenow={answeredCount} aria-label="Questions answered">
-        <div className="qh-fill" style={{ width: `${answeredPct}%` }} />
-        <div className="qh-marker" style={{ left: `calc(5px + (100% - 10px) * ${posPct / 100})` }} />
-      </div>
+      {/* ── Segmented progress: one block per question, primary = attempted, ring = where you are ── */}
+      <SegmentedProgress answered={answered} currentIndex={currentIndex} />
     </div>
   );
 }
