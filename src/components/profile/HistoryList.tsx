@@ -1,12 +1,15 @@
 import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react';
 import { toast } from 'sonner';
-import { Filter, X } from 'lucide-react';
-import { QuizQuestion, QuizResult, ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
+import { ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import ReviewCard from '../results/ReviewCard';
+import { orderAttemptItems, type AttemptItem } from '../../utils/attemptStats';
 
 interface Props {
   type: 'correct' | 'wrong' | 'skipped';
-  history: QuizResult[];
+  /** Already status-filtered slice of the master list (the master itself is never touched here). */
+  items: readonly AttemptItem[];
+  /** Static total for this status (the same number as the filter pill). */
+  total?: number;
   rationaleCache: Record<string, string>;
   getAiRationale: (q: string, ca: string, ua: string | null, s: 'correct' | 'wrong' | 'skipped') => Promise<string>;
   reportOrder?: ReportOrder;
@@ -14,66 +17,23 @@ interface Props {
   reportHelper: AIMode;
 }
 
-interface Item { q: QuizQuestion; userAns: string | null; date: string; }
-
 const PAGE_SIZE = 30;
 
 const HistoryList = memo(function HistoryList({
-  type, history, rationaleCache, getAiRationale,
+  type, items, total, rationaleCache, getAiRationale,
   reportOrder = 'attempt', rationalePrefs, reportHelper,
 }: Props) {
   const [explainAllLoading, setExplainAllLoading] = useState(false);
   const [explainProgress, setExplainProgress] = useState({ done: 0, total: 0 });
   const [explainDifficulty, setExplainDifficulty] = useState<string>('all');
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
 
-  const subjects = useMemo(() => {
-    const set = new Set(history.map(r => r.subject).filter(Boolean) as string[]);
-    return Array.from(set).sort();
-  }, [history]);
-
-  const topics = useMemo(() => {
-    const base = selectedSubject ? history.filter(r => r.subject === selectedSubject) : history;
-    const set = new Set(base.map(r => r.quizTitle).filter(Boolean) as string[]);
-    return Array.from(set).sort();
-  }, [history, selectedSubject]);
-
-  const handleSubjectChange = (subj: string | null) => { setSelectedSubject(subj); setSelectedTopic(null); };
-
-  const filteredHistory = useMemo(() => {
-    let h = history;
-    if (selectedSubject) h = h.filter(r => r.subject === selectedSubject);
-    if (selectedTopic)   h = h.filter(r => r.quizTitle === selectedTopic);
-    return h;
-  }, [history, selectedSubject, selectedTopic]);
-
-  const displayItems = useMemo<Item[]>(() => {
-    const items: Item[] = [];
-    const seen = new Set<string>();
-    filteredHistory.forEach(entry => {
-      const date = new Date(entry.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      const orderedData = (() => {
-        const pairs = (entry.quizData || []).map((q, idx) => ({
-          q: reportOrder === 'original' ? { ...q, shuffledOpts: q.options } : q,
-          ua: (entry.userAnswers[idx] ?? null) as string | null,
-          sortKey: reportOrder === 'original' ? ((q as any).originalIndex ?? idx) : idx,
-        }));
-        if (reportOrder === 'original') return [...pairs].sort((a, b) => a.sortKey - b.sortKey);
-        return pairs;
-      })();
-      orderedData.forEach(({ q, ua }) => {
-        const isCorrect = ua === q.correctAnswer;
-        const isSkipped = ua === null;
-        const include = (type === 'correct' && isCorrect) || (type === 'wrong' && !isCorrect && !isSkipped) || (type === 'skipped' && isSkipped);
-        if (!include || seen.has(q.question)) return;
-        seen.add(q.question);
-        items.push({ q, userAns: ua, date });
-      });
-    });
-    return items;
-  }, [type, filteredHistory, reportOrder]);
+  // Book order is applied to a COPY; the master list keeps attempt order.
+  const displayItems = useMemo(() => orderAttemptItems(items, reportOrder).map(it => ({
+    ...it,
+    q: reportOrder === 'original' ? { ...it.q, shuffledOpts: it.q.options } : it.q,
+    date: new Date(it.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+  })), [items, reportOrder]);
+  const shownTotal = total ?? displayItems.length;
 
   const headingColor = type === 'correct' ? 'text-emerald-500' : type === 'wrong' ? 'text-red-500' : 'text-amber-500';
   const badgeCls    = type === 'correct'
@@ -86,11 +46,9 @@ const HistoryList = memo(function HistoryList({
     ? { icon: '📖', text: 'Original order', cls: 'bg-emerald-500/8 border-emerald-500/15 text-emerald-600 dark:text-emerald-400' }
     : { icon: '🎯', text: 'Attempt order',  cls: 'bg-primary/8 border-primary/15 text-primary' };
 
-  const hasFilters = !!(selectedSubject || selectedTopic);
-
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Reset visible count when filters change
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [selectedSubject, selectedTopic, explainDifficulty, type]);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [explainDifficulty, type]);
   const loadMore = useCallback(() => setVisibleCount(v => v + PAGE_SIZE), []);
 
   // Auto-load more on scroll via IntersectionObserver
@@ -107,7 +65,7 @@ const HistoryList = memo(function HistoryList({
 
   const difficultyFilteredItems = useMemo(() => {
     if (explainDifficulty === 'all') return displayItems;
-    return displayItems.filter(({ q }) => (q.difficulty || '').toLowerCase() === explainDifficulty);
+    return displayItems.filter(({ level }) => level === explainDifficulty);
   }, [displayItems, explainDifficulty]);
 
   const handleExplainAll = async () => {
@@ -122,9 +80,8 @@ const HistoryList = memo(function HistoryList({
     try {
       for (let i = 0; i < pending.length; i += BATCH_SIZE) {
         const batch = pending.slice(i, i + BATCH_SIZE);
-        await Promise.all(batch.map(({ q, userAns }) => {
-          const s = userAns === q.correctAnswer ? 'correct' : userAns === null ? 'skipped' : 'wrong';
-          return getAiRationale(q.question, q.correctAnswer, userAns, s)
+        await Promise.all(batch.map(({ q, userAnswer, status }) => {
+          return getAiRationale(q.question, q.correctAnswer, userAnswer, status)
             .then(() => { done++; setExplainProgress({ done, total: pending.length }); })
             .catch(() => { done++; setExplainProgress({ done, total: pending.length }); });
         }));
@@ -144,29 +101,13 @@ const HistoryList = memo(function HistoryList({
             {type === 'correct' ? 'Correct Answers' : type === 'wrong' ? 'Mistakes History' : 'Skipped Questions'}
           </span>
           <span className={`text-xs px-3 py-1.5 rounded-lg font-bold border ${badgeCls}`}>
-            {displayItems.length} {type === 'correct' ? 'correct' : type === 'wrong' ? 'mistakes' : 'skipped'}
+            {shownTotal} {type === 'correct' ? 'correct' : type === 'wrong' ? 'mistakes' : 'skipped'}
           </span>
           <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border flex items-center gap-1 ${orderBadge.cls}`}>
             <span>{orderBadge.icon}</span><span>{orderBadge.text}</span>
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {(subjects.length > 0 || topics.length > 0) && (
-            <button onClick={() => setFilterOpen(o => !o)}
-              className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border transition-all ${
-                hasFilters || filterOpen
-                  ? 'bg-primary/15 border-primary/25 text-primary'
-                  : 'bg-foreground/5 border-border text-foreground/40 hover:bg-foreground/10 hover:text-foreground/70'
-              }`}>
-              <Filter className="w-3.5 h-3.5" />
-              Filter
-              {hasFilters && (
-                <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[8px] font-black flex items-center justify-center">
-                  {(selectedSubject ? 1 : 0) + (selectedTopic ? 1 : 0)}
-                </span>
-              )}
-            </button>
-          )}
           <select
             value={explainDifficulty}
             onChange={e => setExplainDifficulty(e.target.value)}
@@ -189,93 +130,18 @@ const HistoryList = memo(function HistoryList({
         </div>
       </div>
 
-      {/* Filter panel */}
-      {filterOpen && (subjects.length > 0 || topics.length > 0) && (
-        <div className="bg-foreground/5 border border-border rounded-2xl p-4 mb-4 space-y-3 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">🔖 Filter Questions</p>
-            {hasFilters && (
-              <button onClick={() => { setSelectedSubject(null); setSelectedTopic(null); }}
-                className="text-[10px] text-foreground/30 hover:text-destructive font-bold flex items-center gap-1 transition-colors">
-                <X className="w-3 h-3" /> Clear all
-              </button>
-            )}
-          </div>
-
-          {subjects.length > 0 && (
-            <div>
-              <p className="text-[9px] font-black text-foreground/30 uppercase tracking-widest mb-2">📚 Subject</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[null, ...subjects].map(s => (
-                  <button key={s ?? 'all'} onClick={() => handleSubjectChange(s)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                      selectedSubject === s
-                        ? 'bg-primary/15 border-primary/30 text-foreground'
-                        : 'bg-foreground/5 border-border text-foreground/40 hover:text-foreground/70 hover:bg-foreground/10'
-                    }`}>
-                    {s === null ? '🌐 All Subjects' : s}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {topics.length > 0 && (
-            <div>
-              <p className="text-[9px] font-black text-foreground/30 uppercase tracking-widest mb-2">📝 Quiz / Topic</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[null, ...topics].map(t => (
-                  <button key={t ?? 'all'} onClick={() => setSelectedTopic(t)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
-                      selectedTopic === t
-                        ? 'bg-primary/15 border-primary/30 text-foreground'
-                        : 'bg-foreground/5 border-border text-foreground/40 hover:text-foreground/70 hover:bg-foreground/10'
-                    }`}>
-                    {t === null ? 'All Topics' : (t.length > 28 ? t.slice(0, 28) + '…' : t)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {hasFilters && (
-            <div className="flex items-center gap-2 pt-1 border-t border-border">
-              <span className="text-[9px] text-foreground/30 font-medium">Showing:</span>
-              {selectedSubject && (
-                <span className="text-[9px] bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
-                  📚 {selectedSubject}
-                  <button onClick={() => handleSubjectChange(null)} className="text-foreground/30 hover:text-foreground/60 ml-0.5">×</button>
-                </span>
-              )}
-              {selectedTopic && (
-                <span className="text-[9px] bg-primary/10 border border-primary/20 text-primary px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
-                  📝 {selectedTopic.length > 20 ? selectedTopic.slice(0, 20) + '…' : selectedTopic}
-                  <button onClick={() => setSelectedTopic(null)} className="text-foreground/30 hover:text-foreground/60 ml-0.5">×</button>
-                </span>
-              )}
-              <span className="text-[9px] text-foreground/25 ml-auto font-medium">{displayItems.length} questions</span>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Question List */}
       {displayItems.length === 0 ? (
         <div className="text-foreground/30 text-sm text-center py-10 bg-foreground/5 rounded-xl border border-border">
-          {hasFilters ? (
-            <div>
-              <p className="mb-2">No questions match the selected filters.</p>
-              <button onClick={() => { setSelectedSubject(null); setSelectedTopic(null); }} className="text-xs text-primary font-bold underline">Clear filters</button>
-            </div>
-          ) : 'No data yet.'}
+          {shownTotal > 0 ? 'The questions of these quizzes are not stored on this device.' : 'No data yet.'}
         </div>
       ) : (
         <div className="space-y-5 pr-1">
-          {displayItems.slice(0, visibleCount).map(({ q, userAns, date }, i) => (
-            <div key={`${q.question.slice(0, 30)}-${i}`}>
-              <div className="text-[10px] text-foreground/30 font-bold mb-2 px-1">{date}</div>
+          {displayItems.slice(0, visibleCount).map(({ key, q, userAnswer, date, quizTitle }, i) => (
+            <div key={key}>
+              <div className="text-[10px] text-foreground/30 font-bold mb-2 px-1 truncate">{date}{quizTitle ? ` · ${quizTitle}` : ''}</div>
               <ReviewCard
-                q={q} index={i} userAnswer={userAns}
+                q={q} index={i} userAnswer={userAnswer}
                 rationaleCache={rationaleCache} getAiRationale={getAiRationale}
                 showBook={rationalePrefs.showBook} showAi={rationalePrefs.showAi}
                 aiEnabled={reportHelper !== 'off'}

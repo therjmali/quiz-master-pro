@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.13.0] - 2026-11-21
+
+One source of truth for status counts and filters: the report tiles, the filter pills and the Question Breakdown can no longer disagree.
+
+### Fixed
+- **Report tiles said 80 / 36 / 22, the filter bar under them said 54 / 20 / 12 (and the lists were short or empty).** Root cause: two different data sources. The tiles added up the saved per-quiz counters, while the filter bar and the lists re-scanned `history`, whose rows are light summaries with no questions, and only counted the rows that happened to carry them, with repeated questions merged into one. On a device where the questions sit in IndexedDB the pills showed `0` and the Mistakes / Correct / Skipped lists were empty (reproduced on v3.12.0: pills 0 / 0 / 0, tiles 18 / 9 / 3, Mistakes list empty).
+- **Counts disappeared** when a difficulty was picked (tiles went blank) and **showed zero** while the questions were still loading. Tile and pill numbers are now static for the whole scope and a real `0` is shown as `0`.
+- **Count vs list mismatch on multi-answer questions** in the quiz report (the badge used `correctAnswers`, the list did not). One status rule (`reviewStatus`) now feeds counts, lists, pills and PDFs.
+
+### Changed
+- **Single source of truth.** `utils/attemptStats.ts` builds one immutable master list of every question of the attempts in scope (`flattenAttempts`) and the totals (`summarizeResults`). `hooks/useHydratedResults.ts` loads the questions from this device so the master list is complete. `hooks/useStatusFilter.ts` keeps the active filter as its own state, derives the shown list with `useMemo` (`all` returns the master array itself) and computes the counts from the master only, so tapping a filter can never change a number or drop a question.
+- **Progress dashboard:** pills, Question Breakdown strip, Negative-marking simulator, difficulty distribution and the Reports & downloads tiles all read the same counts object. Quizzes whose questions are not on this device keep their saved totals and a note says so; lists and PDFs leave them out.
+- **New shared `StatusFilterBar`** (Overview, Correct, Mistakes, Skipped - icon, label, count badge; Indigo / Green / Red / Yellow when selected, neutral when not) used on the Progress dashboard and in every quiz report. 2 x 2 on phones, one row from 640 px so no label is clipped. The quiz report's 🔖 Bookmarked filter is kept as its own capsule under the bar.
+- **Report downloads** are built from the master results only, whatever filter is active (`Full` = every question, `Mistakes` = master filtered for mistakes). With a difficulty pick in a single-quiz report a line says how many questions the PDF holds.
+- The Progress question lists show every question of the scope (a question that appears in two attempts is listed twice, with its date and quiz title) so the list length always equals its pill. The old per-list Subject / Topic panel was removed: the dashboard *Filters* already do that for the whole screen.
+
+### Not changed, and why
+- No code was found that overwrites the master array when a filter is applied (all lists were already derived with `filter` on copies). The "questions lost after switching back to Overview" symptom came from the lazy-loading above. The new tests freeze the master data deeply and prove no step mutates it.
+
+### Tests
+- `tests/attemptStats.test.ts`: status rules, summary = lists, saved totals for quizzes without questions, difficulty scope, deep-frozen master through every filter and a round trip, book order on copies, the hook (counts independent of the filter), the bar (icons, labels, counts, active colours) and export parity (every download tile exports exactly the number its badge shows).
+- `scripts/ui-qa-v313.mjs` (`npm run test:ui:v313`): real Chrome, phone / small phone / tablet portrait / tablet landscape / phone landscape / Dark, light history rows with the questions in IndexedDB; pills = strip = tiles, round trip over every filter, difficulty scope, one-tap PDF question counts, per-quiz report, no clipping or overflow, quizzes without saved questions. Fails on v3.12.0, passes now.
+- `verify-repo` contract checks for the new architecture.
+
 ## [3.12.0] - 2026-11-20
 
 Library edits no longer break quizzes, finished quizzes leave Drafts, immersive quiz screen, and a block-per-question progress bar.

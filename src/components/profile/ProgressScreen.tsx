@@ -16,6 +16,10 @@ import { useProfileStore } from '../../hooks/useProfileStore';
 import { getActiveMistakes, mistakesToQuizQuestions } from '../../utils/globalMistakes';
 import OverviewTab from './OverviewTab';
 import HistoryList from './HistoryList';
+import StatusFilterBar from '../shared/StatusFilterBar';
+import { useHydratedResults } from '../../hooks/useHydratedResults';
+import { useStatusFilter } from '../../hooks/useStatusFilter';
+import { flattenAttempts, summarizeResults, toCounts, type StatusFilter } from '../../utils/attemptStats';
 import ReportDownloadPanel from '../reports/ReportDownloadPanel';
 import { ReportPreviewData } from '../reports/ReportPreviewPage';
 import SessionSelector, { SessionMode, filterBySession, getSessionLabel } from '../SessionSelector';
@@ -164,6 +168,9 @@ export default function ProgressScreen({
     return subjectFiltered.filter(r => r.quizTitle === profileUnitFilter);
   }, [subjectFiltered, profileUnitFilter]);
 
+  // Attempts of the current scope with their questions loaded from this device (never mutated).
+  const { results: master, missing: missingDetails } = useHydratedResults(masterFiltered);
+
   const [showNegPanel, setShowNegPanel] = useState(false);
   const filteredQuizIds = useMemo(() => masterFiltered.map(r => getQuizKey(r)), [masterFiltered]);
   const isSubjectFiltered = profileSubjectFilter !== 'all';
@@ -191,7 +198,7 @@ export default function ProgressScreen({
     return Array.from(set) as string[];
   }, [subjectFiltered]);
 
-  const stats = useMemo(() => computeFilteredStats(masterFiltered, profileDiffFilter), [masterFiltered, profileDiffFilter]);
+  const stats = useMemo(() => computeFilteredStats(master, profileDiffFilter), [master, profileDiffFilter]);
   // Streak counts ALL quiz attempts - any daily attempt keeps the streak alive
   const streak = calculateStreak(history.map(r => r.timestamp));
   const rank = computeRank(masterFiltered.length, stats.avgAcc);
@@ -220,25 +227,18 @@ export default function ProgressScreen({
     setProfileDiffFilter('all');
   };
 
-  const reviewCounts = useMemo(() => {
-    const s = { correct: new Set<string>(), wrong: new Set<string>(), skipped: new Set<string>() };
-    history.forEach(r => {
-      (r.quizData || []).forEach((q, i) => {
-        const u = r.userAnswers[i];
-        if (u === null) s.skipped.add(q.question);
-        else if (u === q.correctAnswer) s.correct.add(q.question);
-        else s.wrong.add(q.question);
-      });
-    });
-    return { correct: s.correct.size, wrong: s.wrong.size, skipped: s.skipped.size };
-  }, [history]);
-
-  const segments: { key: View; label: string; icon: string; count?: number; tone: string }[] = [
-    { key: 'overview', label: 'Overview', icon: '📊', tone: 'bg-primary/15 border-primary/30 text-foreground' },
-    { key: 'correct', label: 'Correct', icon: '✓', count: reviewCounts.correct, tone: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300' },
-    { key: 'wrong', label: 'Mistakes', icon: '✗', count: reviewCounts.wrong, tone: 'bg-red-500/15 border-red-500/30 text-red-300' },
-    { key: 'skipped', label: 'Skipped', icon: '⏭', count: reviewCounts.skipped, tone: 'bg-amber-500/15 border-amber-500/30 text-amber-300' },
-  ];
+  // ── One master list for everything below: pills, report tiles, breakdown strip and question lists ──
+  // `master` = the attempts in the current dashboard scope (session -> subject -> unit), with their questions
+  // loaded from this device. It is never changed; the status filter only decides what is shown.
+  const scope = useMemo(() => summarizeResults(master, profileDiffFilter), [master, profileDiffFilter]);
+  const scopeCounts = useMemo(() => toCounts(scope), [scope]);
+  const attemptItems = useMemo(() => flattenAttempts(master, profileDiffFilter), [master, profileDiffFilter]);
+  const statusFilter: StatusFilter = view === 'overview' ? 'all' : view;
+  const { filter: activeStatus, setFilter: setStatus, counts: statusCounts, displayed: displayedItems } = useStatusFilter(attemptItems, {
+    filter: statusFilter,
+    onFilterChange: f => setView(f === 'all' ? 'overview' : f),
+    totals: scopeCounts,
+  });
 
   const cloudChip = account.signedIn
     ? syncState.phase === 'syncing'
@@ -332,7 +332,7 @@ export default function ProgressScreen({
             <div className="flex items-center gap-2 p-2.5 bg-primary/8 border border-primary/15 rounded-xl">
               <span className="text-[9px]">🔍</span>
               <p className="text-[10px] font-bold text-primary/80 flex-1 truncate">{filterLabel}</p>
-              <span className="text-[10px] font-black text-foreground/30">{stats.totalQ}Q</span>
+              <span className="text-[10px] font-black text-foreground/30">{statusCounts.all}Q</span>
             </div>
           )}
         </div>
@@ -421,7 +421,7 @@ export default function ProgressScreen({
                 </span>
               )}
             </div>
-            {stats.totalQ > 0 && (
+            {statusCounts.all > 0 && (
               <button
                 onClick={() => setShowNegPanel(true)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/25 text-destructive text-[10px] font-black uppercase tracking-wider hover:bg-destructive/15 transition-all active:scale-95"
@@ -455,20 +455,20 @@ export default function ProgressScreen({
             <div className="flex flex-col items-center"><span className="text-primary font-black text-3xl">{stats.netScore % 1 === 0 ? stats.netScore : stats.netScore.toFixed(2)}</span><span className="text-[9px] text-primary/60 uppercase tracking-widest mt-0.5">Net Score</span></div>
           </div>
 
-          <QuestionBreakdownStrip totalQ={stats.totalQ} correct={stats.totCorrect} wrong={stats.totWrong} skipped={stats.totSkipped} className="relative z-10 mt-4" />
-          <DifficultyDistributionBar easy={stats.diffCounts.easy} medium={stats.diffCounts.medium} hard={stats.diffCounts.hard} className="relative z-10 mt-3" />
+          <QuestionBreakdownStrip totalQ={statusCounts.all} correct={statusCounts.correct} wrong={statusCounts.wrong} skipped={statusCounts.skipped} className="relative z-10 mt-4" />
+          <DifficultyDistributionBar easy={scope.easy} medium={scope.medium} hard={scope.hard} className="relative z-10 mt-3" />
 
           <div className="relative z-10 flex items-center justify-center gap-3 mt-3 text-[10px] text-foreground/25 font-bold">
-            <span>{masterFiltered.length} quizzes</span><span>·</span><span>{stats.totalQ} questions</span><span>·</span>
+            <span>{masterFiltered.length} quizzes</span><span>·</span><span>{statusCounts.all} questions</span><span>·</span>
             <span>Avg {profile.showDecimalPct ? `${stats.avgPctDecimal}%` : `${stats.avgPct}%`}</span>
           </div>
 
           {showNegPanel && (
             <LifetimeNegMarkingPanel
-              totalCorrect={stats.totCorrect}
-              totalWrong={stats.totWrong}
-              totalSkipped={stats.totSkipped}
-              totalQuestions={stats.totalQ}
+              totalCorrect={statusCounts.correct}
+              totalWrong={statusCounts.wrong}
+              totalSkipped={statusCounts.skipped}
+              totalQuestions={statusCounts.all}
               originalGain={stats.totalGain}
               originalPenalty={stats.totalPenalty}
               passMark={50}
@@ -511,7 +511,8 @@ export default function ProgressScreen({
       {/* ── Report ── */}
       {masterFiltered.length > 0 && (
         <ReportDownloadPanel
-          results={masterFiltered}
+          results={master}
+          counts={statusCounts}
           rationaleCache={rationaleCache}
           scope="profile"
           reportOrder={profileReportOrder}
@@ -533,16 +534,12 @@ export default function ProgressScreen({
       )}
 
       {/* ── Overview ── */}
-      <div className="mt-4 mb-3 flex gap-0.5 bg-card/80 p-1 rounded-2xl border border-border" role="tablist" aria-label="Overview views">
-        {segments.map(seg => (
-          <button key={seg.key} type="button" role="tab" aria-selected={view === seg.key} onClick={() => setView(seg.key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2.5 px-1.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition-all border active:scale-95 ${view === seg.key ? `${seg.tone} shadow-sm` : 'border-transparent text-foreground/40 hover:text-foreground/60 hover:bg-foreground/5'}`}>
-            <span className="text-sm leading-none">{seg.icon}</span>
-            <span>{seg.label}</span>
-            {seg.count !== undefined && <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-foreground/10 text-foreground/50">{seg.count}</span>}
-          </button>
-        ))}
-      </div>
+      <StatusFilterBar className="mt-4 mb-3" value={activeStatus} onChange={setStatus} counts={statusCounts} testId="progress-status-filter" ariaLabel="Overview views" />
+      {scope.unavailableQuizzes > 0 && (
+        <p className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300" data-testid="details-unavailable-note">
+          {scope.unavailableQuizzes} quiz{scope.unavailableQuizzes === 1 ? '' : 'zes'} ({scope.unavailableQuestions} questions) {scope.unavailableQuizzes === 1 ? 'has' : 'have'} no question details on this device. Totals use the saved scores; the lists and reports leave {scope.unavailableQuizzes === 1 ? 'it' : 'them'} out.{missingDetails > 0 && profileDiffFilter !== 'all' ? ' The difficulty filter can not include them.' : ''}
+        </p>
+      )}
 
       <div key={view} className="animate-tab-content">
         {view === 'overview' && (
@@ -556,7 +553,7 @@ export default function ProgressScreen({
           />
         )}
         {view !== 'overview' && (
-          <HistoryList type={view as ReviewFilter} history={history} rationaleCache={rationaleCache}
+          <HistoryList type={view as ReviewFilter} items={displayedItems} total={statusCounts[activeStatus]} rationaleCache={rationaleCache}
             getAiRationale={getAiRationale} reportOrder={profileReportOrder}
             rationalePrefs={rationalePrefs} reportHelper={reportHelper} />
         )}

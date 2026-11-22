@@ -6,6 +6,7 @@ import type { AIMode, QuizResult, RationalePrefs, ReportOrder } from '../../type
 import type { ReportKind } from '../../utils/reports/pdf/types';
 import { buildQuestionDoc, KIND_TITLES, reportFilename, styleFor, type Difficulty } from '../../utils/reports/pdf/model';
 import { loadReportPrefs } from '../../utils/reports/reportPrefs';
+import { summarizeResults, toCounts, type StatusCounts } from '../../utils/attemptStats';
 import { loadFullResults } from '../../utils/reports/loadFull';
 import { announceSaved, exportReportDoc, friendlyError, openSavedReportToast, shareSavedReportToast } from '../../utils/reports/exportReport';
 import { getRevisionCache, setRevisionCache } from '../../utils/revisionCache';
@@ -17,7 +18,10 @@ import type { ReportPreviewData, ReportSession } from './reportSession';
 export type { ReportPreviewData } from './reportSession';
 
 interface Props {
+  /** The master attempts (with their questions when they are on the device). Exports are always built from these, never from a displayed/filtered list. */
   results: QuizResult[];
+  /** Tile numbers. Pass the SAME object the status filter bar shows; without it they are worked out from `results`. */
+  counts?: StatusCounts;
   rationaleCache: Record<string, string>;
   scope?: 'quiz' | 'profile';
   reportOrder: ReportOrder;
@@ -53,7 +57,7 @@ const when = (t: number) => new Date(t).toLocaleString('en-GB', { day: '2-digit'
 const size = (n: number) => (n < 1048576 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`);
 
 export default function ReportDownloadPanel({
-  results, rationaleCache, scope = 'profile', reportOrder, onOrderChange, rationalePrefs, onRationalePrefsChange, reportHelper, onReportHelperChange,
+  results, counts: countsProp, rationaleCache, scope = 'profile', reportOrder, onOrderChange, rationalePrefs, onRationalePrefsChange, reportHelper, onReportHelperChange,
   onOpenPreviewPage, getAiRationale, controlledSubject, controlledUnit, controlledDiffFilter, onDiffFilterChange,
 }: Props) {
   const [diffLocal, setDiffLocal] = useState<Difficulty>('all');
@@ -69,10 +73,11 @@ export default function ReportDownloadPanel({
   }, []);
 
   const filtered = useMemo(() => results.filter(r => (!controlledSubject || r.subject === controlledSubject) && (!controlledUnit || r.quizTitle === controlledUnit)), [results, controlledSubject, controlledUnit]);
-  const counts = useMemo(() => {
-    const c = filtered.reduce((a, r) => ({ correct: a.correct + (r.correct || 0), wrong: a.wrong + (r.wrong || 0), skipped: a.skipped + (r.skipped || 0) }), { correct: 0, wrong: 0, skipped: 0 });
-    return { all: c.correct + c.wrong + c.skipped, correct: c.correct, wrong: c.wrong, skipped: c.skipped, exam: c.correct + c.wrong + c.skipped, revision: c.wrong } as Record<ReportKind, number>;
-  }, [filtered]);
+  // Tile numbers are static: they describe the whole master set and never react to a status filter or a difficulty pick.
+  const masterCounts = useMemo(() => countsProp ?? toCounts(summarizeResults(filtered)), [countsProp, filtered]);
+  const counts = useMemo(() => ({ ...masterCounts, exam: masterCounts.all, revision: masterCounts.wrong }) as Record<ReportKind, number>, [masterCounts]);
+  // When the difficulty pick narrows the export (and the caller's counts do not already include it), say how many questions the PDF holds.
+  const exportScope = useMemo(() => (countsProp || difficulty === 'all' ? null : summarizeResults(filtered, difficulty)), [countsProp, filtered, difficulty]);
 
   const makeSession = (full: QuizResult[], kind: ReportKind): ReportSession => {
     const subject = full[0]?.subject;
@@ -175,6 +180,12 @@ export default function ReportDownloadPanel({
         ))}
       </div>
 
+      {exportScope && (
+        <p className="relative mt-2 text-[11px] font-semibold text-foreground/55" data-testid="report-scope-note">
+          {DIFFS.find(d => d.v === difficulty)?.l} only · the PDF holds {exportScope.all} of {masterCounts.all} questions
+        </p>
+      )}
+
       {/* compact grid: two straight lines of squircle tiles */}
       <div className="relative mt-3 grid grid-cols-4 gap-2" role="list" data-testid="report-grid">
         {CARDS.map(c => {
@@ -188,7 +199,7 @@ export default function ReportDownloadPanel({
                 className="flex h-[84px] w-full flex-col items-center justify-center gap-1 rounded-[22px] px-1 pt-1 active:scale-95 disabled:opacity-45 transition-transform">
                 {isBusy && busy?.mode === 'preview' ? <Loader2 className={`h-5 w-5 animate-spin ${t.text}`} /> : <c.Icon className={`h-5 w-5 ${t.text}`} />}
                 <span className="text-[11px] font-black leading-none text-foreground">{t.short}</span>
-                <span className="h-3 text-[9px] font-bold leading-none text-foreground/45">{difficulty === 'all' && n > 0 && c.type !== 'revision' ? n : ''}</span>
+                <span className="h-3 text-[9px] font-bold leading-none text-foreground/45">{c.type !== 'revision' ? n : ''}</span>
               </button>
               <button type="button" onClick={() => void quickPdf(c.type)} disabled={disabled} aria-label={c.type === 'revision' ? `Open ${c.label}` : `Download ${c.label} as PDF`}
                 style={{ minHeight: 0, minWidth: 0 }} className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground shadow-md active:scale-90 disabled:opacity-40">

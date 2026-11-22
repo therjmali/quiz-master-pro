@@ -1,7 +1,7 @@
 {
   "name": "quiz-master-pro",
   "private": true,
-  "version": "3.12.0",
+  "version": "3.13.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -24,7 +24,8 @@
     "test:ui:v29": "node scripts/ui-qa-v29.mjs",
     "test:ui:v33": "node scripts/ui-qa-v33.mjs",
     "test:ui:v310": "node scripts/ui-qa-v310.mjs",
-    "test:ui:v312": "node scripts/ui-qa-v312.mjs"
+    "test:ui:v312": "node scripts/ui-qa-v312.mjs",
+    "test:ui:v313": "node scripts/ui-qa-v313.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.2",

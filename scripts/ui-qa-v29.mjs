@@ -83,9 +83,11 @@ async function run(label, w, h) {
   await page.getByTestId('review-filters').waitFor({ timeout: 20000 });
   const fb = page.getByTestId('review-filters').locator('button');
   const labels = await fb.allInnerTexts();
-  ok(`[${label}] status filters: "All" has text, the rest are emoji only`, /All/.test(labels[0]) && labels.slice(1).every(t => t.trim().length > 0 && t.trim().length <= 3 && !/[A-Za-z]/.test(t)), JSON.stringify(labels));
+  // v3.13: the shared StatusFilterBar replaced the emoji-only capsules (icon + label + count, 4 pills; 2 x 2 on phones, one row from 640 px)
+  ok(`[${label}] status filters: Overview / Correct / Mistakes / Skipped with a count each`, labels.length === 4 && labels.every(t => /[A-Za-z]/.test(t) && /\d/.test(t)), JSON.stringify(labels));
   const ys = await fb.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y)));
-  ok(`[${label}] status filters sit on one line, capsule shaped`, new Set(ys).size === 1 && await fb.first().evaluate(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 16));
+  const wide = await page.evaluate(() => window.innerWidth / (parseFloat(getComputedStyle(document.documentElement).zoom) || 1) >= 640);
+  ok(`[${label}] status filters: ${wide ? 'one straight row' : '2 x 2'}, pill shaped`, new Set(ys).size === (wide ? 1 : 2) && await fb.first().evaluate(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 16), JSON.stringify(ys));
   const ob = await page.getByTestId('review-options').locator('> *').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return Math.round(r.y + r.height / 2); }));
   ok(`[${label}] view options (Rationale, level, Explain) on one line`, Math.max(...ob) - Math.min(...ob) <= 3 && ob.length === 3, `${ob.length} items`);
   const head = page.getByTestId('review-card-header').first();
@@ -102,8 +104,8 @@ async function run(label, w, h) {
   const bt = await box.innerText();
   ok(`[${label}] rationale box is 📖 + bullets with no "Ans. -" line or text label`, /📖/.test(bt) && !/Ans\.|Explanation|Rationale:/.test(bt), bt.split('\n').slice(0, 2).join(' | '));
   // filter by wrong
-  await page.getByRole('tab', { name: /^Wrong/ }).click(); await page.waitForTimeout(500);
-  ok(`[${label}] ❌ filter shows only the 4 wrong questions`, (await page.locator('[data-review-status="wrong"]').count()) === 4 && (await page.locator('[data-review-status="correct"]').count()) === 0);
+  await page.getByRole('tab', { name: /^Mistakes/ }).click(); await page.waitForTimeout(500);
+  ok(`[${label}] Mistakes filter shows only the 4 wrong questions`, (await page.locator('[data-review-status="wrong"]').count()) === 4 && (await page.locator('[data-review-status="correct"]').count()) === 0);
   ok(`[${label}] no JS errors`, errs.length === 0, errs.join(' | ').slice(0, 400));
   await ctx.close();
 }

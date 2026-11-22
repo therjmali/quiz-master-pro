@@ -4,6 +4,9 @@ import { toast } from 'sonner';
 import { hapticTap } from '../../utils/haptics';
 import { QuizResult, QuizSettings, ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import ReviewCard from './ReviewCard';
+import StatusFilterBar from '../shared/StatusFilterBar';
+import { useStatusFilter } from '../../hooks/useStatusFilter';
+import { flattenAttempts, orderAttemptItems, type StatusFilter } from '../../utils/attemptStats';
 import { loadFileTree, saveFileTree, addBookmarkToTree, removeBookmarkNode, isQuestionBookmarked, getAllBookmarks, FileNode, BookmarkData } from '../../utils/fileTree';
 
 type Filter = 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked';
@@ -22,22 +25,6 @@ interface Props {
   onReportHelperChange: (m: AIMode) => void;
   onAskAI?: (context: { question: string; options: string[]; correctAnswer: string; userAnswer: string | null; rationale?: string; difficulty?: string; questionType?: string }) => void;
 }
-
-interface QPair {
-  q: ReturnType<typeof Object.assign>;
-  userAnswer: string | null;
-  attemptIdx: number;
-}
-
-/** "All" is the only filter with a word; the rest are emoji only (their names are in aria-label / title). */
-const FILTER_BTNS: { key: Filter; label: string; icon: string; color: string }[] = [
-  { key: 'all',     label: 'All',        icon: '📚', color: '' },
-  { key: 'correct', label: 'Correct',    icon: '✅', color: '' },
-  { key: 'wrong',   label: 'Wrong',      icon: '❌', color: '' },
-  { key: 'skipped', label: 'Skipped',    icon: '⏭️', color: '' },
-  { key: 'bookmarked', label: 'Bookmarked', icon: '🔖', color: '' },
-];
-
 
 export default function ReviewSection({
   result, settings, rationaleCache, getAiRationale,
@@ -107,46 +94,25 @@ export default function ReviewSection({
     });
   }, [result.subject, result.quizTitle]);
 
-  const counts = useMemo(() => {
-    let correct = 0, wrong = 0, skipped = 0;
-    result.quizData.forEach((q, i) => {
-      const ua = result.userAnswers[i] ?? null;
-      if (ua === null) skipped++;
-      else if (ua === q.correctAnswer || q.correctAnswers?.includes(ua)) correct++;
-      else wrong++;
-    });
-    return { correct, wrong, skipped } as Record<string, number>;
-  }, [result]);
+  // Master list: every question of this attempt, built once. It is never filtered, sorted or replaced.
+  const master = useMemo(() => flattenAttempts([result]), [result]);
+  const { filter: statusFilter, setFilter: setStatusFilter, counts, displayed } = useStatusFilter(master, {
+    filter: activeFilter,
+    onFilterChange: f => onFilterChange(f),
+  });
 
-  const bookmarkedCount = useMemo(() => {
-    return result.quizData.filter(q => bookmarkedSet.has(q.question)).length;
-  }, [result.quizData, bookmarkedSet]);
+  const bookmarkedCount = useMemo(() => master.filter(it => bookmarkedSet.has(it.q.question)).length, [master, bookmarkedSet]);
 
-  const filtered = useMemo<QPair[]>(() => {
-    const pairs: QPair[] = result.quizData.map((q, attemptIdx) => ({
-      q: reportOrder === 'original' ? { ...q, shuffledOpts: q.options } : q,
-      userAnswer: result.userAnswers[attemptIdx] ?? null,
-      attemptIdx,
+  // View-only steps on COPIES: the bookmark narrowing, then book order.
+  const filtered = useMemo(() => {
+    const narrowed = activeFilter === 'bookmarked' ? displayed.filter(it => bookmarkedSet.has(it.q.question)) : displayed;
+    return orderAttemptItems(narrowed, reportOrder).map(it => ({
+      key: it.key,
+      q: reportOrder === 'original' ? { ...it.q, shuffledOpts: it.q.options } : it.q,
+      userAnswer: it.userAnswer,
+      attemptIdx: it.index,
     }));
-
-    const sorted = reportOrder === 'original'
-      ? [...pairs].sort(
-          (a, b) =>
-            ((a.q as any).originalIndex ?? a.attemptIdx) -
-            ((b.q as any).originalIndex ?? b.attemptIdx)
-        )
-      : pairs;
-
-    return sorted.filter(({ q, userAnswer }) => {
-      const isCorrect = userAnswer === q.correctAnswer;
-      const isSkipped = userAnswer === null;
-      if (activeFilter === 'correct') return isCorrect;
-      if (activeFilter === 'wrong')   return !isCorrect && !isSkipped;
-      if (activeFilter === 'skipped') return isSkipped;
-      if (activeFilter === 'bookmarked') return bookmarkedSet.has(q.question);
-      return true;
-    });
-  }, [result, reportOrder, activeFilter]);
+  }, [displayed, activeFilter, bookmarkedSet, reportOrder]);
 
   const difficultyFiltered = useMemo(() => {
     if (explainDifficulty === 'all') return filtered;
@@ -198,20 +164,16 @@ export default function ReviewSection({
         <span className="leading-snug">{orderMeta.text}</span>
       </div>
 
-      {/* Status filters: capsules, one line, swipe sideways */}
-      <div className="qmp-capsules mb-2 pointer-events-auto" role="tablist" aria-label="Filter questions" data-testid="review-filters">
-        {FILTER_BTNS.map(({ key, label, icon }) => {
-          const n = key === 'all' ? result.quizData.length : key === 'bookmarked' ? bookmarkedCount : counts[key];
-          return (
-            <button key={key} type="button" role="tab" aria-selected={activeFilter === key} aria-pressed={activeFilter === key}
-              aria-label={`${label}${n !== undefined ? ` (${n})` : ''}`} title={label}
-              onClick={() => { hapticTap(); onFilterChange(key); }}
-              className={`qmp-capsule pointer-events-auto cursor-pointer transition-all duration-200 active:scale-95 ${key === 'all' ? '' : 'qmp-capsule--emoji'}`}>
-              <span className="leading-none">{icon}</span>{key === 'all' && <span>All</span>}
-            </button>
-          );
-        })}
-      </div>
+      {/* Status filter: the same bar as the Progress dashboard. Counts are static (whole attempt). */}
+      <StatusFilterBar className="mb-2" value={activeFilter === 'bookmarked' ? 'none' : statusFilter} onChange={(f: StatusFilter) => { setStatusFilter(f); }} counts={counts} testId="review-filters" ariaLabel="Filter questions" />
+      {bookmarkedCount > 0 && (
+        <div className="mb-2 flex">
+          <button type="button" className="qmp-capsule" aria-pressed={activeFilter === 'bookmarked'} aria-label={`Bookmarked (${bookmarkedCount})`} data-testid="review-filter-bookmarked"
+            onClick={() => { hapticTap(); onFilterChange(activeFilter === 'bookmarked' ? 'all' : 'bookmarked'); }}>
+            <span className="leading-none">🔖</span> Bookmarked <span className="text-[10px] opacity-60">{bookmarkedCount}</span>
+          </button>
+        </div>
+      )}
 
       {/* View options: capsules, one line, swipe sideways (sticks cleanly below navbar) */}
       <div className="sticky top-[60px] sm:top-[68px] z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md pointer-events-auto shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">
@@ -262,9 +224,9 @@ export default function ReviewSection({
         <div className="space-y-5">
           {filtered
             .filter(({ q }) => !showBookmarked || bookmarkedSet.has(q.question))
-            .map(({ q, userAnswer, attemptIdx }, displayIdx) => (
+            .map(({ key, q, userAnswer, attemptIdx }) => (
             <ReviewCard
-              key={`${q.id || q.question}-${attemptIdx}-${displayIdx}`}
+              key={key}
               q={q}
               index={attemptIdx}
               userAnswer={userAnswer}
