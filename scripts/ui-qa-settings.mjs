@@ -94,7 +94,7 @@ async function run(label, w, h) {
   const prog = await page.locator('body').innerText();
   ok(`[${label}] Progress has no Settings/Awards/Notes/Templates/Trash/API/Downloads tabs`, !/\b(Awards|Templates|Downloads|API Keys)\b/i.test(prog) && await page.getByRole('tab', { name: /Settings|Trash|Notes/ }).count() === 0);
   ok(`[${label}] Progress shows the premium status hero + rank meter`, await page.getByTestId('rank-meter').isVisible() && await page.locator('.qmp-status-hero').isVisible());
-  ok(`[${label}] Progress has the Overview / Correct / Mistakes / Skipped switch`, await page.getByRole('tab').count() === 4);
+  ok(`[${label}] Progress has the All / Correct / Mistakes / Skipped / Bookmarked switch (v3.14)`, await page.getByRole('tab').count() === 5 && (await page.getByRole('tab').evaluateAll(els => els.map(e => e.getAttribute('data-status')))).join(',') === 'all,correct,wrong,skipped,bookmarked');
   ok(`[${label}] Progress fits the screen width`, !(await overflow()));
   await page.screenshot({ path: `${SHOTS}/progress_${label}.png` });
   await page.getByRole('button', { name: 'Open settings and profile' }).click(); await page.waitForTimeout(600);

@@ -1,5 +1,6 @@
 /**
  * Real-Chrome regression for v3.13 (touch emulation): one source of truth for status counts and filters.
+ *  (v3.14: the bar is All | ✅ | ❌ | ⏭️ | 🔖, one straight line; All lists every question; the quiz opens from Home)
  *  1. Progress: pills, Question Breakdown strip and the Reports & downloads tiles all show the SAME numbers
  *     (history rows are light summaries, the questions live in IndexedDB - the exact case that used to disagree)
  *  2. tapping Mistakes / Correct / Skipped / Overview never changes a count and never loses a question
@@ -83,9 +84,10 @@ async function progressSuite(label, w, h, theme) {
   ok(`[${label}] pills show the whole dataset ${JSON.stringify(EXPECT)}`, same(p0, EXPECT), JSON.stringify(p0));
   ok(`[${label}] report tiles = pills`, same(t0, p0), JSON.stringify(t0));
   ok(`[${label}] question breakdown strip = pills`, same(s0, p0), JSON.stringify(s0));
-  ok(`[${label}] four pills with icon + label + count`, await bar.locator('button').count() === 4 && await bar.locator('svg').count() === 4 && /Overview/.test(await bar.innerText()) && /Mistakes/.test(await bar.innerText()));
+  const txt = (await bar.innerText()).replace(/\s+/g, ' ');
+  ok(`[${label}] five pills: "All" + emoji only, each with its number`, await bar.locator('button').count() === 5 && /^All 30 ✅ 18 ❌ 9 ⏭️ 3 🔖 0$/.test(txt), txt);
   const rows = await bar.locator('button').evaluateAll(els => new Set(els.map(e => Math.round(e.getBoundingClientRect().y))).size);
-  ok(`[${label}] bar layout: ${w >= 640 ? 'one straight row' : '2 x 2'}`, rows === (w >= 640 ? 1 : 2), `${rows} row(s)`);
+  ok(`[${label}] bar layout: one straight line`, rows === 1, `${rows} row(s)`);
   ok(`[${label}] no clipped text in the pills, no sideways overflow`, (await clipped(bar)) === 0 && !(await overflowX(page)));
   const contrast = await bar.locator('[aria-selected="true"]').evaluateAll(els => els.map(e => { const c = getComputedStyle(e).color.match(/\d+/g).map(Number), b = getComputedStyle(e).backgroundColor.match(/\d+/g).map(Number); const L = a => { const f = a.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; }; const [x, y] = [L(c), L(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }));
   ok(`[${label}] pill text contrast >= 4.5:1 on its background (selected pill)`, contrast.every(r => r >= 4.5), contrast.map(r => r.toFixed(1)).join(' '));
@@ -93,7 +95,7 @@ async function progressSuite(label, w, h, theme) {
 
   // filters never change a number and never lose a question
   const cards = () => page.locator('[data-review-status]').count();
-  const seq = [['wrong', EXPECT.wrong], ['correct', EXPECT.correct], ['skipped', EXPECT.skipped], ['wrong', EXPECT.wrong], ['all', null], ['correct', EXPECT.correct], ['all', null]];
+  const seq = [['wrong', EXPECT.wrong], ['correct', EXPECT.correct], ['skipped', EXPECT.skipped], ['wrong', EXPECT.wrong], ['all', EXPECT.all], ['correct', EXPECT.correct], ['all', EXPECT.all]];
   let stable = true, listsOk = true, why = '';
   for (const [k, n] of seq) {
     await bar.getByTestId(`status-pill-${k}`).click(); await page.waitForTimeout(700);
@@ -105,8 +107,8 @@ async function progressSuite(label, w, h, theme) {
     if (sel !== k) { listsOk = false; why += ` selected ${sel} != ${k}`; }
     if (n !== null) { const c = await cards(); if (c !== n) { listsOk = false; why += ` ${k}: ${c} cards, want ${n}`; } }
   }
-  ok(`[${label}] Mistakes / Correct / Skipped / Overview round trip: counts static in pills, tiles and strip`, stable, why);
-  ok(`[${label}] every filter lists exactly its number of questions (repeated questions included), Overview shows the quizzes again`, listsOk && await page.getByText('Alpha Set').first().isVisible(), why);
+  ok(`[${label}] All / ✅ / ❌ / ⏭️ round trip: counts static in pills, tiles and strip`, stable, why);
+  ok(`[${label}] every filter lists exactly its number of questions (repeated questions included); All lists every question`, listsOk, why);
 
   // difficulty scope moves pills, strip and tiles together
   await page.getByTestId('report-filters').getByRole('button', { name: '🟢 Easy' }).click(); await page.waitForTimeout(900);
@@ -134,8 +136,8 @@ async function progressSuite(label, w, h, theme) {
 /* ───────── 5. per-quiz report ───────── */
 async function quizSuite(label, w, h) {
   const { ctx, page, errs } = await open({ w, h, ...seed() });
-  await nav(page, 'Progress'); await page.waitForTimeout(2000);
-  await page.getByText('Alpha Set', { exact: true }).last().click({ timeout: 10000 });
+  await page.waitForTimeout(1500); // Home: the Overview section lists every quiz
+  await page.getByTestId('home-overview').getByText('Alpha Set', { exact: true }).first().click({ timeout: 15000 });
   const bar = page.getByTestId('review-filters'); await bar.waitFor({ timeout: 20000 }); await page.waitForTimeout(1500);
   const want = { all: A.totalQuestions, correct: A.correct, wrong: A.wrong, skipped: A.skipped };
   const p0 = await pills(bar), t0 = await tiles(page);

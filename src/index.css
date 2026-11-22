@@ -3752,20 +3752,26 @@ html.qmp-scroll-locked [role="alertdialog"] { touch-action: pan-y; }
 .text-\[8px\] { font-size: 9px; }
 .text-\[7px\] { font-size: 9px; }
 
-/* ── Status filter bar (Overview / Correct / Mistakes / Skipped): 2 x 2 on phones, one row from 640 px ── */
-.qmp-status-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; width: 100%; position: relative; z-index: 10; }
-@media (min-width: 640px) { .qmp-status-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.375rem; } .qmp-status-pill { padding: 0 0.5rem; gap: 0.25rem; } }
+/* ── Status filter bar: All | ✅ | ❌ | ⏭️ | 🔖, each with its count, always ONE straight line (never wraps, never scrolls) ── */
+.qmp-status-bar { display: grid; grid-template-columns: 1.3fr repeat(4, minmax(0, 1fr)); gap: 0.375rem; width: 100%; position: relative; z-index: 10; }
 .qmp-status-pill {
-  display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; min-width: 0;
-  height: 2.5rem; padding: 0 0.75rem; border-radius: 9999px; border-width: 1px; border-style: solid;
-  font-size: 0.8rem; font-weight: 800; line-height: 1; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.3rem; min-width: 0 !important;
+  height: 2.6rem; padding: 0 0.3rem; border-radius: 9999px; border-width: 1px; border-style: solid;
+  font-size: 0.82rem; font-weight: 800; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums;
   cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 .qmp-status-pill:active { transform: scale(0.95); }
-.qmp-status-pill__label { overflow: visible; }
-.qmp-status-pill__count { display: inline-grid; place-items: center; min-width: 1.5rem; height: 1.25rem; padding: 0 0.4rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.qmp-status-pill__icon { font-size: 1.05rem; line-height: 1; flex: none; }
+.qmp-status-pill__count { font-size: 0.78rem; font-weight: 900; letter-spacing: -0.01em; }
+@media (min-width: 640px) { .qmp-status-bar { gap: 0.5rem; } .qmp-status-pill { height: 2.75rem; font-size: 0.9rem; gap: 0.45rem; } .qmp-status-pill__icon { font-size: 1.2rem; } .qmp-status-pill__count { font-size: 0.88rem; } }
 @media (prefers-reduced-motion: reduce) { .qmp-status-pill { transition: none; } }
 /* selected pills keep their own contrast whatever the global button colour rules say */
 .qmp-status-pill[aria-selected="true"] { color: #fff !important; }
 .qmp-status-pill[aria-selected="true"][data-status="skipped"] { color: #422006 !important; }
+
+/* ── Reading typography (review cards, Progress lists, rationale): Atkinson Hyperlegible Next is built for legibility ── */
+.font-read { font-family: 'Atkinson Hyperlegible Next', 'DM Sans', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; letter-spacing: 0.003em; }
+.qmp-rationale { font-size: 1rem; font-weight: 500; line-height: 1.7; letter-spacing: 0.004em; color: hsl(var(--foreground) / 0.92); }
+@media (min-width: 768px) { .qmp-rationale { font-size: 1.0625rem; } }
+.dark .qmp-rationale { color: hsl(var(--foreground) / 0.95); }

@@ -1,4 +1,5 @@
 import DraftsRail from './DraftsRail';
+import HomeOverview from './HomeOverview';
 import { listDrafts } from '../../utils/drafts';
 import { useMemo, useState } from 'react';
 import { useAuth } from 'zitejs/auth';
@@ -37,6 +38,8 @@ interface Props {
   onDiscardSession: () => void;
   onStartCreate: () => void;
   onViewResult: (r: QuizResult) => void;
+  onDeleteHistory: (id: string) => void;
+  onOpenProgress?: () => void;
   onLibrary: () => void;
   onPractice?: (questions: QuizQuestion[]) => void;
   onFlashcards?: (filter?: 'review') => void;
@@ -213,7 +216,7 @@ function RecentQuizCard({ result, idx, onClick }: { result: QuizResult; idx: num
   );
 }
 
-export default function DashboardScreen({ history, hasSavedSession, onResumeDraft, onResumeSession, onDiscardSession, onStartCreate, onViewResult, onLibrary, onPractice, onFlashcards, onOpenChatbot, onPracticeDashboard, loadingOlder, subjectFilter, onSubjectFilterChange, sessionMode, subjectPopupOpen, onSubjectPopupOpen, onSubjectPopupClose }: Props) {
+export default function DashboardScreen({ history, hasSavedSession, onResumeDraft, onResumeSession, onDiscardSession, onStartCreate, onViewResult, onDeleteHistory, onOpenProgress, onLibrary, onPractice, onFlashcards, onOpenChatbot, onPracticeDashboard, loadingOlder, subjectFilter, onSubjectFilterChange, sessionMode, subjectPopupOpen, onSubjectPopupOpen, onSubjectPopupClose }: Props) {
   const { user } = useAuth();
   const { profile } = useProfileStore();
   const vis = profile.featureVisibility;
@@ -574,21 +577,10 @@ export default function DashboardScreen({ history, hasSavedSession, onResumeDraf
         </div>
       )}
 
-      {/* Recent Quizzes */}
+      {/* Overview (moved here from Progress): calendar, trend, AI strategy, every quiz, data tools */}
       {recent.length > 0 ? (
-        <div>
-          <div className="flex items-center justify-between px-1 mb-3">
-            <h3 className="text-[11px] font-bold text-foreground/35 uppercase tracking-[0.1em]">Recent Quizzes</h3>
-            <button onClick={onLibrary} className="flex items-center gap-0.5 text-[11px] text-primary/80 font-semibold active:opacity-70 transition-opacity hover:text-primary">
-              See All <ChevronRight className="w-3 h-3" />
-            </button>
-          </div>
-          <div className="space-y-2">
-            {recent.map((r, i) => (
-              <RecentQuizCard key={r.id || r.timestamp} result={r} idx={i} onClick={() => onViewResult(r)} />
-            ))}
-          </div>
-        </div>
+        <HomeOverview history={history} filteredHistory={filteredHistory} subjectFilter={subjectFilter}
+          onViewResult={onViewResult} onDeleteHistory={onDeleteHistory} onOpenProgress={onOpenProgress} />
       ) : (
         <div className="glass-card p-8 sm:p-10 flex flex-col items-center text-center animate-slide-up">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-5 animate-scale-in">

@@ -15,6 +15,7 @@ import { repairOrphanedEdits } from './utils/historyRepair';
 import { withoutHistoryTrash } from './utils/historyTrash';
 import { toast } from 'sonner';
 import { useShakeDetection } from './hooks/useShakeDetection';
+import { useImmersiveApp } from './hooks/useImmersiveApp';
 import PullToRefresh from './components/PullToRefresh';
 import GestureShortcutsPanel from './components/GestureShortcutsPanel';
 import { hapticHeavy, hapticTap } from './utils/haptics';
@@ -274,6 +275,7 @@ function AppScreens({
   const screenRef = useRef<Screen>('dashboard');
   // lets platform code (e.g. the reload after remote data) know when the person is in the middle of a quiz
   useEffect(() => { document.documentElement.dataset.qmpScreen = screen; }, [screen]);
+  useImmersiveApp(screen === 'quiz'); // distraction-free: status bar hidden on every screen (Settings -> Hide status bar)
 
   const [hideBadge, setHideBadge] = useState(() => {
     try { return localStorage.getItem('qmp_hide_zite_badge') === 'true'; } catch { return false; }
@@ -869,6 +871,8 @@ function AppScreens({
                   onDiscardSession={quiz.discardSession}
                   onStartCreate={() => navigateTo('setup')}
                   onViewResult={r => viewResultWithDetail(r, 'dashboard')}
+                  onDeleteHistory={id => { trashResult(id); onCloudDirty('quiz', 'critical'); }}
+                  onOpenProgress={() => navigateTo('profile')}
                   onLibrary={() => navigateTo('library')}
                   onPractice={qs => { quiz.startQuiz(qs); setScreen('quiz'); }}
                   onFlashcards={(filter?: 'review') => { if (filter) setFlashcardInitFilter(filter); else setFlashcardInitFilter('all'); navigateTo('flashcards'); }}

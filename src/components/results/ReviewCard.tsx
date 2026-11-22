@@ -38,8 +38,8 @@ interface ReviewOptionItemProps {
 function ReviewOptionItem({ opt, index, visual }: ReviewOptionItemProps) {
   const letter = String.fromCharCode(65 + index);
 
-  let containerClass = 'bg-background/60 border-border text-foreground/85 font-normal';
-  let letterClass = 'text-foreground/70 font-semibold';
+  let containerClass = 'bg-background/60 border-border text-foreground/90 font-medium';
+  let letterClass = 'text-foreground/75 font-bold';
   let icon: React.ReactNode = null;
 
   if (visual === 'correct') {
@@ -53,9 +53,9 @@ function ReviewOptionItem({ opt, index, visual }: ReviewOptionItemProps) {
   }
 
   return (
-    <div className={`flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${containerClass}`} data-option-state={visual}>
-      <span className="text-sm leading-snug flex-1 min-w-0 break-words">
-        <span className={`mr-1.5 text-xs ${letterClass}`}>({letter})</span>
+    <div className={`flex items-center justify-between gap-3 rounded-xl border px-3.5 py-3 transition-colors ${containerClass}`} data-option-state={visual}>
+      <span className="text-[0.95rem] md:text-base leading-snug flex-1 min-w-0 break-words">
+        <span className={`mr-1.5 text-[0.8rem] ${letterClass}`}>({letter})</span>
         {opt}
       </span>
       {icon}
@@ -145,7 +145,7 @@ function ReviewCardInner({
 
   return (
     <div
-      className={`${tint} rounded-3xl border p-4 md:p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 ease-in-out relative`}
+      className={`font-read ${tint} rounded-3xl border p-4 md:p-6 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] transition-all duration-200 ease-in-out relative`}
       data-review-status={status}
       onClick={handleDoubleTap}
     >
@@ -170,7 +170,7 @@ function ReviewCardInner({
       {q.imageUrl && <QuestionImage url={q.imageUrl} maxHeight="180px" />}
 
       {/* Question text */}
-      <h3 className="mb-4 text-base font-semibold leading-relaxed text-foreground/90 md:text-[17px]">
+      <h3 className="mb-4 text-[1.075rem] font-semibold leading-relaxed text-foreground md:text-[1.2rem]">
         <MultilineText text={q.question} />
       </h3>
 
@@ -190,20 +190,20 @@ function ReviewCardInner({
           <div className="border-t border-foreground/10 pt-3" data-testid="rationale-box">
             {effBook && (
               <div className="flex items-start gap-2">
-                <span className="pt-0.5 text-base leading-none" role="img" aria-label="Book rationale">📖</span>
+                <span className="pt-1 text-lg leading-none" role="img" aria-label="Book rationale">📖</span>
                 <div className="min-w-0 flex-1">
                   {bookRationale
-                    ? <AiRationaleText text={bookRationale} className="text-xs text-foreground/75" />
-                    : <p className="text-[11px] text-foreground/45">No explanation came with this question.</p>}
+                    ? <AiRationaleText text={bookRationale} className="qmp-rationale" />
+                    : <p className="text-xs font-medium text-foreground/60">No explanation came with this question.</p>}
                 </div>
               </div>
             )}
             {effAi && (
               <div className={`flex items-start gap-2 ${effBook ? 'mt-2.5' : ''}`}>
-                <span className="pt-0.5 text-base leading-none" role="img" aria-label="AI rationale">🤖</span>
+                <span className="pt-1 text-lg leading-none" role="img" aria-label="AI rationale">🤖</span>
                 <div className="min-w-0 flex-1">
                   {aiRationale ? (
-                    <AiRationaleText text={aiRationale} className="text-xs text-foreground/75" />
+                    <AiRationaleText text={aiRationale} className="qmp-rationale" />
                   ) : aiError ? (
                     <p className="text-xs leading-relaxed text-destructive">{aiError}</p>
                   ) : !aiEnabled ? (

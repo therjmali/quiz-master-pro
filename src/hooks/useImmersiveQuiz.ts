@@ -1,23 +1,24 @@
 import { useEffect } from 'react';
-import { hideSystemBars, showSystemBars } from '../platform/immersive';
+import { applyStatusBar } from '../platform/immersive';
 
 /**
- * Hides the system status bar while the calling component (the quiz attempt) is mounted and restores it on unmount.
- *  - Android shows the bars again after the app comes back from the background, so they are hidden again on return.
- *  - A `cancelled` guard makes sure a late `hide()` can never run after the quiz was already left (React StrictMode
- *    mounts, unmounts and mounts again in development).
- *  - The effect owns exactly one listener and removes it, so nothing leaks across quizzes.
+ * Called by the quiz attempt screen. Applies the status-bar mode for "a quiz is on screen" and, when the quiz is
+ * left, applies it for "no quiz" (so mode "always" keeps the bar hidden, mode "quiz" brings it back).
+ *  - Android shows the bars again after the app comes back from the background, so they are re-applied on return.
+ *  - A `cancelled` guard makes sure a late call can never run after the quiz was already left.
  */
 export function useImmersiveQuiz(): void {
   useEffect(() => {
     let cancelled = false;
-    void hideSystemBars();
-    const onVisible = () => { if (!cancelled && document.visibilityState === 'visible') void hideSystemBars(); };
-    document.addEventListener('visibilitychange', onVisible);
+    void applyStatusBar(true);
+    const refresh = () => { if (!cancelled && document.visibilityState === 'visible') void applyStatusBar(true); };
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('qmp-status-bar-mode', refresh);
     return () => {
       cancelled = true;
-      document.removeEventListener('visibilitychange', onVisible);
-      void showSystemBars();
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('qmp-status-bar-mode', refresh);
+      void applyStatusBar(false);
     };
   }, []);
 }

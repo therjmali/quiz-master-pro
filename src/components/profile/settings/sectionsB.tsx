@@ -16,7 +16,7 @@ import {
 } from '@project/components/ui/alert-dialog';
 import { useProfileStore } from '../../../hooks/useProfileStore';
 import { getHapticsEnabled, setHapticsEnabled } from '../../../utils/haptics';
-import { isImmersiveEnabled, setImmersiveEnabled } from '../../../platform/immersive';
+import { getStatusBarMode, setStatusBarMode, type StatusBarMode } from '../../../platform/immersive';
 import {
   getPreferredEmail, setPreferredEmail, isValidEmail, getWeeklyEmailEnabled, setWeeklyEmailEnabled,
 } from '../../../utils/preferredEmail';
@@ -26,7 +26,7 @@ import { clearHistoryCache } from '../../../hooks/useHistorySync';
 import type { QuizResult } from '../../../types/quiz';
 import BackupSection from '../BackupSection';
 import GestureShortcutsPanel from '../../GestureShortcutsPanel';
-import { SettingsSection, SettingRow, SubHeading, Toggle, LinkRow } from './controls';
+import { SettingsSection, SettingRow, SubHeading, Toggle, LinkRow, Segmented } from './controls';
 import { AiProvidersPanel } from './sectionsPlatform';
 import { Pill } from './platformUi';
 import { hasBackend } from '../../../platform/ai/caller';
@@ -187,16 +187,17 @@ export const NotificationsSection = memo(function NotificationsSection({ open, o
 export const GesturesSection = memo(function GesturesSection({ open, onToggle }: SectionProps) {
   const [haptics, setHaptics] = useState(getHapticsEnabled);
   const apply = (v: boolean) => { setHaptics(v); setHapticsEnabled(v); if (v) navigator.vibrate?.(10); };
-  const [immersive, setImmersive] = useState(isImmersiveEnabled);
-  const applyImmersive = (v: boolean) => { setImmersive(v); setImmersiveEnabled(v); };
+  const [barMode, setBarMode] = useState<StatusBarMode>(getStatusBarMode);
+  const applyBarMode = (v: StatusBarMode) => { setBarMode(v); setStatusBarMode(v); };
   return (
     <SettingsSection id="gestures" icon={<Hand className="w-4 h-4" />} open={open} onToggle={onToggle}
-      onReset={() => { apply(true); applyImmersive(true); toast.success('Gestures reset to defaults'); }}>
+      onReset={() => { apply(true); applyBarMode('always'); toast.success('Gestures reset to defaults'); }}>
       <SubHeading>Feedback</SubHeading>
       <SettingRow id="haptics" title="Vibration feedback" hint="Subtle vibrations on taps, swipes and actions"
         control={<Toggle label="Vibration feedback" checked={haptics} onChange={v => { apply(v); toast.success(v ? 'Haptics enabled' : 'Haptics disabled'); }} />} />
-      <SettingRow id="immersive" title="Immersive quiz mode" hint="Hide the status bar (clock, battery, network) while a quiz is open (Android app)"
-        control={<Toggle label="Immersive quiz mode" checked={immersive} onChange={v => { applyImmersive(v); toast.success(v ? 'Status bar hidden during quizzes' : 'Status bar stays visible'); }} />} />
+      <SettingRow id="immersive" title="Hide status bar" hint="Hides the clock, battery and network icons so nothing distracts you (Android app). Swipe down from the top edge to peek."
+        control={<Segmented label="Hide status bar" value={barMode} onChange={v => { applyBarMode(v); toast.success(v === 'always' ? 'Status bar hidden everywhere' : v === 'quiz' ? 'Status bar hidden during quizzes only' : 'Status bar stays visible'); }}
+          options={[{ value: 'always', label: 'Everywhere' }, { value: 'quiz', label: 'Quiz only' }, { value: 'off', label: 'Never' }]} />} />
       <SubHeading>Shortcuts</SubHeading>
       <div id="setting-gestureGuide" data-setting-id="gestureGuide" className="setting-row py-3 scroll-mt-28 rounded-lg">
         <GestureShortcutsPanel />

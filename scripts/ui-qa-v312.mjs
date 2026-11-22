@@ -54,6 +54,7 @@ async function open(seed, { w = 390, h = 800 } = {}) {
       req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('keyval')) req.result.createObjectStore('keyval'); };
       req.onsuccess = () => { const tx = req.result.transaction('keyval', 'readwrite'); for (const [k, v] of Object.entries(s.idb || {})) tx.objectStore('keyval').put(v, k); };
     }
+    if (s.bridge) localStorage.setItem('qmp_status_bar_mode_v2', 'quiz'); // v3.14 default hides the bar everywhere; this test is about the quiz-only mode
     if (s.bridge) { // pretend to be the Android app: the native layer would provide nativePromise; we record the calls instead
       window.androidBridge = { postMessage: () => {} };
       const names = ['hide', 'show', 'setStyle', 'setBackgroundColor', 'setOverlaysWebView', 'getInfo'];
@@ -157,7 +158,7 @@ async function quizSuite(label, w, h, withBridge = false) {
   const calls = bridge.filter(m => m.pluginId === 'StatusBar').map(m => m.methodName);
   if (withBridge) {
     ok(`[${label}] immersive: StatusBar.hide() called on entering the quiz`, calls.includes('hide'), calls.join(','));
-    ok(`[${label}] immersive: not shown while the quiz is open`, !calls.includes('show'), calls.join(','));
+    ok(`[${label}] immersive: not shown while the quiz is open (after hide, no show)`, !calls.slice(calls.indexOf('hide')).includes('show'), calls.join(','));
   } else ok(`[${label}] web build: no native status-bar calls at all`, calls.length === 0, calls.join(','));
   // leave: save & exit -> status bar shown again
   await page.getByRole('button', { name: 'Exit quiz' }).click(); await page.waitForTimeout(500);

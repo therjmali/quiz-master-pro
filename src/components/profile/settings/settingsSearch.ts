@@ -78,7 +78,7 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'androidWidgets', section: 'integrations', title: 'Android Widgets', hint: 'Pin quiz progress, subject and exam widgets to your home screen', keywords: ['widget', 'widgets', 'home screen', 'homescreen', 'launcher', 'pin', 'android', 'integration'] },
   // Gestures
   { id: 'haptics', section: 'gestures', title: 'Vibration feedback', hint: 'Subtle vibrations on taps, swipes and actions', keywords: ['haptic', 'vibrate', 'buzz', 'feedback'] },
-  { id: 'immersive', section: 'gestures', title: 'Immersive quiz mode', hint: 'Hide the status bar (clock, battery, network) while a quiz is open (Android app)', keywords: ['immersive', 'status bar', 'fullscreen', 'full screen', 'distraction', 'focus', 'hide clock'] },
+  { id: 'immersive', section: 'gestures', title: 'Hide status bar', hint: 'Hides the clock, battery and network icons so nothing distracts you (Android app)', keywords: ['immersive', 'status bar', 'fullscreen', 'full screen', 'distraction', 'focus', 'hide clock'] },
   { id: 'gestureGuide', section: 'gestures', title: 'Gesture & keyboard guide', hint: 'Swipe, shake, pinch and keyboard shortcuts', keywords: ['swipe', 'shake', 'pinch', 'keyboard', 'shortcut', 'undo', 'long press'] },
   // AI on device
   { id: 'aiOnDevice', section: 'ai', title: 'AI on this device', hint: 'Use your own key so AI works without any server', keywords: ['gemini', 'claude', 'openai', 'cohere', 'key', 'model', 'provider', 'offline ai'] },

@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.14.0] - 2026-11-22
+
+Distraction-free app, one emoji filter bar everywhere, Overview on Home, readable review text.
+
+### Changed
+- **Status bar hidden on every screen** (clock, battery, network), not only in quizzes. Settings -> Gestures & shortcuts -> *Hide status bar*: **Everywhere** (default) / **Quiz only** / **Never**. It is re-applied at start, after returning from the background and when the setting changes. On Android a swipe down from the top edge only peeks at the bar and it hides again by itself (`BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE`). The old v3.12 on/off switch migrates (off stays off). Native only; the web build ignores it.
+- **One status filter bar: `All | ✅ | ❌ | ⏭️ | 🔖`**, each with its number, always on ONE straight line (checked from 320 px to tablet, nothing clipped). "All" is the only word. Same bar on Progress and in every quiz report; counts are static and never change with the selection. Numbers above 9,999 shorten (`12.4k`); the exact value stays in the accessible name.
+- **Progress now shows only the combined dashboards of all quizzes.** *All* lists every question of every quiz, ✅/❌/⏭️ list that status, 🔖 lists your bookmarked questions (each once). Bookmark / unbookmark straight from these lists.
+- **Overview moved to Home** as a premium section: study calendar, score trend, AI study strategy, every quiz you took (search, filter, open, delete) and the data tools. A *Progress →* button jumps to the dashboards. (`components/dashboard/HomeOverview.tsx`, lazy-loaded.)
+- **Review text is bigger, darker and set in a reading font.** Rationale 12 px at 75 % opacity -> 16 px / weight 500 / 14.8:1 contrast (13.2:1 in Dark); question 17-19 px; options 16 px. New bundled font *Atkinson Hyperlegible Next* (designed for legibility; works offline). Applies to the quiz report and the Progress lists.
+
+### Tests
+- `tests/immersive.test.ts` (mode default, old-switch migration, which screens hide the bar), `tests/attemptStats.test.ts` (new bar: five pills, emoji only, colours, big numbers).
+- `scripts/ui-qa-v314.mjs` (`npm run test:ui:v314`): Home Overview vs Progress, the bar on one line at 320 / 360 / 412 / 800 wide, 800 x 380, 800 x 1280 and 1210 x 756, All / 🔖 lists and bookmarking (Progress and quiz report), typography (size, weight, font loaded, contrast), status bar calls with a faked Android bridge and the three Settings modes.
+- Older suites updated for the intentional changes (quiz list now opens from Home, new bar): v29, v310, v312, v313, settings.
+
+### Not tested
+- Real device behaviour of the hidden status bar (swipe-to-peek, display cut-outs, keyboard) and the new font on the Redmi Pad / phone: only desktop Chrome and a faked native bridge were used.
+
 ## [3.13.0] - 2026-11-21
 
 One source of truth for status counts and filters: the report tiles, the filter pills and the Question Breakdown can no longer disagree.

@@ -79,15 +79,15 @@ async function run(label, w, h) {
   await page.screenshot({ path: `${SHOTS}/reports_${label}.png` });
 
   // ── Review dashboard ──
-  await page.getByText('QA Pharmacology Set').first().click({ timeout: 10000 });
+  await page.evaluate(() => window.scrollTo(0, 0)); await page.waitForTimeout(600); await page.locator('nav').getByText('Home', { exact: true }).first().click({ force: true }); await page.waitForTimeout(1500); // v3.14: the quiz list lives in Home -> Overview
+  await page.getByTestId('home-overview').getByText('QA Pharmacology Set').first().click({ timeout: 15000 });
   await page.getByTestId('review-filters').waitFor({ timeout: 20000 });
   const fb = page.getByTestId('review-filters').locator('button');
   const labels = await fb.allInnerTexts();
-  // v3.13: the shared StatusFilterBar replaced the emoji-only capsules (icon + label + count, 4 pills; 2 x 2 on phones, one row from 640 px)
-  ok(`[${label}] status filters: Overview / Correct / Mistakes / Skipped with a count each`, labels.length === 4 && labels.every(t => /[A-Za-z]/.test(t) && /\d/.test(t)), JSON.stringify(labels));
+  // v3.14: the shared StatusFilterBar is "All N" + emoji pills with numbers (all, correct, wrong, skipped, bookmarked) on ONE straight line
+  ok(`[${label}] status filters: "All" is the only word, the other four are emoji + number`, labels.length === 5 && /^All\s*\d+$/.test(labels[0].trim()) && labels.slice(1).every(t => !/[A-Za-z]/.test(t) && /\d/.test(t)), JSON.stringify(labels));
   const ys = await fb.evaluateAll(els => els.map(e => Math.round(e.getBoundingClientRect().y)));
-  const wide = await page.evaluate(() => window.innerWidth / (parseFloat(getComputedStyle(document.documentElement).zoom) || 1) >= 640);
-  ok(`[${label}] status filters: ${wide ? 'one straight row' : '2 x 2'}, pill shaped`, new Set(ys).size === (wide ? 1 : 2) && await fb.first().evaluate(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 16), JSON.stringify(ys));
+  ok(`[${label}] status filters sit on one straight line, pill shaped`, new Set(ys).size === 1 && await fb.first().evaluate(e => parseFloat(getComputedStyle(e).borderTopLeftRadius) >= 16), JSON.stringify(ys));
   const ob = await page.getByTestId('review-options').locator('> *').evaluateAll(els => els.map(e => { const r = e.getBoundingClientRect(); return Math.round(r.y + r.height / 2); }));
   ok(`[${label}] view options (Rationale, level, Explain) on one line`, Math.max(...ob) - Math.min(...ob) <= 3 && ob.length === 3, `${ob.length} items`);
   const head = page.getByTestId('review-card-header').first();

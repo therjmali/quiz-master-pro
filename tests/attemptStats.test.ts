@@ -99,24 +99,30 @@ test('useStatusFilter: counts depend on the master only; displayed follows the f
   assert.equal(t.displayed.length, 3);
 });
 
-test('StatusFilterBar: four pills with icon, label and count; the active one is selected; counts never depend on the selection', () => {
-  const counts = { all: 138, correct: 80, wrong: 36, skipped: 22 };
-  for (const value of ['all', 'correct', 'wrong', 'skipped', 'none']) {
-    const html = renderToStaticMarkup(createElement(StatusFilterBar, { value, onChange: () => undefined, counts }));
-    assert.equal((html.match(/role="tab"/g) || []).length, 4);
-    for (const [k, label, n] of [['all', 'Overview', 138], ['correct', 'Correct', 80], ['wrong', 'Mistakes', 36], ['skipped', 'Skipped', 22]] as const) {
+test('StatusFilterBar: All + four emoji pills, each with its count; the active one is selected; counts never depend on the selection', () => {
+  const counts = { all: 138, correct: 80, wrong: 36, skipped: 22, bookmarked: 7 };
+  const bar = (value: string, c = counts) => renderToStaticMarkup(createElement(StatusFilterBar, { value, onChange: () => undefined, counts: c }));
+  for (const value of ['all', 'correct', 'wrong', 'skipped', 'bookmarked', 'none']) {
+    const html = bar(value);
+    assert.equal((html.match(/role="tab"/g) || []).length, 5);
+    for (const [k, name, n] of [['all', 'All questions', 138], ['correct', 'Correct', 80], ['wrong', 'Mistakes', 36], ['skipped', 'Skipped', 22], ['bookmarked', 'Bookmarked', 7]] as const) {
       assert.match(html, new RegExp(`data-testid="status-pill-${k}"[^>]*data-count="${n}"`));
-      assert.ok(html.includes(`aria-label="${label} (${n})"`));
-      assert.ok(html.includes(`>${label}</span>`));
+      assert.ok(html.includes(`aria-label="${name} (${n})"`));
     }
     assert.equal((html.match(/aria-selected="true"/g) || []).length, value === 'none' ? 0 : 1);
-    assert.equal((html.match(/<svg/g) || []).length, 4, 'one icon per pill');
+    // "All" is the only pill with a word; the other four are emoji only
+    assert.equal((html.match(/>All</g) || []).length, 1);
+    for (const e of ['\u2705', '\u274C', '\u23ED\uFE0F', '\uD83D\uDD16']) assert.ok(html.includes(e), `emoji ${e}`);
+    assert.ok(!/Mistakes<|Correct<|Skipped<|Bookmarked</.test(html), 'no text labels on the emoji pills');
   }
-  const active = (v: string) => renderToStaticMarkup(createElement(StatusFilterBar, { value: v, onChange: () => undefined, counts }));
-  assert.match(active('all'), /bg-indigo-600/);
-  assert.match(active('correct'), /bg-green-700/);
-  assert.match(active('wrong'), /bg-red-600/);
-  assert.match(active('skipped'), /bg-yellow-400/);
+  assert.match(bar('all'), /bg-indigo-600/);
+  assert.match(bar('correct'), /bg-green-700/);
+  assert.match(bar('wrong'), /bg-red-600/);
+  assert.match(bar('skipped'), /bg-yellow-400/);
+  assert.match(bar('bookmarked'), /bg-violet-600/);
+  // big numbers stay short enough for one straight line, the exact number stays in the aria-label
+  const big = bar('all', { all: 12400, correct: 9999, wrong: 2, skipped: 0, bookmarked: 0 });
+  assert.ok(big.includes('>12.4k<') && big.includes('>9,999<') && big.includes('aria-label="All questions (12400)"'));
 });
 
 test('export parity: every download tile exports exactly the number its badge shows, built from the master only', () => {

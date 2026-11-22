@@ -2,10 +2,11 @@ import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react';
 import { toast } from 'sonner';
 import { ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import ReviewCard from '../results/ReviewCard';
-import { orderAttemptItems, type AttemptItem } from '../../utils/attemptStats';
+import { orderAttemptItems, type AttemptItem, type StatusFilter } from '../../utils/attemptStats';
+import type { QuizQuestion } from '../../types/quiz';
 
 interface Props {
-  type: 'correct' | 'wrong' | 'skipped';
+  type: StatusFilter | 'bookmarked';
   /** Already status-filtered slice of the master list (the master itself is never touched here). */
   items: readonly AttemptItem[];
   /** Static total for this status (the same number as the filter pill). */
@@ -15,13 +16,16 @@ interface Props {
   reportOrder?: ReportOrder;
   rationalePrefs: RationalePrefs;
   reportHelper: AIMode;
+  /** 🔖 state and toggle (same set as the per-quiz report). */
+  bookmarkedSet?: ReadonlySet<string>;
+  onToggleBookmark?: (q: QuizQuestion, userAnswer: string | null, ctx: { quizTitle?: string; subject?: string }) => void;
 }
 
 const PAGE_SIZE = 30;
 
 const HistoryList = memo(function HistoryList({
   type, items, total, rationaleCache, getAiRationale,
-  reportOrder = 'attempt', rationalePrefs, reportHelper,
+  reportOrder = 'attempt', rationalePrefs, reportHelper, bookmarkedSet, onToggleBookmark,
 }: Props) {
   const [explainAllLoading, setExplainAllLoading] = useState(false);
   const [explainProgress, setExplainProgress] = useState({ done: 0, total: 0 });
@@ -35,12 +39,15 @@ const HistoryList = memo(function HistoryList({
   })), [items, reportOrder]);
   const shownTotal = total ?? displayItems.length;
 
-  const headingColor = type === 'correct' ? 'text-emerald-500' : type === 'wrong' ? 'text-red-500' : 'text-amber-500';
-  const badgeCls    = type === 'correct'
-    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25'
-    : type === 'wrong'
-    ? 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25'
-    : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25';
+  const HEAD = {
+    all:        { color: 'text-indigo-500',  icon: '📚', title: 'All Questions',      noun: 'questions', badge: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border-indigo-500/25' },
+    correct:    { color: 'text-emerald-500', icon: '✅', title: 'Correct Answers',    noun: 'correct',   badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/25' },
+    wrong:      { color: 'text-red-500',     icon: '❌', title: 'Mistakes History',   noun: 'mistakes',  badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25' },
+    skipped:    { color: 'text-amber-500',   icon: '⏭️', title: 'Skipped Questions',  noun: 'skipped',   badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/25' },
+    bookmarked: { color: 'text-violet-500',  icon: '🔖', title: 'Bookmarked',         noun: 'saved',     badge: 'bg-violet-500/15 text-violet-600 dark:text-violet-300 border-violet-500/25' },
+  }[type];
+  const headingColor = HEAD.color;
+  const badgeCls = HEAD.badge;
 
   const orderBadge = reportOrder === 'original'
     ? { icon: '📖', text: 'Original order', cls: 'bg-emerald-500/8 border-emerald-500/15 text-emerald-600 dark:text-emerald-400' }
@@ -97,11 +104,10 @@ const HistoryList = memo(function HistoryList({
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-3">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className={`text-sm font-bold uppercase tracking-widest ${headingColor}`}>
-            {type === 'correct' ? '✓' : type === 'wrong' ? '✗' : '⏭'}{' '}
-            {type === 'correct' ? 'Correct Answers' : type === 'wrong' ? 'Mistakes History' : 'Skipped Questions'}
+            {HEAD.icon} {HEAD.title}
           </span>
           <span className={`text-xs px-3 py-1.5 rounded-lg font-bold border ${badgeCls}`}>
-            {shownTotal} {type === 'correct' ? 'correct' : type === 'wrong' ? 'mistakes' : 'skipped'}
+            {shownTotal} {HEAD.noun}
           </span>
           <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border flex items-center gap-1 ${orderBadge.cls}`}>
             <span>{orderBadge.icon}</span><span>{orderBadge.text}</span>
@@ -133,11 +139,11 @@ const HistoryList = memo(function HistoryList({
       {/* Question List */}
       {displayItems.length === 0 ? (
         <div className="text-foreground/30 text-sm text-center py-10 bg-foreground/5 rounded-xl border border-border">
-          {shownTotal > 0 ? 'The questions of these quizzes are not stored on this device.' : 'No data yet.'}
+          {type === 'bookmarked' ? 'No bookmarks yet. Tap 🔖 on any question to save it here.' : shownTotal > 0 ? 'The questions of these quizzes are not stored on this device.' : 'No data yet.'}
         </div>
       ) : (
         <div className="space-y-5 pr-1">
-          {displayItems.slice(0, visibleCount).map(({ key, q, userAnswer, date, quizTitle }, i) => (
+          {displayItems.slice(0, visibleCount).map(({ key, q, userAnswer, date, quizTitle, subject }, i) => (
             <div key={key}>
               <div className="text-[10px] text-foreground/30 font-bold mb-2 px-1 truncate">{date}{quizTitle ? ` · ${quizTitle}` : ''}</div>
               <ReviewCard
@@ -145,6 +151,8 @@ const HistoryList = memo(function HistoryList({
                 rationaleCache={rationaleCache} getAiRationale={getAiRationale}
                 showBook={rationalePrefs.showBook} showAi={rationalePrefs.showAi}
                 aiEnabled={reportHelper !== 'off'}
+                bookmarked={bookmarkedSet?.has(q.question)}
+                onToggleBookmark={onToggleBookmark ? () => onToggleBookmark(q, userAnswer, { quizTitle, subject }) : undefined}
               />
             </div>
           ))}

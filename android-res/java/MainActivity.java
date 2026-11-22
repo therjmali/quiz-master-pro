@@ -45,6 +45,9 @@ public class MainActivity extends BridgeActivity {
             if (c == null) return;
             c.setAppearanceLightStatusBars(lightTheme);
             c.setAppearanceLightNavigationBars(lightTheme);
+            // When the status bar is hidden (Settings -> Hide status bar) a swipe from the top edge only peeks at it
+            // and it goes away again by itself, instead of staying on screen.
+            c.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         } catch (Throwable ignored) { }
     }
 

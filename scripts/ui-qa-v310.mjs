@@ -47,8 +47,8 @@ const cr = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); re
 /* ───────── 1. review cards ───────── */
 async function reviewSuite(label, w, h, theme) {
   const { ctx, page, errs } = await newPage(w, h, { theme });
-  await nav(page, 'Progress'); await page.waitForTimeout(1300);
-  await page.getByText('QA Review Set').first().click({ timeout: 10000 });
+  await page.waitForTimeout(1500); // v3.14: every quiz is listed in Home -> Overview
+  await page.getByTestId('home-overview').getByText('QA Review Set').first().click({ timeout: 15000 });
   await page.getByTestId('review-filters').waitFor({ timeout: 20000 });
   await page.waitForTimeout(800);
   const cards = page.locator('[data-review-status]');

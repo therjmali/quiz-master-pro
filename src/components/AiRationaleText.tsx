@@ -28,8 +28,8 @@ function splitSections(text: string): { correctPart: string; otherPart: string }
 
 function Point({ text, muted = false }: { text: string; muted?: boolean }) {
   return (
-    <li className={`relative pl-4 leading-[1.5] break-words ${muted ? 'text-foreground/60' : ''}`}>
-      <span className="absolute left-0 top-0 select-none" aria-hidden="true">•</span>
+    <li className={`relative pl-5 break-words ${muted ? 'text-foreground/75' : ''}`}>
+      <span className="absolute left-0.5 top-0 select-none font-black" aria-hidden="true">•</span>
       {text}
     </li>
   );
@@ -43,7 +43,7 @@ export default function AiRationaleText({ text, className = '' }: { text?: strin
 
   return (
     <div className={className}>
-      <ul className="space-y-1.5 list-none m-0 p-0">
+      <ul className="space-y-2 list-none m-0 p-0">
         {correctRows.map((r, i) => <Point key={`c${i}`} text={r.text} />)}
       </ul>
 

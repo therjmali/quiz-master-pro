@@ -4,10 +4,10 @@ import { toast } from 'sonner';
 import { hapticTap } from '../../utils/haptics';
 import { QuizResult, QuizSettings, ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import ReviewCard from './ReviewCard';
-import StatusFilterBar from '../shared/StatusFilterBar';
+import StatusFilterBar, { type BarFilter, type BarCounts } from '../shared/StatusFilterBar';
 import { useStatusFilter } from '../../hooks/useStatusFilter';
 import { flattenAttempts, orderAttemptItems, type StatusFilter } from '../../utils/attemptStats';
-import { loadFileTree, saveFileTree, addBookmarkToTree, removeBookmarkNode, isQuestionBookmarked, getAllBookmarks, FileNode, BookmarkData } from '../../utils/fileTree';
+import { useQuestionBookmarks } from '../../hooks/useQuestionBookmarks';
 
 type Filter = 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked';
 
@@ -53,55 +53,22 @@ export default function ReviewSection({
     fn();
   }, []);
 
-  // File-tree based bookmark system
-  const [fileTree, setFileTree] = useState<FileNode>(() => loadFileTree());
-  const bookmarkedSet = useMemo(() => {
-    const set = new Set<string>();
-    getAllBookmarks(fileTree).forEach(b => { if (b.bookmarkData) set.add(b.bookmarkData.question); });
-    return set;
-  }, [fileTree]);
-  const [showBookmarked, setShowBookmarked] = useState(false);
-
+  // Bookmarks (same set and toggle as the Progress dashboard)
+  const { bookmarkedSet, toggleBookmark } = useQuestionBookmarks();
   const handleToggleBookmark = useCallback((q: any, userAnswer: string | null) => {
-    setFileTree(prev => {
-      const isAlready = isQuestionBookmarked(prev, q.question);
-      if (isAlready) {
-        const allBm = getAllBookmarks(prev);
-        const target = allBm.find(b => b.bookmarkData?.question === q.question);
-        if (target) {
-          const updated = removeBookmarkNode(prev, target.id);
-          toast.success('🔖 Bookmark removed');
-          return JSON.parse(JSON.stringify(updated));
-        }
-        return prev;
-      } else {
-        const data: BookmarkData = {
-          question: q.question,
-          options: q.options || [],
-          correctAnswer: q.correctAnswer,
-          userAnswer,
-          rationale: q.rationale,
-          difficulty: q.difficulty,
-          questionType: q.questionType,
-          quizTitle: result.quizTitle || 'Untitled Quiz',
-          subject: result.subject || 'General',
-          bookmarkedAt: Date.now(),
-        };
-        const updated = addBookmarkToTree(prev, data);
-        toast.success(`🔖 Saved to Bookmarks / ${result.subject || 'General'} / ${result.quizTitle || 'Quiz'}`);
-        return JSON.parse(JSON.stringify(updated));
-      }
-    });
-  }, [result.subject, result.quizTitle]);
+    toggleBookmark(q, userAnswer, { quizTitle: result.quizTitle, subject: result.subject });
+  }, [toggleBookmark, result.quizTitle, result.subject]);
+  const [showBookmarked] = useState(false);
 
   // Master list: every question of this attempt, built once. It is never filtered, sorted or replaced.
   const master = useMemo(() => flattenAttempts([result]), [result]);
-  const { filter: statusFilter, setFilter: setStatusFilter, counts, displayed } = useStatusFilter(master, {
+  const { counts, displayed } = useStatusFilter(master, {
     filter: activeFilter,
     onFilterChange: f => onFilterChange(f),
   });
 
   const bookmarkedCount = useMemo(() => master.filter(it => bookmarkedSet.has(it.q.question)).length, [master, bookmarkedSet]);
+  const barCounts = useMemo<BarCounts>(() => ({ ...counts, bookmarked: bookmarkedCount }), [counts, bookmarkedCount]);
 
   // View-only steps on COPIES: the bookmark narrowing, then book order.
   const filtered = useMemo(() => {
@@ -165,15 +132,7 @@ export default function ReviewSection({
       </div>
 
       {/* Status filter: the same bar as the Progress dashboard. Counts are static (whole attempt). */}
-      <StatusFilterBar className="mb-2" value={activeFilter === 'bookmarked' ? 'none' : statusFilter} onChange={(f: StatusFilter) => { setStatusFilter(f); }} counts={counts} testId="review-filters" ariaLabel="Filter questions" />
-      {bookmarkedCount > 0 && (
-        <div className="mb-2 flex">
-          <button type="button" className="qmp-capsule" aria-pressed={activeFilter === 'bookmarked'} aria-label={`Bookmarked (${bookmarkedCount})`} data-testid="review-filter-bookmarked"
-            onClick={() => { hapticTap(); onFilterChange(activeFilter === 'bookmarked' ? 'all' : 'bookmarked'); }}>
-            <span className="leading-none">🔖</span> Bookmarked <span className="text-[10px] opacity-60">{bookmarkedCount}</span>
-          </button>
-        </div>
-      )}
+      <StatusFilterBar className="mb-2" value={activeFilter} onChange={(f: BarFilter) => onFilterChange(f)} counts={barCounts} testId="review-filters" ariaLabel="Filter questions" />
 
       {/* View options: capsules, one line, swipe sideways (sticks cleanly below navbar) */}
       <div className="sticky top-[60px] sm:top-[68px] z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md pointer-events-auto shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">

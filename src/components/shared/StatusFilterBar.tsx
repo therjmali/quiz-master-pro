@@ -1,27 +1,36 @@
-import { CheckCircle2, LayoutGrid, SkipForward, XCircle, type LucideIcon } from 'lucide-react';
 import { hapticTap } from '../../utils/haptics';
 import type { StatusCounts, StatusFilter } from '../../utils/attemptStats';
 
+export type BarFilter = StatusFilter | 'bookmarked';
+export type BarCounts = StatusCounts & { bookmarked: number };
+
 interface Pill {
-  key: StatusFilter;
-  label: string;
-  Icon: LucideIcon;
-  /** background + text while selected: Indigo / Green / Red / Yellow */
+  key: BarFilter;
+  /** "All" is the only pill with a word; the others are emoji only */
+  label?: string;
+  emoji?: string;
+  /** spoken / tooltip name */
+  name: string;
+  /** background + text while selected */
   on: string;
 }
 
-const PILLS: Pill[] = [
-  { key: 'all', label: 'Overview', Icon: LayoutGrid, on: 'border-indigo-600 bg-indigo-600 text-white shadow-indigo-600/30' },
-  { key: 'correct', label: 'Correct', Icon: CheckCircle2, on: 'border-green-700 bg-green-700 text-white shadow-green-700/30' },
-  { key: 'wrong', label: 'Mistakes', Icon: XCircle, on: 'border-red-600 bg-red-600 text-white shadow-red-600/30' },
-  { key: 'skipped', label: 'Skipped', Icon: SkipForward, on: 'border-yellow-400 bg-yellow-400 text-yellow-950 shadow-yellow-500/30' },
+export const BAR_PILLS: Pill[] = [
+  { key: 'all', label: 'All', name: 'All questions', on: 'border-indigo-600 bg-indigo-600 text-white shadow-indigo-600/30' },
+  { key: 'correct', emoji: '\u2705', name: 'Correct', on: 'border-green-700 bg-green-700 text-white shadow-green-700/30' },
+  { key: 'wrong', emoji: '\u274C', name: 'Mistakes', on: 'border-red-600 bg-red-600 text-white shadow-red-600/30' },
+  { key: 'skipped', emoji: '\u23ED\uFE0F', name: 'Skipped', on: 'border-yellow-400 bg-yellow-400 text-yellow-950 shadow-yellow-500/30' },
+  { key: 'bookmarked', emoji: '\uD83D\uDD16', name: 'Bookmarked', on: 'border-violet-600 bg-violet-600 text-white shadow-violet-600/30' },
 ];
+
+/** 9 999 -> "9,999", 12 400 -> "12.4k": keeps every pill on one line, the exact number stays in the aria-label. */
+export const compactCount = (n: number): string => (n >= 10000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString());
 
 interface Props {
   value: string;
-  onChange: (f: StatusFilter) => void;
+  onChange: (f: BarFilter) => void;
   /** Static totals of the whole master set; they never depend on `value`. */
-  counts: StatusCounts;
+  counts: BarCounts;
   className?: string;
   testId?: string;
   ariaLabel?: string;
@@ -29,13 +38,13 @@ interface Props {
 
 /**
  * The one status filter used by the Progress dashboard and by every quiz report:
- * Overview (All) / Correct / Mistakes / Skipped, each with icon, label and a count badge.
- * 2 x 2 on phones, one straight row from 640 px up, so nothing is ever clipped.
+ * All (every question) | \u2705 Correct | \u274C Mistakes | \u23ED\uFE0F Skipped | \uD83D\uDD16 Bookmarked, each with its count,
+ * on one straight line at every screen width. Counts are static and never change with the selection.
  */
 export default function StatusFilterBar({ value, onChange, counts, className = '', testId = 'status-filter-bar', ariaLabel = 'Filter questions by status' }: Props) {
   return (
     <div className={`qmp-status-bar ${className}`} role="tablist" aria-label={ariaLabel} data-testid={testId}>
-      {PILLS.map(({ key, label, Icon, on }) => {
+      {BAR_PILLS.map(({ key, label, emoji, name, on }) => {
         const active = value === key;
         const n = counts[key] ?? 0;
         return (
@@ -44,16 +53,16 @@ export default function StatusFilterBar({ value, onChange, counts, className = '
             type="button"
             role="tab"
             aria-selected={active}
-            aria-label={`${label} (${n})`}
+            aria-label={`${name} (${n})`}
+            title={`${name} (${n})`}
             data-testid={`status-pill-${key}`}
             data-status={key}
             data-count={n}
             onClick={() => { hapticTap(); onChange(key); }}
-            className={`qmp-status-pill ${active ? `${on} shadow-md` : 'border-border bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/[0.09]'}`}
+            className={`qmp-status-pill ${active ? `${on} shadow-md` : 'border-border bg-foreground/[0.05] text-foreground/70 hover:bg-foreground/[0.09]'}`}
           >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="qmp-status-pill__label">{label}</span>
-            <span className={`qmp-status-pill__count ${active ? 'bg-white/25' : 'bg-foreground/10'}`}>{n.toLocaleString()}</span>
+            {label ? <span>{label}</span> : <span className="qmp-status-pill__icon" aria-hidden>{emoji}</span>}
+            <span className="qmp-status-pill__count">{compactCount(n)}</span>
           </button>
         );
       })}
