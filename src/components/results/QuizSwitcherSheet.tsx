@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { CalendarDays, Check, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { CalendarDays, Check, ListFilter, Search, SlidersHorizontal, X } from 'lucide-react';
+import Overlay, { OverlayBody, OverlayFooter, OverlayHeader } from '../ui/Overlay';
 import type { QuizResult } from '../../types/quiz';
 import { derivePercentage } from '../../utils/scoring';
 import { getSubjectColors } from '../../utils/subjects';
@@ -26,41 +26,23 @@ const fmtDate = (t: number) => new Date(t).toLocaleDateString(undefined, { day: 
 /**
  * "Jump to a quiz": a premium popup (bottom sheet on phones, centred card on tablets) that filters every quiz you took by
  * name, subject (several at once) and date (presets or a range), sorts them and opens the one you tap.
+ * Built on the shared Overlay, so the page scroll lock, Escape, the Android back button, focus trap and layer order are the app's own.
  */
 export default function QuizSwitcherSheet({ list, current, onOpen, onClose }: Props) {
   const [f, setF] = useState<SwitchFilters>(DEFAULT_SWITCH_FILTERS);
   const [visible, setVisible] = useState(PAGE);
-  const panelRef = useRef<HTMLDivElement>(null);
   const set = (patch: Partial<SwitchFilters>) => { setF(prev => ({ ...prev, ...patch })); setVisible(PAGE); };
 
   const subjects = useMemo(() => subjectCounts(list), [list]);
   const shown = useMemo(() => filterSwitchList(list, f), [list, f]);
   const active = activeSwitchFilters(f);
 
-  useEffect(() => {
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    panelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = prevOverflow; document.removeEventListener('keydown', onKey); };
-  }, [onClose]);
-
-  return createPortal(
-    <div className="qmp-switch-root" data-testid="quiz-switcher">
-      <div className="qmp-switch-backdrop" onClick={onClose} aria-hidden />
-      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Jump to a quiz" tabIndex={-1} className="qmp-switch-panel">
-        <div className="qmp-switch-grip" aria-hidden />
-        <header className="flex items-start justify-between gap-3 px-4 pt-3 pb-2">
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-foreground/45">Your quizzes</p>
-            <h2 className="text-xl font-black leading-tight text-foreground">Jump to a quiz</h2>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" data-testid="quiz-switcher-close"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-foreground/[0.05] text-foreground/70 active:scale-95"><X className="h-5 w-5" /></button>
-        </header>
-
-        <div className="space-y-3 px-4 pb-3">
+  return (
+    <Overlay open onClose={onClose} kind="sheet" label="Jump to a quiz" hideClose className="qmp-switch-panel">
+      <div className="flex min-h-0 flex-1 flex-col" data-testid="quiz-switcher">
+        <OverlayHeader title="Jump to a quiz" subtitle="Your quizzes" icon={<ListFilter className="h-4 w-4" />} onClose={onClose} />
+        <OverlayBody padded={false} className="qmp-switch-body">
+        <div className="space-y-3 px-4 pt-3 pb-3">
           {/* quiz name */}
           <label className="flex items-center gap-2 rounded-2xl border border-border bg-foreground/[0.04] px-3 py-2.5 focus-within:border-primary/50">
             <Search className="h-4 w-4 shrink-0 text-foreground/45" aria-hidden />
@@ -126,7 +108,7 @@ export default function QuizSwitcherSheet({ list, current, onOpen, onClose }: Pr
         </div>
 
         {/* results */}
-        <ul className="qmp-switch-list" data-testid="switcher-list">
+        <ul className="flex flex-col gap-2 px-4 pb-3" data-testid="switcher-list">
           {shown.slice(0, visible).map(r => {
             const pct = derivePercentage(r.netScore, r.maxScore);
             const isCurrent = sameResult(r, current);
@@ -160,13 +142,13 @@ export default function QuizSwitcherSheet({ list, current, onOpen, onClose }: Pr
           )}
         </ul>
 
-        <footer className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
+        </OverlayBody>
+        <OverlayFooter className="justify-between">
           <button type="button" onClick={() => { setF(DEFAULT_SWITCH_FILTERS); setVisible(PAGE); }} disabled={active === 0} data-testid="switcher-reset"
             className="rounded-full border border-border px-4 py-2 text-xs font-bold text-foreground/70 disabled:opacity-35 active:scale-95">Reset filters{active > 0 ? ` (${active})` : ''}</button>
           <button type="button" onClick={onClose} className="rounded-full bg-foreground px-5 py-2 text-xs font-black text-background active:scale-95">Done</button>
-        </footer>
+        </OverlayFooter>
       </div>
-    </div>,
-    document.body,
+    </Overlay>
   );
 }

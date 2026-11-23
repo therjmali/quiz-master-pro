@@ -3804,20 +3804,7 @@ button.qmp-result-nav__centre { cursor: pointer; transition: transform .12s ease
 button.qmp-result-nav__centre:active { transform: scale(0.985); }
 button.qmp-result-nav__centre:hover { border-color: hsl(var(--primary) / 0.45); }
 
-.qmp-switch-root { position: fixed; inset: 0; z-index: 200; /* above the bottom dock (100) */  display: flex; align-items: flex-end; justify-content: center; }
-.qmp-switch-backdrop { position: absolute; inset: 0; background: rgb(8 10 24 / 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: qmp-switch-fade .2s ease both; }
-.qmp-switch-panel { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 38rem; max-height: min(92dvh, 46rem); overflow: hidden; outline: none;
-  border-radius: 2rem 2rem 0 0; border: 1px solid hsl(var(--border)); border-bottom: 0;
-  background: radial-gradient(120% 60% at 0% 0%, hsl(var(--primary) / 0.10), transparent 60%), hsl(var(--card));
-  box-shadow: 0 -24px 70px -20px rgb(0 0 0 / 0.55); padding-bottom: env(safe-area-inset-bottom, 0px); animation: qmp-switch-up .28s cubic-bezier(.2,.9,.3,1) both; }
-.qmp-switch-grip { align-self: center; width: 2.6rem; height: 0.3rem; margin-top: 0.55rem; border-radius: 9999px; background: hsl(var(--foreground) / 0.18); }
-.qmp-switch-list { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 7rem; overflow-y: auto; overscroll-behavior: contain; padding: 0 1rem 0.75rem; -webkit-overflow-scrolling: touch; }
-@media (min-width: 768px) {
-  .qmp-switch-root { align-items: center; }
-  .qmp-switch-panel { border-radius: 2rem; border-bottom: 1px solid hsl(var(--border)); box-shadow: 0 40px 90px -30px rgb(0 0 0 / 0.6); animation-name: qmp-switch-pop; }
-  .qmp-switch-grip { display: none; }
-}
-@keyframes qmp-switch-fade { from { opacity: 0; } to { opacity: 1; } }
-@keyframes qmp-switch-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes qmp-switch-pop { from { transform: scale(0.96) translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .qmp-switch-backdrop, .qmp-switch-panel { animation: none; } .qmp-result-nav__btn, button.qmp-result-nav__centre { transition: none; } }
+/* The popup itself is the shared Overlay (sheet); only its look is set here. */
+.qmp-switch-panel { background: radial-gradient(120% 50% at 0% 0%, hsl(var(--primary) / 0.10), transparent 60%), hsl(var(--card)); max-width: 38rem; }
+.qmp-switch-body { padding-top: 0.25rem; }
+@media (prefers-reduced-motion: reduce) { .qmp-result-nav__btn, button.qmp-result-nav__centre { transition: none; } }
