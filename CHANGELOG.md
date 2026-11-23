@@ -4,6 +4,29 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.15.0] - 2026-11-23
+
+Bookmark icon fix, multi-select filters, one stats panel, a quiz switcher on the top strip and a premium quiz dashboard.
+
+### Fixed
+- **Bookmarked a question in the quiz, saw "Bookmarked!", but the header icon stayed outline.** `addBookmarkToTree` / `removeBookmarkNode` changed the bookmark tree in place and returned the same object, so React saw no new state and never re-rendered the button. Both now return a new tree (the input is left untouched) and the quiz handler no longer does its side effects inside a state updater. The header button now turns into **🔖** at once and back to outline when you remove it.
+- **"Question Breakdown" appeared twice** on the quiz dashboard (the breakdown strip and the "Tap card to filter review" grid showed the same numbers) and once more as a second label in the difficulty list (now "Questions by difficulty", which also uses the shared status rule).
+- **Popup buttons hidden behind the bottom dock** (found by the new test): the popup now sits above the dock.
+
+### Changed
+- **Multi-select filters.** ✅ ❌ ⏭️ 🔖 can be on together in the quiz dashboard and on Progress. Statuses widen (✅ + ❌ = correct and wrong), 🔖 narrows (❌ + 🔖 = your bookmarked mistakes), **All** (or switching the last pill off) clears everything. A "Showing N of M · Show all" line appears while a filter is on. The pill numbers stay static. The selection is remembered (`results_review_filters_v2`, `progress_filters_v2`; the old single choice is carried over once). The bar now uses `aria-pressed` buttons.
+- **One merged stats panel** (`ResultStatsPanel`): Total / Correct / Wrong / Skipped tiles with %, a proportion bar and Time · Accuracy · Pace. The tiles ARE the filter (tap one or several). Replaces the breakdown strip + tap-card grid; the duplicate Raw Score cell in the score formula is gone (it lives in the panel header).
+- **Top strip = `ResultNavigator`**: Prev | quiz title, position and dots | Next. Tapping the middle opens **Jump to a quiz**: search by quiz name or subject, several subjects at once, date (Any / Today / 7 days / 30 days / custom range), sort (Newest / Oldest / Top score), live "N of M", Reset, Escape / tap outside to close. Bottom sheet on phones, centred card on tablets.
+- **Premium quiz dashboard look**: outcome-coloured glow, date line under the title, glowing emoji badge, refined gradient headline (the wide display font is gone), pass/fail pill with an icon.
+
+### Tests
+- Unit: `tests/bookmarkTree.test.ts` (new tree on add/remove, input untouched), `tests/quizSwitcher.test.ts` (search, subjects, date presets and range, sort), multi-select facets and bar in `tests/attemptStats.test.ts`.
+- `scripts/ui-qa-v315.mjs` (`npm run test:ui:v315`): quiz-screen bookmark icon on phone and tablet, merged panel and no duplicates, multi-select combinations, premium hero, switcher (every filter, Escape, outside tap, jump, layout on phone and tablet), Progress multi-select and persistence. Older suites updated for the `aria-pressed` bar.
+- `verify-repo` contracts for the four changes above.
+
+### Not tested
+- Real device (Redmi Pad / phone): bottom-sheet drag feel, date picker UI, and the new layout on actual screens.
+
 ## [3.14.0] - 2026-11-22
 
 Distraction-free app, one emoji filter bar everywhere, Overview on Home, readable review text.

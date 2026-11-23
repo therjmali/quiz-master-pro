@@ -247,36 +247,28 @@ export default function QuizScreen({
 
   const handleToggleBookmark = useCallback(() => {
     if (!q) return;
-    setFileTree(prev => {
-      if (isQuestionBookmarked(prev, q.question)) {
-        const allBm = getAllBookmarks(prev);
-        const target = allBm.find(b => b.bookmarkData?.question === q.question);
-        if (target) {
-          const updated = removeBookmarkNode(prev, target.id);
-          saveFileTree(updated);
-          toast('🔖 Bookmark removed');
-          return updated;
-        }
-        return prev;
-      } else {
-        const updated = addBookmarkToTree(prev, {
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          userAnswer: userAnswers[currentIndex],
-          rationale: q.rationale,
-          difficulty: q.difficulty,
-          questionType: q.questionType,
-          quizTitle: settings.quizTitle || 'Quiz',
-          subject: settings.subject || 'General',
-          bookmarkedAt: Date.now(),
-        });
-        saveFileTree(updated);
-        toast.success('🔖 Bookmarked!');
-        return updated;
-      }
-    });
-  }, [q, currentIndex, userAnswers, settings]);
+    // addBookmarkToTree / removeBookmarkNode return a NEW tree and save it themselves, so the icon updates at once
+    if (isQuestionBookmarked(fileTree, q.question)) {
+      const target = getAllBookmarks(fileTree).find(b => b.bookmarkData?.question === q.question);
+      if (!target) return;
+      setFileTree(removeBookmarkNode(fileTree, target.id));
+      toast('🔖 Bookmark removed');
+      return;
+    }
+    setFileTree(addBookmarkToTree(fileTree, {
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+      userAnswer: userAnswers[currentIndex],
+      rationale: q.rationale,
+      difficulty: q.difficulty,
+      questionType: q.questionType,
+      quizTitle: settings.quizTitle || 'Quiz',
+      subject: settings.subject || 'General',
+      bookmarkedAt: Date.now(),
+    }));
+    toast.success('🔖 Bookmarked!');
+  }, [q, currentIndex, userAnswers, settings, fileTree]);
 
   const opts = q?.shuffledOpts || q?.options || [];
   const answered = userAnswers[currentIndex] !== null;

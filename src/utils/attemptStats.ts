@@ -129,3 +129,48 @@ export function orderAttemptItems<T extends AttemptItem>(items: readonly T[], or
   const pos = (it: AttemptItem) => (it.q as { originalIndex?: number }).originalIndex ?? it.index;
   return groups.flatMap(g => [...g].sort((a, b) => pos(a) - pos(b)));
 }
+
+/* ───────── multi-select filters (✅ ❌ ⏭️ 🔖 at the same time) ───────── */
+
+export type FacetKey = 'correct' | 'wrong' | 'skipped' | 'bookmarked';
+const FACET_ORDER: FacetKey[] = ['correct', 'wrong', 'skipped', 'bookmarked'];
+
+export const isFacetKey = (v: unknown): v is FacetKey => v === 'correct' || v === 'wrong' || v === 'skipped' || v === 'bookmarked';
+
+/** Clean a stored/typed selection: only known keys, no duplicates, canonical order. An empty selection means "All". */
+export function normalizeFacets(input: unknown): FacetKey[] {
+  const raw = Array.isArray(input) ? input : typeof input === 'string' ? [input] : [];
+  const set = new Set(raw.filter(isFacetKey));
+  return FACET_ORDER.filter(k => set.has(k));
+}
+
+/** Tap on a pill: "all" clears the selection, any other key toggles. The selection can never end up "nothing selected and not All". */
+export function toggleFacet(selected: readonly FacetKey[], key: StatusFilter | 'bookmarked'): FacetKey[] {
+  if (key === 'all') return [];
+  const set = new Set(selected);
+  if (set.has(key)) set.delete(key); else set.add(key);
+  return FACET_ORDER.filter(k => set.has(k));
+}
+
+/**
+ * Statuses (✅ ❌ ⏭️) widen the list (a question matching ANY selected status is kept), 🔖 narrows it
+ * (only bookmarked questions). So ✅ + ❌ = correct and wrong; ❌ + 🔖 = your bookmarked mistakes.
+ * No selection = every item (the very same array is returned).
+ */
+export function applyFacets<T extends { status: ReviewStatus }>(items: readonly T[], selected: readonly FacetKey[], isBookmarked: (item: T) => boolean): readonly T[] {
+  if (selected.length === 0) return items;
+  const statuses = selected.filter((k): k is ReviewStatus => k !== 'bookmarked');
+  const needBookmark = selected.includes('bookmarked');
+  return items.filter(it => (statuses.length === 0 || statuses.includes(it.status)) && (!needBookmark || isBookmarked(it)));
+}
+
+/** Older versions stored ONE filter under `qmp_pref_<key>` ("overview" / "all" / "wrong" ...). Turns it into a selection. */
+export function readLegacyFacets(prefKey: string): FacetKey[] {
+  try {
+    const raw = localStorage.getItem(`qmp_pref_${prefKey}`);
+    if (raw === null) return [];
+    let v: unknown = raw;
+    try { v = JSON.parse(raw); } catch { /* plain string */ }
+    return normalizeFacets(v);
+  } catch { return []; }
+}

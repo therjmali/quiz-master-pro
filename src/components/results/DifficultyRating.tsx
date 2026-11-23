@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { reviewStatus } from '../../utils/reviewOptions';
+import { normalizeAnswer } from '../../utils/attemptStats';
 import { ChevronDown } from 'lucide-react';
 import { QuizResult } from '../../types/quiz';
 
@@ -118,13 +120,14 @@ export default function DifficultyRating({ result }: Props) {
 
           {/* Individual question list with difficulty dots */}
           <div className="pt-2 border-t border-border">
-            <p className="text-[9px] font-black text-foreground/25 uppercase tracking-widest mb-2">Question Breakdown</p>
+            <p className="text-[9px] font-black text-foreground/25 uppercase tracking-widest mb-2">Questions by difficulty</p>
             <div className="space-y-1 max-h-[160px] overflow-y-auto thin-scrollbar">
               {result.quizData.map((q, i) => {
                 const d = (q.difficulty || 'medium') as DiffLevel;
                 const emoji = d === 'easy' ? '🟢' : d === 'hard' ? '🔴' : '🟡';
-                const isCorrect = result.userAnswers[i] === q.correctAnswer;
-                const isSkipped = result.userAnswers[i] === null;
+                const st = reviewStatus(q, normalizeAnswer(result.userAnswers[i]));
+                const isCorrect = st === 'correct';
+                const isSkipped = st === 'skipped';
                 return (
                   <div key={i} className="flex items-center gap-2 text-[11px]">
                     <span className="text-foreground/25 font-bold w-6 flex-shrink-0 text-right">Q{i + 1}</span>

@@ -15,18 +15,16 @@ import { computeRank } from '../../utils/rank';
 import { useProfileStore } from '../../hooks/useProfileStore';
 import { getActiveMistakes, mistakesToQuizQuestions } from '../../utils/globalMistakes';
 import HistoryList from './HistoryList';
-import StatusFilterBar, { type BarCounts, type BarFilter } from '../shared/StatusFilterBar';
+import StatusFilterBar, { type BarCounts } from '../shared/StatusFilterBar';
 import { useQuestionBookmarks } from '../../hooks/useQuestionBookmarks';
 import { useHydratedResults } from '../../hooks/useHydratedResults';
 import { useStatusFilter } from '../../hooks/useStatusFilter';
-import { flattenAttempts, summarizeResults, toCounts, type StatusFilter } from '../../utils/attemptStats';
+import { flattenAttempts, normalizeFacets, readLegacyFacets, summarizeResults, toCounts, type AttemptItem, type FacetKey } from '../../utils/attemptStats';
 import ReportDownloadPanel from '../reports/ReportDownloadPanel';
 import { ReportPreviewData } from '../reports/ReportPreviewPage';
 import SessionSelector, { SessionMode, filterBySession, getSessionLabel } from '../SessionSelector';
 
-type View = BarFilter; // 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked'
 type DiffFilter = 'all' | 'easy' | 'medium' | 'hard';
-const VIEWS: View[] = ['all', 'correct', 'wrong', 'skipped', 'bookmarked'];
 
 interface Props {
   history: QuizResult[];
@@ -140,9 +138,8 @@ export default function ProgressScreen({
   const account = useAccount();
   const cloudAuth = useCloudAuth();
   const syncState = useSyncState();
-  const [storedView, setView] = usePersistedState<string>('progress_view', 'all');
-  // 'overview' is what older versions stored for "everything"; it is now simply "all"
-  const view: View = VIEWS.includes(storedView as View) ? (storedView as View) : 'all';
+  // Selected pills (any mix of ✅ ❌ ⏭️ 🔖, empty = All). The single filter of older versions is carried over once.
+  const [storedSel, setStoredSel] = usePersistedState<FacetKey[]>('progress_filters_v2', readLegacyFacets('progress_view'));
   const [profileReportOrder, setProfileReportOrder] = usePersistedState<ReportOrder>('profile_report_order', 'attempt');
   const { profile } = useProfileStore();
 
@@ -233,15 +230,25 @@ export default function ProgressScreen({
   const scope = useMemo(() => summarizeResults(master, profileDiffFilter), [master, profileDiffFilter]);
   const scopeCounts = useMemo(() => toCounts(scope), [scope]);
   const attemptItems = useMemo(() => flattenAttempts(master, profileDiffFilter), [master, profileDiffFilter]);
-  const { counts: statusCounts, displayed: displayedItems } = useStatusFilter(attemptItems, { filter: view, totals: scopeCounts });
   // Bookmarks are per question text, so 🔖 lists each bookmarked question once (its latest attempt in scope).
   const { bookmarkedSet, toggleBookmark } = useQuestionBookmarks();
+  const isBookmarked = useCallback((it: AttemptItem) => bookmarkedSet.has(it.q.question), [bookmarkedSet]);
+  const { selected, toggle, counts: statusCounts, displayed: displayedItems } = useStatusFilter<AttemptItem>(attemptItems, {
+    selected: storedSel, onSelectedChange: setStoredSel, isBookmarked, totals: scopeCounts,
+  });
   const bookmarkedItems = useMemo(() => {
     const seen = new Set<string>();
     return attemptItems.filter(it => bookmarkedSet.has(it.q.question) && !seen.has(it.q.question) && (seen.add(it.q.question), true));
   }, [attemptItems, bookmarkedSet]);
   const barCounts = useMemo<BarCounts>(() => ({ ...statusCounts, bookmarked: bookmarkedItems.length }), [statusCounts, bookmarkedItems.length]);
-  const listItems = view === 'bookmarked' ? bookmarkedItems : displayedItems;
+  // with 🔖 on, a question that appears in several attempts is listed once
+  const listItems = useMemo(() => {
+    if (!selected.includes('bookmarked')) return displayedItems;
+    const seen = new Set<string>();
+    return displayedItems.filter(it => !seen.has(it.q.question) && (seen.add(it.q.question), true));
+  }, [displayedItems, selected]);
+  // the number in the heading: the static pill number for one status, the live size otherwise
+  const listTotal = selected.length === 0 ? barCounts.all : selected.length === 1 && selected[0] !== 'bookmarked' ? barCounts[selected[0]] : listItems.length;
 
   const cloudChip = account.signedIn
     ? syncState.phase === 'syncing'
@@ -537,15 +544,15 @@ export default function ProgressScreen({
       )}
 
       {/* ── Every question of the scope: All | ✅ | ❌ | ⏭️ | 🔖 (same bar as the quiz reports) ── */}
-      <StatusFilterBar className="mt-4 mb-3" value={view} onChange={setView} counts={barCounts} testId="progress-status-filter" ariaLabel="Question views" />
+      <StatusFilterBar className="mt-4 mb-3" selected={selected} onToggle={toggle} counts={barCounts} testId="progress-status-filter" ariaLabel="Question filters (select one or more)" />
       {scope.unavailableQuizzes > 0 && (
         <p className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold text-amber-700 dark:text-amber-300" data-testid="details-unavailable-note">
           {scope.unavailableQuizzes} quiz{scope.unavailableQuizzes === 1 ? '' : 'zes'} ({scope.unavailableQuestions} questions) {scope.unavailableQuizzes === 1 ? 'has' : 'have'} no question details on this device. Totals use the saved scores; the lists and reports leave {scope.unavailableQuizzes === 1 ? 'it' : 'them'} out.{missingDetails > 0 && profileDiffFilter !== 'all' ? ' The difficulty filter can not include them.' : ''}
         </p>
       )}
 
-      <div key={view} className="animate-tab-content">
-        <HistoryList type={view} items={listItems} total={barCounts[view]} rationaleCache={rationaleCache}
+      <div key={selected.join('+') || 'all'} className="animate-tab-content">
+        <HistoryList selected={selected} items={listItems} total={listTotal} rationaleCache={rationaleCache}
           getAiRationale={getAiRationale} reportOrder={profileReportOrder}
           rationalePrefs={rationalePrefs} reportHelper={reportHelper}
           bookmarkedSet={bookmarkedSet} onToggleBookmark={toggleBookmark} />

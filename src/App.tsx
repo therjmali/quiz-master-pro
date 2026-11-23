@@ -1103,7 +1103,7 @@ function AppScreens({
                 onViewResult={r => { viewResultWithDetail(r).then(() => { scrollPositionsRef.current['results'] = 0; window.scrollTo(0, 0); }); }}
                 onMoreLikeThis={handleMoreLikeThis} moreLikeThisLoading={moreLikeThisLoading}
                 onUpdateMeta={handleUpdateQuizMeta}
-                historyIndex={canNav ? resultIdx : undefined} historyTotal={canNav ? history.length : undefined}
+                historyIndex={canNav ? resultIdx : undefined} historyTotal={canNav ? history.length : undefined} historyList={canNav ? history : undefined}
                 onNavigateResult={canNav ? (dir) => {
                   const newIdx = dir === 'next' ? resultIdx + 1 : resultIdx - 1;
                   if (newIdx >= 0 && newIdx < history.length) { viewResultWithDetail(history[newIdx]).then(() => { scrollPositionsRef.current['results'] = 0; window.scrollTo(0, 0); }); }

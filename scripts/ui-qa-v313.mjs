@@ -1,6 +1,6 @@
 /**
  * Real-Chrome regression for v3.13 (touch emulation): one source of truth for status counts and filters.
- *  (v3.14: the bar is All | ✅ | ❌ | ⏭️ | 🔖, one straight line; All lists every question; the quiz opens from Home)
+ *  (v3.14/v3.15: the bar is All | ✅ | ❌ | ⏭️ | 🔖 on one straight line and multi-select; each "round trip" step starts from All so it checks one pill at a time)
  *  1. Progress: pills, Question Breakdown strip and the Reports & downloads tiles all show the SAME numbers
  *     (history rows are light summaries, the questions live in IndexedDB - the exact case that used to disagree)
  *  2. tapping Mistakes / Correct / Skipped / Overview never changes a count and never loses a question
@@ -70,6 +70,7 @@ const nav = (page, name) => page.locator('nav').getByText(name, { exact: true })
 const pills = async (bar) => { const o = {}; for (const k of ['all', 'correct', 'wrong', 'skipped']) o[k] = Number(await bar.getByTestId(`status-pill-${k}`).getAttribute('data-count')); return o; };
 const tiles = async (page) => { const items = await page.getByTestId('report-grid').locator('[role="listitem"]').allInnerTexts(); const get = (label) => { const t = items.find(x => x.trim().startsWith(label)); const m = t && t.match(/\n\s*(\d+)\s*$/); return m ? Number(m[1]) : null; }; return { all: get('Full'), correct: get('Correct'), wrong: get('Mistakes'), skipped: get('Skipped') }; };
 const strip = async (page) => { const box = page.locator('p', { hasText: 'Question Breakdown' }).first().locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]'); const v = await box.locator('.grid > div').evaluateAll(els => els.map(e => parseInt(e.innerText.split('\n')[0], 10))); return { all: v[0], correct: v[1], wrong: v[2], skipped: v[3] }; };
+const pick = async (bar, k) => { if (k !== 'all') { await bar.getByTestId('status-pill-all').click(); } await bar.getByTestId(`status-pill-${k}`).click(); };
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const overflowX = (page) => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 const clipped = (bar) => bar.locator('button').evaluateAll(els => els.filter(e => e.scrollWidth > e.clientWidth + 1 || [...e.children].some(c => { const r = c.getBoundingClientRect(), p = e.getBoundingClientRect(); return r.left < p.left - 0.5 || r.right > p.right + 0.5; })).length);
@@ -89,7 +90,7 @@ async function progressSuite(label, w, h, theme) {
   const rows = await bar.locator('button').evaluateAll(els => new Set(els.map(e => Math.round(e.getBoundingClientRect().y))).size);
   ok(`[${label}] bar layout: one straight line`, rows === 1, `${rows} row(s)`);
   ok(`[${label}] no clipped text in the pills, no sideways overflow`, (await clipped(bar)) === 0 && !(await overflowX(page)));
-  const contrast = await bar.locator('[aria-selected="true"]').evaluateAll(els => els.map(e => { const c = getComputedStyle(e).color.match(/\d+/g).map(Number), b = getComputedStyle(e).backgroundColor.match(/\d+/g).map(Number); const L = a => { const f = a.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; }; const [x, y] = [L(c), L(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }));
+  const contrast = await bar.locator('[aria-pressed="true"]').evaluateAll(els => els.map(e => { const c = getComputedStyle(e).color.match(/\d+/g).map(Number), b = getComputedStyle(e).backgroundColor.match(/\d+/g).map(Number); const L = a => { const f = a.slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * f[0] + 0.7152 * f[1] + 0.0722 * f[2]; }; const [x, y] = [L(c), L(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }));
   ok(`[${label}] pill text contrast >= 4.5:1 on its background (selected pill)`, contrast.every(r => r >= 4.5), contrast.map(r => r.toFixed(1)).join(' '));
   await page.screenshot({ path: `${SHOTS}/progress_${label}.png` });
 
@@ -98,11 +99,11 @@ async function progressSuite(label, w, h, theme) {
   const seq = [['wrong', EXPECT.wrong], ['correct', EXPECT.correct], ['skipped', EXPECT.skipped], ['wrong', EXPECT.wrong], ['all', EXPECT.all], ['correct', EXPECT.correct], ['all', EXPECT.all]];
   let stable = true, listsOk = true, why = '';
   for (const [k, n] of seq) {
-    await bar.getByTestId(`status-pill-${k}`).click(); await page.waitForTimeout(700);
+    await pick(bar, k); await page.waitForTimeout(700);
     const p = await pills(bar), t = await tiles(page), s = await strip(page);
     if (!same(p, EXPECT) || !same(t, EXPECT) || !same(s, EXPECT)) { stable = false; why += ` ${k}:${JSON.stringify([p, t, s])}`; }
-    const sel = await bar.locator('[aria-selected="true"]').getAttribute('data-status');
-    const cr = await bar.locator('[aria-selected="true"]').evaluate(e => { const L = s => { const a = s.match(/\d+/g).map(Number).slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }; const [x, y] = [L(getComputedStyle(e).color), L(getComputedStyle(e).backgroundColor)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); });
+    const sel = await bar.locator('[aria-pressed="true"]').first().getAttribute('data-status');
+    const cr = await bar.locator('[aria-pressed="true"]').first().evaluate(e => { const L = s => { const a = s.match(/\d+/g).map(Number).slice(0, 3).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }; const [x, y] = [L(getComputedStyle(e).color), L(getComputedStyle(e).backgroundColor)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); });
     if (cr < 4.5) { listsOk = false; why += ` ${k} selected contrast ${cr.toFixed(1)}`; }
     if (sel !== k) { listsOk = false; why += ` selected ${sel} != ${k}`; }
     if (n !== null) { const c = await cards(); if (c !== n) { listsOk = false; why += ` ${k}: ${c} cards, want ${n}`; } }
@@ -146,7 +147,7 @@ async function quizSuite(label, w, h) {
   const cards = () => page.locator('[data-review-status]').count();
   let good = true, why = '';
   for (const [k, n] of [['wrong', want.wrong], ['skipped', want.skipped], ['correct', want.correct], ['all', want.all]]) {
-    await bar.getByTestId(`status-pill-${k}`).click(); await page.waitForTimeout(600);
+    await pick(bar, k); await page.waitForTimeout(600);
     const c = await cards(); if (c !== n) { good = false; why += ` ${k}:${c}!=${n}`; }
     if (!same(await pills(bar), want) || !same(await tiles(page), want)) { good = false; why += ` ${k}: counts moved`; }
   }

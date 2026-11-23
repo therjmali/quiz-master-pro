@@ -3767,11 +3767,57 @@ html.qmp-scroll-locked [role="alertdialog"] { touch-action: pan-y; }
 @media (min-width: 640px) { .qmp-status-bar { gap: 0.5rem; } .qmp-status-pill { height: 2.75rem; font-size: 0.9rem; gap: 0.45rem; } .qmp-status-pill__icon { font-size: 1.2rem; } .qmp-status-pill__count { font-size: 0.88rem; } }
 @media (prefers-reduced-motion: reduce) { .qmp-status-pill { transition: none; } }
 /* selected pills keep their own contrast whatever the global button colour rules say */
-.qmp-status-pill[aria-selected="true"] { color: #fff !important; }
-.qmp-status-pill[aria-selected="true"][data-status="skipped"] { color: #422006 !important; }
+.qmp-status-pill[aria-pressed="true"] { color: #fff !important; }
+.qmp-status-pill[aria-pressed="true"][data-status="skipped"] { color: #422006 !important; }
 
 /* ── Reading typography (review cards, Progress lists, rationale): Atkinson Hyperlegible Next is built for legibility ── */
 .font-read { font-family: 'Atkinson Hyperlegible Next', 'DM Sans', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; letter-spacing: 0.003em; }
 .qmp-rationale { font-size: 1rem; font-weight: 500; line-height: 1.7; letter-spacing: 0.004em; color: hsl(var(--foreground) / 0.92); }
 @media (min-width: 768px) { .qmp-rationale { font-size: 1.0625rem; } }
 .dark .qmp-rationale { color: hsl(var(--foreground) / 0.95); }
+
+/* ── Quiz dashboard: premium hero + merged stats panel ── */
+.rx-hero {
+  background:
+    radial-gradient(120% 80% at 0% 0%, color-mix(in srgb, var(--rx-a, #6366f1) 16%, transparent), transparent 62%),
+    radial-gradient(100% 70% at 100% 100%, color-mix(in srgb, var(--rx-b, #8b5cf6) 13%, transparent), transparent 58%),
+    hsl(var(--card));
+  border: 1px solid color-mix(in srgb, var(--rx-a, #6366f1) 26%, hsl(var(--border)));
+  border-radius: 2rem;
+  box-shadow: 0 28px 64px -32px color-mix(in srgb, var(--rx-a, #6366f1) 55%, transparent), inset 0 1px 0 rgb(255 255 255 / 0.45);
+}
+.rx-emoji { display: grid; place-items: center; width: 3.75rem; height: 3.75rem; border-radius: 1.4rem; font-size: 2rem; line-height: 1;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--rx-a, #6366f1) 24%, transparent), color-mix(in srgb, var(--rx-b, #8b5cf6) 16%, transparent));
+  border: 1px solid color-mix(in srgb, var(--rx-a, #6366f1) 35%, transparent);
+  box-shadow: 0 12px 28px -14px var(--rx-a, #6366f1); }
+.rx-stats { padding: 0.9rem; border-radius: 1.5rem; border: 1px solid hsl(var(--border)); background: hsl(var(--foreground) / 0.03); backdrop-filter: blur(8px); }
+.rx-tile { min-height: 5.25rem; }
+@media (prefers-reduced-motion: reduce) { .rx-tile, .rx-stats * { transition: none !important; } }
+
+/* ── Result navigator strip + "Jump to a quiz" popup ── */
+.qmp-result-nav { display: flex; align-items: stretch; gap: 0.5rem; }
+.qmp-result-nav__btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem; min-width: 2.9rem; padding: 0 0.85rem; border-radius: 1.1rem; border: 1px solid hsl(var(--border)); background: hsl(var(--foreground) / 0.05); font-size: 0.8rem; font-weight: 800; color: hsl(var(--foreground) / 0.75); transition: transform .12s ease, opacity .2s ease; }
+.qmp-result-nav__btn:active:not(:disabled) { transform: scale(0.94); }
+.qmp-result-nav__btn:disabled { opacity: 0.3; }
+.qmp-result-nav__centre { display: flex; align-items: center; gap: 0.65rem; min-width: 0; flex: 1; padding: 0.55rem 0.85rem; border-radius: 1.25rem; border: 1px solid hsl(var(--border)); background: linear-gradient(135deg, hsl(var(--foreground) / 0.05), hsl(var(--primary) / 0.07)); box-shadow: 0 10px 26px -18px hsl(var(--primary) / 0.7); }
+button.qmp-result-nav__centre { cursor: pointer; transition: transform .12s ease, border-color .2s ease; }
+button.qmp-result-nav__centre:active { transform: scale(0.985); }
+button.qmp-result-nav__centre:hover { border-color: hsl(var(--primary) / 0.45); }
+
+.qmp-switch-root { position: fixed; inset: 0; z-index: 200; /* above the bottom dock (100) */  display: flex; align-items: flex-end; justify-content: center; }
+.qmp-switch-backdrop { position: absolute; inset: 0; background: rgb(8 10 24 / 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); animation: qmp-switch-fade .2s ease both; }
+.qmp-switch-panel { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 38rem; max-height: min(92dvh, 46rem); overflow: hidden; outline: none;
+  border-radius: 2rem 2rem 0 0; border: 1px solid hsl(var(--border)); border-bottom: 0;
+  background: radial-gradient(120% 60% at 0% 0%, hsl(var(--primary) / 0.10), transparent 60%), hsl(var(--card));
+  box-shadow: 0 -24px 70px -20px rgb(0 0 0 / 0.55); padding-bottom: env(safe-area-inset-bottom, 0px); animation: qmp-switch-up .28s cubic-bezier(.2,.9,.3,1) both; }
+.qmp-switch-grip { align-self: center; width: 2.6rem; height: 0.3rem; margin-top: 0.55rem; border-radius: 9999px; background: hsl(var(--foreground) / 0.18); }
+.qmp-switch-list { display: flex; flex-direction: column; gap: 0.5rem; flex: 1 1 auto; min-height: 7rem; overflow-y: auto; overscroll-behavior: contain; padding: 0 1rem 0.75rem; -webkit-overflow-scrolling: touch; }
+@media (min-width: 768px) {
+  .qmp-switch-root { align-items: center; }
+  .qmp-switch-panel { border-radius: 2rem; border-bottom: 1px solid hsl(var(--border)); box-shadow: 0 40px 90px -30px rgb(0 0 0 / 0.6); animation-name: qmp-switch-pop; }
+  .qmp-switch-grip { display: none; }
+}
+@keyframes qmp-switch-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qmp-switch-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes qmp-switch-pop { from { transform: scale(0.96) translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .qmp-switch-backdrop, .qmp-switch-panel { animation: none; } .qmp-result-nav__btn, button.qmp-result-nav__centre { transition: none; } }

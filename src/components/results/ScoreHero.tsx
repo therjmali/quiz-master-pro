@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Share2, RotateCcw, Sparkles, Calculator } from 'lucide-react';
-import { QuestionBreakdownStrip } from './ScoreAnalyticsStrip';
+import { Share2, RotateCcw, Sparkles, Calculator, CheckCircle2, XCircle } from 'lucide-react';
+import ResultStatsPanel from './ResultStatsPanel';
 import { toast } from 'sonner';
 import { formatTime, derivePercentage, precisePct as calcPrecisePct } from '../../utils/scoring';
 import { QuizResult, QuizSettings, QuizQuestion } from '../../types/quiz';
@@ -10,19 +10,20 @@ import PremiumSpeedometer from './PremiumSpeedometer';
 import ShareResultCard from './ShareResultCard';
 import NegativeMarkingPanel from './NegativeMarkingPanel';
 
-type FilterKey = 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked';
+import type { FacetKey, StatusFilter } from '../../utils/attemptStats';
 
 interface Props {
   result: QuizResult;
   settings: QuizSettings;
-  activeFilter?: FilterKey;
+  /** ✅ ❌ ⏭️ tiles that are on (empty = All) */
+  selected?: readonly FacetKey[];
   startAnimation?: boolean;
   onHome: () => void;
   onRetry: () => void;
   onNewQuiz: () => void;
   onPracticeMistakes: () => void;
   onRetryAll: () => void;
-  onFilterReview: (f: FilterKey) => void;
+  onFilterReview: (f: StatusFilter) => void;
   onMoreLikeThis?: () => void;
   moreLikeThisLoading?: boolean;
   quizData?: QuizQuestion[];
@@ -70,7 +71,7 @@ function Confetti({ show }: { show: boolean }) {
 }
 
 export default function ScoreHero({
-  result, settings, activeFilter, startAnimation = true,
+  result, settings, selected = [], startAnimation = true,
   onHome, onRetry, onNewQuiz, onPracticeMistakes, onRetryAll, onFilterReview,
   onMoreLikeThis, moreLikeThisLoading,
   quizData, userAnswers, onApplyMarking, onRemoveMarking, showDecimalPct = false,
@@ -91,17 +92,17 @@ export default function ScoreHero({
   const emoji = isPerfect ? '🌟' : percentage >= 90 ? '🏆' : percentage >= 70 ? '🌟' : percentage >= 50 ? '👍' : '📚';
   const title = isPerfect ? 'Perfect Score! 🎊' : percentage >= 90 ? 'Outstanding!' : percentage >= 70 ? 'Great Job!' : percentage >= 50 ? 'Good Effort!' : 'Keep Practicing!';
 
-  const stats: { label: string; value: string | number; color: string; filter: FilterKey | null; hoverBg: string; activeRing: string; subtitle?: string }[] = [
-    { label: 'Total Qs',  value: totalQuestions, color: 'speedo-stat-blue',    filter: 'all',     hoverBg: 'hover:bg-blue-500/10 hover:border-blue-500/25',       activeRing: 'ring-blue-500/50 bg-blue-500/10 border-blue-500/35'    },
-    { label: 'Correct ✓', value: correct,        color: 'speedo-stat-green', filter: 'correct', hoverBg: 'hover:bg-emerald-500/10 hover:border-emerald-500/25', activeRing: 'ring-emerald-500/50 bg-emerald-500/10 border-emerald-500/35' },
-    { label: 'Wrong ✗',   value: wrong,          color: 'speedo-stat-red',     filter: 'wrong',   hoverBg: 'hover:bg-red-500/10 hover:border-red-500/25',         activeRing: 'ring-red-500/50 bg-red-500/10 border-red-500/35', subtitle: 'Per-attempt wrong answers' },
-    { label: 'Skipped ⏭', value: skipped,        color: 'speedo-stat-amber',   filter: 'skipped', hoverBg: 'hover:bg-amber-500/10 hover:border-amber-500/25',     activeRing: 'ring-amber-500/50 bg-amber-500/10 border-amber-500/35' },
-    { label: 'Time',       value: formatTime(timeTaken), color: 'speedo-stat-purple',  filter: null, hoverBg: '', activeRing: '' },
-    { label: 'Accuracy',   value: `${accuracy}%`,        color: 'speedo-stat-pink', filter: null, hoverBg: '', activeRing: '' },
-  ];
+  // outcome palette for the hero glow and the headline
+  const tone = isPerfect || percentage >= 90 ? { a: '#d4a017', b: '#34C759', text: 'from-amber-500 to-emerald-500' }
+    : percentage >= 70 ? { a: '#10b981', b: '#6366f1', text: 'from-emerald-500 to-indigo-500' }
+    : percentage >= passMark ? { a: '#f59e0b', b: '#6366f1', text: 'from-amber-500 to-orange-500' }
+    : { a: '#ef4444', b: '#8b5cf6', text: 'from-rose-500 to-violet-500' };
+  const when = new Date(result.timestamp);
+  const whenLabel = Number.isNaN(when.getTime()) ? '' : `${when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} · ${when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`;
+  const rawPctValue = maxScore > 0 ? (showDecimalPct ? Math.max(0, Math.min(100, Math.round((netScore / maxScore) * 10000) / 100)) : Math.max(0, Math.min(100, Math.round((netScore / maxScore) * 100)))) : undefined;
 
   return (
-    <div className="glass-card rh-card p-4 md:p-6 mb-4 flex flex-col items-center relative overflow-hidden animate-fade-in">
+    <div className="glass-card rh-card rx-hero p-4 md:p-7 mb-4 flex flex-col items-center relative overflow-hidden animate-fade-in" style={{ ['--rx-a' as string]: tone.a, ['--rx-b' as string]: tone.b }} data-testid="result-hero">
       <Confetti show={showConfetti} />
 
       {/* Perfect score banner */}
@@ -133,8 +134,9 @@ export default function ScoreHero({
         </div>
       )}
 
-      <div className="relative z-10 text-5xl mb-2 hover:scale-110 transition-transform cursor-default select-none animate-float">{emoji}</div>
-      <h2 className="relative z-10 text-3xl md:text-4xl font-black mb-2 text-foreground tracking-tight text-center font-display">{title}</h2>
+      {whenLabel && <p className="relative z-10 -mt-1 mb-3 text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/45" data-testid="result-date">{whenLabel}</p>}
+      <div className="rx-emoji relative z-10 mb-3 select-none" aria-hidden="true">{emoji}</div>
+      <h2 className={`relative z-10 mb-2 bg-gradient-to-r ${tone.text} bg-clip-text text-center text-[2rem] font-black leading-[1.05] tracking-tight text-transparent md:text-[2.75rem]`} data-testid="result-headline">{title}</h2>
 
       {/* Pass / Fail badge */}
       <div className={`relative z-10 mb-5 px-5 py-1.5 rounded-full border font-black text-sm tracking-widest uppercase backdrop-blur-sm ${
@@ -142,7 +144,7 @@ export default function ScoreHero({
           ? 'score-badge-pass'
           : 'score-badge-fail'
       }`}>
-        {isPassed ? '✓ PASSED' : '✗ FAILED'}
+        {isPassed ? <CheckCircle2 className="mr-1.5 inline h-4 w-4 -mt-0.5" aria-hidden /> : <XCircle className="mr-1.5 inline h-4 w-4 -mt-0.5" aria-hidden />}{isPassed ? 'PASSED' : 'FAILED'}
         <span className="text-[10px] opacity-50 ml-2 normal-case font-semibold">Pass mark: {passMark}%</span>
       </div>
 
@@ -211,47 +213,12 @@ export default function ScoreHero({
           <span className="speedo-stat-blue font-black text-xl">{netScore}</span>
           <span className="text-[9px] text-blue-500/60 uppercase tracking-widest mt-0.5">Net Score</span>
         </div>
-        {maxScore > 0 && (() => {
-          const rawPct = Math.max(0, Math.min(100, Math.round((netScore / maxScore) * 100)));
-          const rawPctDecimal = Math.max(0, Math.min(100, Math.round(((netScore / maxScore) * 100) * 100) / 100));
-          return (
-            <div className="flex flex-col items-center ml-1 pl-3 border-l border-border/40">
-              <span className="font-black text-lg" style={{ color: rawPct >= 67 ? '#34C759' : rawPct >= 40 ? '#F0A500' : '#FF3B5C' }}>
-                {showDecimalPct ? `${rawPctDecimal}%` : `${rawPct}%`}
-              </span>
-              <span className="speedo-formula-label text-[8px] uppercase tracking-widest mt-0.5">Raw Score</span>
-            </div>
-          );
-        })()}
       </div>
 
-      {/* Question Breakdown */}
-      <div className="relative z-10 w-full max-w-md space-y-3 mb-4">
-        <QuestionBreakdownStrip
-          totalQ={totalQuestions}
-          correct={correct}
-          wrong={wrong}
-          skipped={skipped}
-        />
-      </div>
-
-      {/* Stat cards */}
-      <div className="text-[10px] text-foreground/30 font-bold tracking-widest uppercase mb-2 self-start ml-1">👆 Tap card to filter review</div>
-      <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full mb-2">
-        {stats.map(({ label, value, color, filter, hoverBg, activeRing, subtitle }) => {
-          const isActive = filter && activeFilter === filter;
-          return (
-            <div key={label}
-              onClick={() => filter && onFilterReview(filter)}
-              className={`border rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center transition-all duration-300 active:scale-95 backdrop-blur-sm premium-card-hover
-                ${filter ? `cursor-pointer ${isActive ? `ring-2 ${activeRing}` : `speedo-stat-card ${hoverBg}`}` : 'speedo-stat-card'}`}>
-              <span className={`text-xl sm:text-2xl md:text-3xl font-black ${color}`}>{value}</span>
-              <span className="speedo-stat-label text-[9px] sm:text-[10px] uppercase tracking-widest mt-1.5 font-bold text-center">{label}</span>
-              {subtitle && <span className="text-[7px] text-foreground/25 mt-0.5 text-center leading-tight">{subtitle}</span>}
-              {filter && <span className="text-[8px] text-foreground/20 mt-1">{isActive ? '▲ Active' : '↓ Filter'}</span>}
-            </div>
-          );
-        })}
+      {/* One merged stats panel: the numbers ARE the filter for the review below */}
+      <div className="relative z-10 w-full max-w-md">
+        <ResultStatsPanel totalQuestions={totalQuestions} correct={correct} wrong={wrong} skipped={skipped} timeTaken={timeTaken} accuracy={accuracy}
+          rawPct={rawPctValue} selected={selected} onToggle={onFilterReview} />
       </div>
 
       </div>

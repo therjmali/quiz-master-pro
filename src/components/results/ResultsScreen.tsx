@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import ResultNavigator from './ResultNavigator';
+import { normalizeFacets, readLegacyFacets, toggleFacet, type FacetKey, type StatusFilter } from '../../utils/attemptStats';
 import { usePersistedState } from '../../hooks/usePersistedState';
 import { Flag, ArrowLeft, Pencil, Check, X, FolderPlus, FileDown, Loader2, ChevronRight, Dumbbell } from 'lucide-react';
 import { toast } from 'sonner';
@@ -25,7 +27,6 @@ import { buildRevisionSheetHtml, buildRevisionSheetText } from '../../utils/repo
 import { exportSmartReport, exportTextReport, wrapHtmlForWord } from '../../utils/reports/htmlReportBuilder';
 import { getRevisionCache, setRevisionCache } from '../../utils/revisionCache';
 
-type Filter = 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked';
 
 /** Staged reveal phases */
 type RevealPhase = 'loading' | 'hero' | 'charts' | 'review' | 'complete';
@@ -55,6 +56,8 @@ interface Props {
   // Swipe navigation between results
   historyIndex?: number;
   historyTotal?: number;
+  /** every quiz of the history, for the "Jump to a quiz" popup */
+  historyList?: readonly QuizResult[];
   onNavigateResult?: (direction: 'prev' | 'next') => void;
 }
 
@@ -65,7 +68,7 @@ export default function ResultsScreen({
   rationalePrefs, onRationalePrefsChange, reportHelper, onReportHelperChange,
   onHome, onRetry, onNewQuiz, onPracticeMistakes, onRetryAll, getAiRationale,
   onBackToProfile, onViewResult, onMoreLikeThis, moreLikeThisLoading, onUpdateMeta, onOpenReportPreview, onAskAI,
-  historyIndex, historyTotal, onNavigateResult,
+  historyIndex, historyTotal, historyList, onNavigateResult,
 }: Props) {
   const { profile } = useProfileStore();
   // ── Negative marking local override — keeps UI in sync after apply/remove ──
@@ -75,7 +78,8 @@ export default function ResultsScreen({
   const resultKey0 = rawResult.id || String(rawResult.timestamp);
   useEffect(() => { setNmOverride(null); }, [resultKey0]);
 
-  const [reviewFilter, setReviewFilter] = usePersistedState<Filter>('results_review_filter', 'all');
+  // ✅ ❌ ⏭️ 🔖 pills that are on (empty = All). The single filter of older versions is carried over once.
+  const [reviewSel, setReviewSel] = usePersistedState<FacetKey[]>('results_review_filters_v2', readLegacyFacets('results_review_filter'));
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [editingMeta, setEditingMeta] = useState(false);
   const [editTitle, setEditTitle] = useState(result.quizTitle || '');
@@ -164,7 +168,7 @@ export default function ResultsScreen({
 
   // Reset form states when result changes
   useEffect(() => {
-    setReviewFilter('all');
+    setReviewSel([]);
     setEditingMeta(false);
     setShowFolderPicker(false);
     setEditTitle(result.quizTitle || '');
@@ -210,8 +214,8 @@ export default function ResultsScreen({
     ? result.quizData.map((q, i) => ({ q, i, ua: result.userAnswers[i], flagged: result.flaggedQuestions![i] })).filter(x => x.flagged)
     : [];
 
-  const handleFilterReview = (f: Filter) => {
-    setReviewFilter(f);
+  const handleFilterReview = (f: StatusFilter | 'bookmarked') => {
+    setReviewSel(prev => toggleFacet(normalizeFacets(prev), f));
     setTimeout(() => {
       document.getElementById('review-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -349,40 +353,10 @@ export default function ResultsScreen({
       onTouchStart={onNavigateResult ? handleResultSwipeStart : undefined}
       onTouchEnd={onNavigateResult ? handleResultSwipeEnd : undefined}
     >
-      {/* Result navigation indicator */}
+      {/* Result navigator: Prev | which quiz (tap = jump to any quiz, filter by name / subject / date) | Next */}
       {historyIndex !== undefined && historyTotal !== undefined && historyTotal > 1 && onNavigateResult && (
-        <div className="flex items-center justify-between mb-3 px-1">
-          <button
-            onClick={() => onNavigateResult('prev')}
-            disabled={historyIndex <= 0}
-            className="flex items-center gap-1 text-xs font-bold text-foreground/40 hover:text-foreground disabled:opacity-20 bg-foreground/5 border border-border px-3 py-1.5 rounded-xl transition-all active:scale-95"
-          >
-            <ArrowLeft className="w-3 h-3" /> Prev
-          </button>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-foreground/40">
-              {historyIndex + 1} of {historyTotal}
-            </span>
-            <div className="flex gap-1">
-              {Array.from({ length: Math.min(historyTotal, 10) }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`h-1 rounded-full transition-all duration-300 ${
-                    i === historyIndex ? 'w-4 bg-primary' : 'w-1.5 bg-foreground/15'
-                  }`}
-                />
-              ))}
-              {historyTotal > 10 && <span className="text-[8px] text-foreground/20 font-bold ml-0.5">+{historyTotal - 10}</span>}
-            </div>
-          </div>
-          <button
-            onClick={() => onNavigateResult('next')}
-            disabled={historyIndex >= historyTotal - 1}
-            className="flex items-center gap-1 text-xs font-bold text-foreground/40 hover:text-foreground disabled:opacity-20 bg-foreground/5 border border-border px-3 py-1.5 rounded-xl transition-all active:scale-95"
-          >
-            Next <ChevronRight className="w-3 h-3" />
-          </button>
-        </div>
+        <ResultNavigator index={historyIndex} total={historyTotal} current={result} list={historyList}
+          onPrev={() => onNavigateResult('prev')} onNext={() => onNavigateResult('next')} onOpen={onViewResult} />
       )}
 
       {onBackToProfile && (
@@ -635,7 +609,7 @@ export default function ResultsScreen({
       <ScoreHero
         result={result}
         settings={settings}
-        activeFilter={reviewFilter}
+        selected={normalizeFacets(reviewSel)}
         startAnimation={speedoReady}
         onHome={onHome}
         onRetry={onRetry}
@@ -776,8 +750,8 @@ export default function ResultsScreen({
           settings={settings}
           rationaleCache={rationaleCache}
           getAiRationale={getAiRationale}
-          activeFilter={reviewFilter}
-          onFilterChange={setReviewFilter}
+          selected={normalizeFacets(reviewSel)}
+          onSelectedChange={setReviewSel}
           reportOrder={reportOrder}
           rationalePrefs={rationalePrefs}
           onRationalePrefsChange={onRationalePrefsChange}

@@ -27,8 +27,9 @@ export const BAR_PILLS: Pill[] = [
 export const compactCount = (n: number): string => (n >= 10000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}k` : n.toLocaleString());
 
 interface Props {
-  value: string;
-  onChange: (f: BarFilter) => void;
+  /** Selected pills (empty = All). ✅ ❌ ⏭️ 🔖 can be on together; All is on when nothing else is. */
+  selected: readonly string[];
+  onToggle: (f: BarFilter) => void;
   /** Static totals of the whole master set; they never depend on `value`. */
   counts: BarCounts;
   className?: string;
@@ -39,26 +40,26 @@ interface Props {
 /**
  * The one status filter used by the Progress dashboard and by every quiz report:
  * All (every question) | \u2705 Correct | \u274C Mistakes | \u23ED\uFE0F Skipped | \uD83D\uDD16 Bookmarked, each with its count,
- * on one straight line at every screen width. Counts are static and never change with the selection.
+ * on one straight line at every screen width. Several pills can be on at once (multi-select); counts are static and
+ * never change with the selection.
  */
-export default function StatusFilterBar({ value, onChange, counts, className = '', testId = 'status-filter-bar', ariaLabel = 'Filter questions by status' }: Props) {
+export default function StatusFilterBar({ selected, onToggle, counts, className = '', testId = 'status-filter-bar', ariaLabel = 'Filter questions by status' }: Props) {
   return (
-    <div className={`qmp-status-bar ${className}`} role="tablist" aria-label={ariaLabel} data-testid={testId}>
+    <div className={`qmp-status-bar ${className}`} role="group" aria-label={ariaLabel} data-testid={testId}>
       {BAR_PILLS.map(({ key, label, emoji, name, on }) => {
-        const active = value === key;
+        const active = key === 'all' ? selected.length === 0 : selected.includes(key);
         const n = counts[key] ?? 0;
         return (
           <button
             key={key}
             type="button"
-            role="tab"
-            aria-selected={active}
+            aria-pressed={active}
             aria-label={`${name} (${n})`}
             title={`${name} (${n})`}
             data-testid={`status-pill-${key}`}
             data-status={key}
             data-count={n}
-            onClick={() => { hapticTap(); onChange(key); }}
+            onClick={() => { hapticTap(); onToggle(key); }}
             className={`qmp-status-pill ${active ? `${on} shadow-md` : 'border-border bg-foreground/[0.05] text-foreground/70 hover:bg-foreground/[0.09]'}`}
           >
             {label ? <span>{label}</span> : <span className="qmp-status-pill__icon" aria-hidden>{emoji}</span>}

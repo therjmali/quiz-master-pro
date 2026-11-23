@@ -4,20 +4,20 @@ import { toast } from 'sonner';
 import { hapticTap } from '../../utils/haptics';
 import { QuizResult, QuizSettings, ReportOrder, RationalePrefs, AIMode } from '../../types/quiz';
 import ReviewCard from './ReviewCard';
-import StatusFilterBar, { type BarFilter, type BarCounts } from '../shared/StatusFilterBar';
+import StatusFilterBar, { type BarCounts } from '../shared/StatusFilterBar';
 import { useStatusFilter } from '../../hooks/useStatusFilter';
-import { flattenAttempts, orderAttemptItems, type StatusFilter } from '../../utils/attemptStats';
+import { flattenAttempts, orderAttemptItems, type AttemptItem, type FacetKey } from '../../utils/attemptStats';
 import { useQuestionBookmarks } from '../../hooks/useQuestionBookmarks';
 
-type Filter = 'all' | 'correct' | 'wrong' | 'skipped' | 'bookmarked';
 
 interface Props {
   result: QuizResult;
   settings: QuizSettings;
   rationaleCache: Record<string, string>;
   getAiRationale: (q: string, ca: string, ua: string | null, s: 'correct' | 'wrong' | 'skipped') => Promise<string>;
-  activeFilter: Filter;
-  onFilterChange: (f: Filter) => void;
+  /** ✅ ❌ ⏭️ 🔖 pills that are on (empty = All); several can be on together */
+  selected: readonly FacetKey[];
+  onSelectedChange: (next: FacetKey[]) => void;
   reportOrder?: ReportOrder;
   rationalePrefs: RationalePrefs;
   onRationalePrefsChange: (p: RationalePrefs) => void;
@@ -28,7 +28,7 @@ interface Props {
 
 export default function ReviewSection({
   result, settings, rationaleCache, getAiRationale,
-  activeFilter, onFilterChange,
+  selected: selectedProp, onSelectedChange,
   reportOrder = 'attempt',
   rationalePrefs, onRationalePrefsChange,
   reportHelper, onReportHelperChange, onAskAI,
@@ -62,24 +62,21 @@ export default function ReviewSection({
 
   // Master list: every question of this attempt, built once. It is never filtered, sorted or replaced.
   const master = useMemo(() => flattenAttempts([result]), [result]);
-  const { counts, displayed } = useStatusFilter(master, {
-    filter: activeFilter,
-    onFilterChange: f => onFilterChange(f),
-  });
+  const isBookmarked = useCallback((it: AttemptItem) => bookmarkedSet.has(it.q.question), [bookmarkedSet]);
+  const { selected, toggle, clear, counts, displayed } = useStatusFilter<AttemptItem>(master, { selected: selectedProp, onSelectedChange, isBookmarked });
 
   const bookmarkedCount = useMemo(() => master.filter(it => bookmarkedSet.has(it.q.question)).length, [master, bookmarkedSet]);
   const barCounts = useMemo<BarCounts>(() => ({ ...counts, bookmarked: bookmarkedCount }), [counts, bookmarkedCount]);
 
-  // View-only steps on COPIES: the bookmark narrowing, then book order.
+  // View-only step on a COPY: book order.
   const filtered = useMemo(() => {
-    const narrowed = activeFilter === 'bookmarked' ? displayed.filter(it => bookmarkedSet.has(it.q.question)) : displayed;
-    return orderAttemptItems(narrowed, reportOrder).map(it => ({
+    return orderAttemptItems(displayed, reportOrder).map(it => ({
       key: it.key,
       q: reportOrder === 'original' ? { ...it.q, shuffledOpts: it.q.options } : it.q,
       userAnswer: it.userAnswer,
       attemptIdx: it.index,
     }));
-  }, [displayed, activeFilter, bookmarkedSet, reportOrder]);
+  }, [displayed, reportOrder]);
 
   const difficultyFiltered = useMemo(() => {
     if (explainDifficulty === 'all') return filtered;
@@ -132,7 +129,13 @@ export default function ReviewSection({
       </div>
 
       {/* Status filter: the same bar as the Progress dashboard. Counts are static (whole attempt). */}
-      <StatusFilterBar className="mb-2" value={activeFilter} onChange={(f: BarFilter) => onFilterChange(f)} counts={barCounts} testId="review-filters" ariaLabel="Filter questions" />
+      <StatusFilterBar className="mb-2" selected={selected} onToggle={toggle} counts={barCounts} testId="review-filters" ariaLabel="Filter questions (select one or more)" />
+      {selected.length > 0 && (
+        <div className="mb-2 flex items-center justify-between gap-2 rounded-xl border border-border bg-foreground/[0.04] px-3 py-1.5" data-testid="review-filter-summary">
+          <span className="text-[11px] font-bold text-foreground/70">Showing <b className="text-foreground">{filtered.length}</b> of {counts.all}</span>
+          <button type="button" onClick={() => { hapticTap(); clear(); }} className="rounded-full border border-border px-2.5 py-1 text-[11px] font-bold text-foreground/70 active:scale-95">Show all</button>
+        </div>
+      )}
 
       {/* View options: capsules, one line, swipe sideways (sticks cleanly below navbar) */}
       <div className="sticky top-[60px] sm:top-[68px] z-30 -mx-1 mb-4 bg-background/95 px-1 py-1.5 backdrop-blur-md pointer-events-auto shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)]">

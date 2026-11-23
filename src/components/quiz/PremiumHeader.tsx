@@ -141,7 +141,9 @@ export default function PremiumHeader({
         {/* ── Actions: bookmark · pause · exit stay outside; everything else lives in the ⋯ menu (same in every orientation) ── */}
         <div className="qh-actions">
           <button onClick={onToggleBookmark} aria-label={isBookmarked ? 'Remove Bookmark' : 'Bookmark'} aria-pressed={isBookmarked}
-            className={`qh-btn ${isBookmarked ? 'is-mark' : ''}`}><Bookmark className="w-4 h-4" fill={isBookmarked ? 'currentColor' : 'none'} /></button>
+            data-bookmarked={isBookmarked} className={`qh-btn ${isBookmarked ? 'is-mark' : ''}`}>
+            {isBookmarked ? <span className="text-[1.05rem] leading-none" aria-hidden="true">🔖</span> : <Bookmark className="w-4 h-4" />}
+          </button>
           <button onClick={onTogglePause} aria-label={isPaused ? 'Resume quiz' : 'Pause quiz'} aria-pressed={isPaused}
             className={`qh-btn ${isPaused ? 'is-resume' : 'is-pause'}`}>{isPaused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}</button>
 

@@ -413,7 +413,20 @@ function getSubjectEmoji(subject: string): string {
  *  Home → 📁 Bookmarks → 📁 {subject} → 📁 {quizTitle} → 📅 {date} → 🔖 bookmark
  *  Returns updated root (mutated in place, also saved).
  */
+/** The tree is plain JSON, so a JSON round trip is a safe deep copy. */
+const cloneTree = (node: FileNode): FileNode => JSON.parse(JSON.stringify(node));
+
+/**
+ * Adds a bookmark and returns a NEW tree (the argument is left untouched), or the same tree when the question
+ * is already bookmarked. Returning a new object matters: React only re-renders on a new reference, and returning
+ * the mutated input made the bookmark button stay outline after "Bookmarked!".
+ */
 export function addBookmarkToTree(root: FileNode, data: BookmarkData): FileNode {
+  if (isQuestionBookmarked(root, data.question)) return root;
+  return addBookmarkInPlace(cloneTree(root), data);
+}
+
+function addBookmarkInPlace(root: FileNode, data: BookmarkData): FileNode {
   const subject = data.subject || 'General';
   const quizTitle = data.quizTitle || 'Untitled Quiz';
   const date = new Date().toISOString().split('T')[0];
@@ -482,8 +495,8 @@ export function addBookmarkToTree(root: FileNode, data: BookmarkData): FileNode 
 
 /** Remove a bookmark node and clean up empty parent folders */
 export function removeBookmarkNode(root: FileNode, nodeId: string): FileNode {
-  // Remove the node
-  const { tree } = removeNode(root, nodeId);
+  // Remove the node from a copy, so callers always get a new reference to render
+  const { tree } = removeNode(cloneTree(root), nodeId);
   // Bubble up: clean empty folders inside Bookmarks
   const bmFolder = tree.children?.find(c => c.type === 'folder' && c.name === 'Bookmarks');
   if (bmFolder) {

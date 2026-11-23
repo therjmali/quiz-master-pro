@@ -104,7 +104,7 @@ async function run(label, w, h) {
   const bt = await box.innerText();
   ok(`[${label}] rationale box is 📖 + bullets with no "Ans. -" line or text label`, /📖/.test(bt) && !/Ans\.|Explanation|Rationale:/.test(bt), bt.split('\n').slice(0, 2).join(' | '));
   // filter by wrong
-  await page.getByRole('tab', { name: /^Mistakes/ }).click(); await page.waitForTimeout(500);
+  await page.getByTestId('review-filters').getByTestId('status-pill-wrong').click(); await page.waitForTimeout(500);
   ok(`[${label}] Mistakes filter shows only the 4 wrong questions`, (await page.locator('[data-review-status="wrong"]').count()) === 4 && (await page.locator('[data-review-status="correct"]').count()) === 0);
   ok(`[${label}] no JS errors`, errs.length === 0, errs.join(' | ').slice(0, 400));
   await ctx.close();
