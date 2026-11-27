@@ -1,4 +1,5 @@
 import UpdateBanner from './components/update/UpdateBanner';
+import { QuestionFixProvider, useQuestionFixEngine } from './hooks/useQuestionFix';
 import { OPEN_UPDATES_EVENT, hasUpdate, scheduleUpdateCheck, useUpdateState } from './platform/updater';
 import { requestOpenSettingsSection } from './components/cloud/CloudGate';
 import { initReportNotificationTap, pruneMissingReports } from './platform/reportFiles';
@@ -795,9 +796,17 @@ function AppScreens({
   useShakeDetection({ onShake: () => { hapticHeavy(); undoLastTrash(); }, enabled: true });
 
   const bgTheme = screen === 'quiz' && bgIdx > 0 ? `bg-gradient-to-br ${BG_THEMES[bgIdx]}` : 'bg-background';
+  // Correcting a question (answer key, text, options) re-scores every attempt, saved quiz, bookmark and mistake that holds it.
+  const fallbackScoring = useCallback(() => ({ negativeMarking: settings.negativeMarking, negativeMarks: settings.negativeMarks, marksPerQuestion: settings.marksPerQuestion }), [settings.negativeMarking, settings.negativeMarks, settings.marksPerQuestion]);
+  const fixQuestion = useQuestionFixEngine({
+    historyRef, setHistory, currentResult, setCurrentResult, markDirty, cacheDetail, invalidateDetail,
+    onCloudDirty: onCloudDirty as (c: 'quiz' | 'library', p?: 'background' | 'immediate' | 'critical') => void, fallbackScoring,
+  });
+
   const showBottomNav = screen !== 'quiz' && screen !== 'summary' && screen !== 'report-preview' && screen !== 'flashcards';
 
   return (
+    <QuestionFixProvider fix={fixQuestion}>
     <div
       ref={swipeRef}
       className={`qmp-app-root ${bgTheme} ${theme === 'dark' ? 'app-dark' : 'app-light'} transition-colors duration-300 overflow-x-hidden`}
@@ -919,6 +928,7 @@ function AppScreens({
               onReportHelperChange={handleReportHelperChange}
               isEditingActiveQuiz={editingActiveQuiz} onReturnToQuiz={handleResumeAfterEdit}
               featureVisibility={profile.featureVisibility}
+              onOpenTemplates={() => { screenMetaRef.current = { ...screenMetaRef.current, settingsView: 'templates' }; navigateTo('settings'); }}
               onOpenApiKeys={() => { screenMetaRef.current = { ...screenMetaRef.current, settingsView: 'apikeys' }; navigateTo('settings'); }}
             />
           </ErrorBoundary>
@@ -1225,6 +1235,7 @@ function AppScreens({
       </Suspense>
 
     </div>
+    </QuestionFixProvider>
   );
 }
 

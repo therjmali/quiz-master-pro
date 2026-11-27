@@ -61,6 +61,15 @@ export interface QuizQuestion {
    * original order regardless of how the live quiz was ordered.
    */
   originalIndex?: number;
+  /**
+   * Set when the question was corrected after the quiz (answer key changed, text or options edited).
+   * `original` is the question as it was, so the correction can be undone and shown as "Corrected".
+   */
+  fix?: {
+    at: number;
+    by: 'user' | 'ai';
+    original: { question: string; options: string[]; correctAnswer: string; correctAnswers?: string[]; rationale?: string; difficulty: 'easy' | 'medium' | 'hard' };
+  };
 }
 
 export interface QuizSettings {
@@ -77,6 +86,8 @@ export interface QuizSettings {
   totalMinutesPerQuestion?: number;
   /** Which quiz-mode preset is applied (drives the highlighted card). */
   practiceMode?: 'practice' | 'exam';
+  /** Id of the quiz template that was applied (the active card on the Create screen). */
+  templateId?: string;
   /** Seconds before auto-advancing in Instant Feedback mode. 0 = manual next. */
   instantFeedbackDelay: number;
   /** Whether the mark/flag button is visible during quiz (default: true) */
@@ -147,6 +158,10 @@ export interface QuizSummary extends ScoreResult {
   flaggedQuestions?: boolean[];
   questionTimings?: number[];
   confidenceLevels?: ('sure' | 'guessing' | null)[];
+  /** The marking rules this attempt was scored with (kept so a corrected answer key can be re-scored exactly). */
+  scoring?: { marksPerQuestion: number; negativeMarking: boolean; negativeMarks: number };
+  /** When a question of this attempt was last corrected. */
+  fixedAt?: number;
 }
 
 export interface QuizResult extends ScoreResult {
@@ -183,5 +198,9 @@ export interface QuizResult extends ScoreResult {
   parentQuizId?: string;
   /** User notes about this quiz */
   notes?: string;
+  /** The marking rules this attempt was scored with (kept so a corrected answer key can be re-scored exactly). */
+  scoring?: { marksPerQuestion: number; negativeMarking: boolean; negativeMarks: number };
+  /** When a question of this attempt was last corrected. */
+  fixedAt?: number;
 }
 

@@ -1,386 +1,204 @@
-import { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Copy, ChevronDown, ChevronRight, Clock, Zap, Target } from 'lucide-react';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@project/components/ui/alert-dialog';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from '@project/components/ui/dialog';
-import {
-  QuizTemplate, BUILT_IN_TEMPLATES, loadUserTemplates,
-  createTemplate, updateTemplate, deleteTemplate, duplicateTemplate,
-} from '../../utils/templates';
-import { QuizSettings } from '../../types/quiz';
+import { useEffect, useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp, Check, Copy, Pencil, Plus, RotateCcw, Star, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Overlay, { OverlayBody, OverlayFooter, OverlayHeader } from '../ui/Overlay';
+import { Segmented, Toggle } from './settings/controls';
+import { hapticTap } from '../../utils/haptics';
+import {
+  MAX_TEMPLATES, TEMPLATES_EVENT, deleteTemplate, describeRules, duplicateTemplate, getTemplates, loadTemplateStore, moveTemplate,
+  restoreFactoryTemplates, sanitizeRules, saveTemplate, setDefaultTemplate, templateDescription, totalSecondsFor,
+  type QuizTemplate, type TemplateRules, type TimerKind,
+} from '../../utils/quizTemplates';
 
-const EMOJI_OPTIONS = ['📋', '⚡', '🏫', '🎯', '📝', '🔥', '💎', '🚀', '⏱️', '🧠', '🎮', '📚', '🏆', '✨', '💡', '🎓', '⚙️', '🎲', '🌟', '🔬'];
+const EMOJIS = ['🧭', '🎯', '🏥', '📝', '⚡', '🔥', '📚', '🧠', '⏱️', '🏆', '🩺', '💊'];
 
-// ── Default settings for the form ─────────────────────────────────────────
-const DEFAULT_PATCH: Partial<QuizSettings> = {
-  mode: 'submit',
-  timerMode: 'off',
-  timerEnabled: false,
-  timerValue: 30,
-  timerUnit: 'sec',
-  totalTimerValue: 60,
-  totalTimerUnit: 'min',
-  negativeMarking: false,
-  negativeMarks: 0.25,
-  marksPerQuestion: 1,
-  passMark: 50,
-};
+type Rationale = 'keep' | 'both' | 'book' | 'ai' | 'none';
+const ratOf = (r: TemplateRules['rationale']): Rationale => (!r ? 'keep' : r.showBook && r.showAi ? 'both' : r.showBook ? 'book' : r.showAi ? 'ai' : 'none');
+const ratTo = (v: Rationale): TemplateRules['rationale'] => (v === 'keep' ? null : { showBook: v === 'both' || v === 'book', showAi: v === 'both' || v === 'ai' });
 
-interface FormState {
-  label: string;
-  desc: string;
-  emoji: string;
-  mode: 'submit' | 'live';
-  timerMode: 'off' | 'per-question' | 'total';
-  timerValue: number;
-  timerUnit: 'sec' | 'min';
-  totalTimerValue: number;
-  totalTimerUnit: 'sec' | 'min';
-  negativeMarking: boolean;
-  negativeMarks: number;
-  marksPerQuestion: number;
-  passMark: number;
-}
+interface Draft { id?: string; emoji: string; name: string; desc: string; rules: TemplateRules }
+const blank = (): Draft => ({ emoji: '📝', name: '', desc: '', rules: sanitizeRules({ style: 'submit', timer: 'scaled', minutesPerQuestion: 1 }) });
+const toDraft = (t: QuizTemplate): Draft => ({ id: t.id, emoji: t.emoji, name: t.name, desc: t.desc, rules: sanitizeRules(t.rules) });
 
-function formFromTemplate(t?: QuizTemplate): FormState {
-  const p = t?.patch || DEFAULT_PATCH;
-  return {
-    label: t?.label || '',
-    desc: t?.desc || '',
-    emoji: t?.emoji || '📋',
-    mode: (p.mode as 'submit' | 'live') || 'submit',
-    timerMode: (p.timerMode as 'off' | 'per-question' | 'total') || 'off',
-    timerValue: p.timerValue ?? 30,
-    timerUnit: (p.timerUnit as 'sec' | 'min') || 'sec',
-    totalTimerValue: p.totalTimerValue ?? 60,
-    totalTimerUnit: (p.totalTimerUnit as 'sec' | 'min') || 'min',
-    negativeMarking: p.negativeMarking ?? false,
-    negativeMarks: p.negativeMarks ?? 0.25,
-    marksPerQuestion: p.marksPerQuestion ?? 1,
-    passMark: p.passMark ?? 50,
-  };
-}
-
-function patchFromForm(f: FormState): Partial<QuizSettings> {
-  return {
-    mode: f.mode,
-    timerMode: f.timerMode,
-    timerEnabled: f.timerMode !== 'off',
-    timerValue: f.timerValue,
-    timerUnit: f.timerUnit,
-    totalTimerValue: f.totalTimerValue,
-    totalTimerUnit: f.totalTimerUnit,
-    negativeMarking: f.negativeMarking,
-    negativeMarks: f.negativeMarks,
-    marksPerQuestion: f.marksPerQuestion,
-    passMark: f.passMark,
-  };
-}
-
-// ── Small select helper ───────────────────────────────────────────────────
-function MiniSelect({ value, onChange, options, className = '' }: {
-  value: string; onChange: (v: string) => void; options: { v: string; l: string }[]; className?: string;
-}) {
+/** A number box that keeps what you type (even an empty box or "0.") and only commits a valid number. */
+function NumberField({ value, onCommit, min, max, step = 1, label, suffix, testId }: { value: number; onCommit: (n: number) => void; min: number; max: number; step?: number; label: string; suffix?: string; testId?: string }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => { setText(String(value)); }, [value]);
   return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      className={`bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40 ${className}`}>
-      {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
-    </select>
+    <label className="flex items-center gap-2 rounded-xl border border-border bg-foreground/[0.04] px-3 py-2 text-xs font-bold text-foreground/60">
+      <span className="min-w-0 flex-1">{label}</span>
+      <input type="number" inputMode="decimal" value={text} min={min} max={max} step={step} data-testid={testId} aria-label={label}
+        onChange={e => { setText(e.target.value); const n = Number(e.target.value); if (e.target.value !== '' && Number.isFinite(n)) onCommit(n); }}
+        onBlur={() => setText(String(value))}
+        className="w-20 rounded-lg border border-border bg-card px-2 py-1.5 text-right text-sm font-black tabular-nums text-foreground outline-none focus:border-primary/50" />
+      {suffix && <span className="w-9 shrink-0 text-[11px] text-foreground/45">{suffix}</span>}
+    </label>
   );
 }
 
-// ── Template Card ─────────────────────────────────────────────────────────
-function TemplateCard({ tpl, onEdit, onDuplicate, onDelete, index = 0 }: {
-  tpl: QuizTemplate;
-  onEdit?: () => void;
-  onDuplicate: () => void;
-  onDelete?: () => void;
-  index?: number;
-}) {
-  const p = tpl.patch;
-  const chips: string[] = [];
-  if (p.mode === 'live') chips.push('Training');
-  if (p.mode === 'submit') chips.push('Exam');
-  if (p.timerMode === 'per-question') chips.push(`${p.timerValue || 30}${p.timerUnit === 'min' ? 'm' : 's'}/Q`);
-  if (p.timerMode === 'total') chips.push(p.totalMinutesPerQuestion ? `${p.totalMinutesPerQuestion}m × Q total` : `${p.totalTimerValue || 60}${p.totalTimerUnit === 'min' ? 'm' : 's'} total`);
-  if (p.timerMode === 'off') chips.push('No timer');
-  if (p.negativeMarking) chips.push(`−${p.negativeMarks ?? 0.25}`);
-  if ((p.marksPerQuestion ?? 1) !== 1) chips.push(`${p.marksPerQuestion} pts`);
+function Editor({ draft: initial, onClose }: { draft: Draft; onClose: () => void }) {
+  const [d, setD] = useState<Draft>(initial);
+  const r = d.rules;
+  const set = (patch: Partial<TemplateRules>) => setD(prev => ({ ...prev, rules: sanitizeRules({ ...prev.rules, ...patch }) }));
+  const nameOk = d.name.trim().length > 0;
+  const example = r.timer === 'scaled' ? `50 questions → ${Math.round(totalSecondsFor(r, 50) / 60 * 100) / 100} min` : null;
+
+  const save = () => {
+    if (!nameOk) return;
+    try {
+      saveTemplate({ id: d.id, emoji: d.emoji, name: d.name, desc: d.desc, rules: r });
+      toast.success(d.id ? '✅ Template saved' : '✅ Template created');
+      onClose();
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not save the template'); }
+  };
 
   return (
-    <div className={`premium-card-hover bg-card border rounded-2xl overflow-hidden group stagger-item ${tpl.isBuiltIn ? 'border-border/60' : 'border-primary/20 bg-primary/[0.02]'}`}
-      style={{ animationDelay: `${index * 60}ms` }}>
-      <div className="flex items-center gap-3 p-4">
-        <div className="w-11 h-11 rounded-xl bg-foreground/[0.04] border border-border flex items-center justify-center text-xl flex-shrink-0 group-hover:scale-110 group-hover:bg-primary/10 group-hover:border-primary/25 transition-all duration-300">
-          {tpl.emoji}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-black text-foreground truncate">{tpl.label}</p>
-            {tpl.isBuiltIn && (
-              <span className="text-[8px] font-bold text-foreground/25 bg-foreground/5 px-1.5 py-0.5 rounded-md uppercase tracking-wider flex-shrink-0">Built-in</span>
-            )}
-          </div>
-          <p className="text-xs text-foreground/40 truncate mt-0.5">{tpl.desc}</p>
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {chips.map(c => (
-              <span key={c} className="text-[9px] font-bold text-primary/60 bg-primary/8 px-1.5 py-0.5 rounded border border-primary/15">{c}</span>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div className="flex border-t border-border">
-        {onEdit && (
-          <button onClick={onEdit} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-foreground/40 hover:text-primary hover:bg-primary/5 transition-all active:scale-95 ripple-press">
-            <Pencil className="w-3.5 h-3.5" /> Edit
-          </button>
-        )}
-        <button onClick={onDuplicate} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-bold text-foreground/40 hover:text-foreground/70 hover:bg-foreground/5 transition-all active:scale-95 border-l border-border ripple-press">
-          <Copy className="w-3.5 h-3.5" /> Duplicate
-        </button>
-        {onDelete && (
-          <button onClick={onDelete} className="flex items-center justify-center gap-1.5 px-5 py-2.5 text-[11px] font-bold text-foreground/25 hover:text-red-400 hover:bg-red-500/5 transition-all active:scale-95 border-l border-border ripple-press">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Main Component ────────────────────────────────────────────────────────
-export default function TemplatesTab() {
-  const [userTemplates, setUserTemplates] = useState(() => loadUserTemplates());
-  const [deleteTarget, setDeleteTarget] = useState<QuizTemplate | null>(null);
-  const [editTarget, setEditTarget] = useState<QuizTemplate | null>(null); // null for "create new"
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<FormState>(formFromTemplate());
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [builtInExpanded, setBuiltInExpanded] = useState(true);
-  const [customExpanded, setCustomExpanded] = useState(true);
-
-  const refresh = () => setUserTemplates(loadUserTemplates());
-
-  const openCreate = () => {
-    setEditTarget(null);
-    setForm(formFromTemplate());
-    setShowEmojiPicker(false);
-    setFormOpen(true);
-  };
-
-  const openEdit = (tpl: QuizTemplate) => {
-    setEditTarget(tpl);
-    setForm(formFromTemplate(tpl));
-    setShowEmojiPicker(false);
-    setFormOpen(true);
-  };
-
-  const handleSave = () => {
-    if (!form.label.trim()) { toast.error('Enter a template name'); return; }
-    const patch = patchFromForm(form);
-    if (editTarget) {
-      updateTemplate(editTarget.id, { label: form.label.trim(), desc: form.desc.trim(), emoji: form.emoji, patch });
-      toast.success('Template updated ✓');
-    } else {
-      createTemplate(form.label.trim(), form.desc.trim(), form.emoji, patch);
-      toast.success('Template created! 🎉');
-    }
-    refresh();
-    setFormOpen(false);
-  };
-
-  const handleDelete = () => {
-    if (!deleteTarget) return;
-    deleteTemplate(deleteTarget.id);
-    refresh();
-    setDeleteTarget(null);
-    toast.success('Template deleted');
-  };
-
-  const handleDuplicate = (id: string) => {
-    duplicateTemplate(id);
-    refresh();
-    toast.success('Template duplicated!');
-  };
-
-  const setF = (p: Partial<FormState>) => setForm(f => ({ ...f, ...p }));
-
-  return (
-    <>
-      {/* Delete confirmation */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}>
-        <AlertDialogContent className="bg-card border-border mx-4 rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground font-bold">Delete Template?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground">
-              "{deleteTarget?.label}" will be permanently removed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-muted border-border text-foreground">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-500 text-white border-none">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Create / Edit Dialog */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="bg-card border-border text-foreground rounded-2xl max-w-md mx-4 max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editTarget ? 'Edit Template' : 'Create Template'}</DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Name + Emoji */}
-            <div className="flex gap-2">
-              <div className="relative">
-                <button onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="w-12 h-12 rounded-xl bg-foreground/[0.04] border border-border flex items-center justify-center text-xl hover:border-foreground/20 transition-all">
-                  {form.emoji}
-                </button>
-                {showEmojiPicker && (
-                  <div className="absolute z-50 top-14 left-0 bg-card border border-border rounded-xl p-2.5 shadow-xl w-52">
-                    <div className="grid grid-cols-7 gap-1">
-                      {EMOJI_OPTIONS.map(em => (
-                        <button key={em} onClick={() => { setF({ emoji: em }); setShowEmojiPicker(false); }}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center text-sm hover:bg-primary/15 transition-all ${form.emoji === em ? 'bg-primary/20 ring-1 ring-primary/40' : ''}`}>
-                          {em}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 space-y-2">
-                <input value={form.label} onChange={e => setF({ label: e.target.value.slice(0, 30) })} placeholder="Template name"
-                  className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder-foreground/25 focus:outline-none focus:border-primary/40" />
-                <input value={form.desc} onChange={e => setF({ desc: e.target.value.slice(0, 60) })} placeholder="Short description"
-                  className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder-foreground/25 focus:outline-none focus:border-primary/40" />
+    <Overlay open onClose={onClose} kind="sheet" label={d.id ? 'Edit template' : 'New template'} hideClose className="qmp-tpl-panel">
+      <div className="flex min-h-0 flex-1 flex-col" data-testid="template-editor">
+        <OverlayHeader title={d.id ? 'Edit template' : 'New template'} subtitle="Rules applied with one tap on the Create screen" icon={<Pencil className="h-4 w-4" />} onClose={onClose} />
+        <OverlayBody padded={false}>
+          <div className="space-y-4 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-border bg-foreground/[0.05] text-3xl" aria-hidden>{d.emoji}</div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <input value={d.name} maxLength={24} onChange={e => setD({ ...d, name: e.target.value })} placeholder="Template name" aria-label="Template name" data-testid="tpl-name"
+                  className="w-full rounded-xl border border-border bg-foreground/[0.04] px-3 py-2.5 text-[0.95rem] font-black text-foreground outline-none focus:border-primary/50" />
+                <input value={d.desc} maxLength={60} onChange={e => setD({ ...d, desc: e.target.value })} placeholder="Short note (optional)" aria-label="Description" data-testid="tpl-desc"
+                  className="w-full rounded-xl border border-border bg-foreground/[0.04] px-3 py-2 text-xs font-semibold text-foreground outline-none focus:border-primary/50" />
               </div>
             </div>
-
-            {/* Quiz Mode */}
-            <div>
-              <p className="text-[10px] font-black text-foreground/40 uppercase tracking-widest mb-2">Quiz Mode</p>
-              <div className="grid grid-cols-2 gap-2">
-                {([['submit', '📋 Classic Exam'], ['live', '🎯 Training']] as const).map(([v, l]) => (
-                  <button key={v} onClick={() => setF({ mode: v })}
-                    className={`text-xs font-bold py-2.5 rounded-xl border transition-all ${form.mode === v ? 'bg-primary/15 border-primary/35 text-foreground' : 'bg-card border-border text-foreground/50'}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Timer */}
-            <div>
-              <p className="text-[10px] font-black text-foreground/40 uppercase tracking-widest mb-2">Timer</p>
-              <div className="grid grid-cols-3 gap-2 mb-2">
-                {([['off', '🚫 Off'], ['per-question', '⏱️ Per Q'], ['total', '⏳ Total']] as const).map(([v, l]) => (
-                  <button key={v} onClick={() => setF({ timerMode: v })}
-                    className={`text-xs font-bold py-2.5 rounded-xl border transition-all ${form.timerMode === v ? 'bg-primary/15 border-primary/35 text-foreground' : 'bg-card border-border text-foreground/50'}`}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-              {form.timerMode === 'per-question' && (
-                <div className="flex gap-2">
-                  <input type="number" value={form.timerValue} onChange={e => setF({ timerValue: Math.max(1, +e.target.value) })} min={1}
-                    className="flex-1 bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40" />
-                  <MiniSelect value={form.timerUnit} onChange={v => setF({ timerUnit: v as 'sec' | 'min' })}
-                    options={[{ v: 'sec', l: 'Seconds' }, { v: 'min', l: 'Minutes' }]} />
-                </div>
-              )}
-              {form.timerMode === 'total' && (
-                <div className="flex gap-2">
-                  <input type="number" value={form.totalTimerValue} onChange={e => setF({ totalTimerValue: Math.max(1, +e.target.value) })} min={1}
-                    className="flex-1 bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40" />
-                  <MiniSelect value={form.totalTimerUnit} onChange={v => setF({ totalTimerUnit: v as 'sec' | 'min' })}
-                    options={[{ v: 'sec', l: 'Seconds' }, { v: 'min', l: 'Minutes' }]} />
-                </div>
-              )}
-            </div>
-
-            {/* Scoring */}
-            <div>
-              <p className="text-[10px] font-black text-foreground/40 uppercase tracking-widest mb-2">Scoring</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-foreground/40 font-bold mb-1 block">Marks / Q</label>
-                  <input type="number" value={form.marksPerQuestion} onChange={e => setF({ marksPerQuestion: Math.max(0.25, +e.target.value) })} step={0.25} min={0.25}
-                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40" />
-                </div>
-                <div>
-                  <label className="text-[10px] text-foreground/40 font-bold mb-1 block">Pass Mark %</label>
-                  <input type="number" value={form.passMark} onChange={e => setF({ passMark: Math.min(100, Math.max(0, +e.target.value)) })} min={0} max={100}
-                    className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <button onClick={() => setF({ negativeMarking: !form.negativeMarking })}
-                    className={`w-10 h-6 rounded-full transition-all flex-shrink-0 ${form.negativeMarking ? 'bg-red-500' : 'bg-foreground/15'}`}>
-                    <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform mx-0.5 mt-0.5 ${form.negativeMarking ? 'translate-x-4' : ''}`} />
-                  </button>
-                  <span className="text-xs font-bold text-foreground/60">Negative Marking</span>
-                </label>
-                {form.negativeMarking && (
-                  <div className="mt-2">
-                    <label className="text-[10px] text-foreground/40 font-bold mb-1 block">Deduction per wrong answer</label>
-                    <input type="number" value={form.negativeMarks} onChange={e => setF({ negativeMarks: Math.max(0, +e.target.value) })} step={0.25} min={0}
-                      className="w-full bg-muted/30 border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary/40" />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex-col sm:flex-row gap-2 pt-2">
-            <button onClick={() => setFormOpen(false)}
-              className="text-sm font-bold px-5 py-2.5 rounded-xl border border-border text-foreground/50 hover:text-foreground transition-all w-full sm:w-auto">
-              Cancel
-            </button>
-            <button onClick={handleSave}
-              className="text-sm font-bold px-5 py-2.5 rounded-xl bg-primary text-primary-foreground transition-all active:scale-[0.98] w-full sm:w-auto">
-              {editTarget ? 'Save Changes' : 'Create Template'}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Main content */}
-      <div className="space-y-4">
-        {/* Header with + button */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-black text-foreground">Practice Modes</p>
-            <p className="text-xs text-foreground/40 mt-0.5">Practice and Exam — one tap on Create Quiz applies the full configuration</p>
-          </div>
-        </div>
-
-        {/* Built-in templates */}
-        <div>
-          <button onClick={() => setBuiltInExpanded(!builtInExpanded)}
-            className="flex items-center gap-2 w-full text-left mb-2">
-            {builtInExpanded ? <ChevronDown className="w-4 h-4 text-foreground/30" /> : <ChevronRight className="w-4 h-4 text-foreground/30" />}
-            <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest">Modes</span>
-            <span className="text-[10px] font-bold text-foreground/20 bg-foreground/5 px-2 py-0.5 rounded-full">{BUILT_IN_TEMPLATES.length}</span>
-          </button>
-          {builtInExpanded && (
-            <div className="space-y-2 animate-fade-in">
-              {BUILT_IN_TEMPLATES.map((tpl, i) => (
-                <TemplateCard key={tpl.id} tpl={tpl} onDuplicate={() => handleDuplicate(tpl.id)} index={i} />
+            <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Icon">
+              {EMOJIS.map(e => (
+                <button key={e} type="button" role="radio" aria-checked={d.emoji === e} onClick={() => setD({ ...d, emoji: e })}
+                  className={`grid h-9 w-9 place-items-center rounded-xl border text-lg active:scale-90 ${d.emoji === e ? 'border-primary bg-primary/15' : 'border-border bg-foreground/[0.03]'}`}>{e}</button>
               ))}
             </div>
-          )}
-        </div>
 
+            <section className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-foreground/45">Style</p>
+              <Segmented label="Quiz style" value={r.style} onChange={v => set({ style: v as TemplateRules['style'] })} options={[{ value: 'submit', label: 'Submit at end' }, { value: 'live', label: 'Instant feedback' }]} />
+            </section>
+
+            <section className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-foreground/45">Timer</p>
+              <Segmented label="Timer" value={r.timer} onChange={v => set({ timer: v as TimerKind })} options={[{ value: 'off', label: 'Off' }, { value: 'question', label: 'Per Q' }, { value: 'total', label: 'Total' }, { value: 'scaled', label: 'Min / Q' }]} />
+              {r.timer === 'question' && <NumberField label="Seconds for each question" value={r.perQuestionSeconds} min={5} max={3600} suffix="sec" onCommit={n => set({ perQuestionSeconds: n })} testId="tpl-seconds" />}
+              {r.timer === 'total' && <NumberField label="Whole quiz" value={r.totalMinutes} min={1} max={600} suffix="min" onCommit={n => set({ totalMinutes: n })} testId="tpl-total" />}
+              {r.timer === 'scaled' && (
+                <>
+                  <NumberField label="Minutes for each question" value={r.minutesPerQuestion} min={0.25} max={30} step={0.25} suffix="min" onCommit={n => set({ minutesPerQuestion: n })} testId="tpl-scaled" />
+                  <p className="px-1 text-[11px] font-semibold text-foreground/55" data-testid="tpl-scaled-example">The clock grows with the quiz: {example}.</p>
+                </>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-foreground/45">Marking</p>
+              <NumberField label="Marks per correct answer" value={r.marksPerQuestion} min={0.25} max={100} step={0.25} onCommit={n => set({ marksPerQuestion: n })} testId="tpl-marks" />
+              <div className="flex items-center justify-between rounded-xl border border-border bg-foreground/[0.04] px-3 py-2.5">
+                <span className="text-xs font-bold text-foreground/70">Negative marking</span>
+                <Toggle checked={r.negativeMarking} onChange={v => set({ negativeMarking: v })} label="Negative marking" />
+              </div>
+              {r.negativeMarking && <NumberField label="Marks lost per wrong answer" value={r.negativeMarks} min={0} max={100} step={0.25} onCommit={n => set({ negativeMarks: n })} testId="tpl-neg" />}
+              <NumberField label="Pass mark" value={r.passMark} min={1} max={100} suffix="%" onCommit={n => set({ passMark: n })} testId="tpl-pass" />
+              <div className="flex items-center justify-between rounded-xl border border-border bg-foreground/[0.04] px-3 py-2.5">
+                <span className="text-xs font-bold text-foreground/70">Show marks while answering</span>
+                <Toggle checked={r.showLiveMarks} onChange={v => set({ showLiveMarks: v })} label="Show marks while answering" />
+              </div>
+            </section>
+
+            <section className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-foreground/45">Explanations</p>
+              <Segmented label="Explanations" value={ratOf(r.rationale)} onChange={v => set({ rationale: ratTo(v as Rationale) })} options={[{ value: 'keep', label: 'Keep' }, { value: 'both', label: 'Both' }, { value: 'book', label: 'Book' }, { value: 'ai', label: 'AI' }, { value: 'none', label: 'None' }]} />
+              <p className="px-1 text-[11px] font-semibold text-foreground/50">"Keep" leaves your current explanation choice alone.</p>
+            </section>
+
+            <p className="rounded-2xl border border-primary/20 bg-primary/8 px-3 py-2.5 text-xs font-bold text-foreground/75" data-testid="tpl-summary">{d.emoji} {d.name.trim() || 'Template'} · {describeRules(r)}</p>
+          </div>
+        </OverlayBody>
+        <OverlayFooter className="justify-between">
+          <button type="button" onClick={onClose} className="rounded-full border border-border px-4 py-2 text-xs font-bold text-foreground/70 active:scale-95">Cancel</button>
+          <button type="button" onClick={save} disabled={!nameOk} data-testid="tpl-save" className="rounded-full bg-foreground px-5 py-2.5 text-xs font-black text-background active:scale-95 disabled:opacity-35">{d.id ? 'Save changes' : 'Create template'}</button>
+        </OverlayFooter>
       </div>
-    </>
+    </Overlay>
+  );
+}
+
+function Confirm({ title, body, action, onYes, onClose }: { title: string; body: string; action: string; onYes: () => void; onClose: () => void }) {
+  return (
+    <Overlay open onClose={onClose} kind="sheet" label={title} hideClose>
+      <div className="flex min-h-0 flex-1 flex-col" data-testid="template-confirm">
+        <OverlayHeader title={title} onClose={onClose} />
+        <OverlayBody><p className="text-sm font-medium leading-relaxed text-foreground/75">{body}</p></OverlayBody>
+        <OverlayFooter className="justify-between">
+          <button type="button" onClick={onClose} className="rounded-full border border-border px-4 py-2 text-xs font-bold text-foreground/70 active:scale-95">Cancel</button>
+          <button type="button" onClick={() => { onYes(); onClose(); }} data-testid="template-confirm-yes" className="rounded-full bg-red-600 px-5 py-2.5 text-xs font-black text-white active:scale-95">{action}</button>
+        </OverlayFooter>
+      </div>
+    </Overlay>
+  );
+}
+
+/** Settings -> Quiz templates: add, edit, duplicate, reorder, delete and choose the default template. */
+export default function TemplatesTab() {
+  const [, bump] = useState(0);
+  const [editing, setEditing] = useState<Draft | null>(null);
+  const [confirm, setConfirm] = useState<{ kind: 'delete'; t: QuizTemplate } | { kind: 'restore' } | null>(null);
+  useEffect(() => {
+    const on = () => bump(n => n + 1);
+    window.addEventListener(TEMPLATES_EVENT, on);
+    return () => window.removeEventListener(TEMPLATES_EVENT, on);
+  }, []);
+  const templates = getTemplates();
+  const defaultId = loadTemplateStore().defaultId;
+  const full = templates.length >= MAX_TEMPLATES;
+  const only = templates.length <= 1;
+  const rows = useMemo(() => templates, [templates]);
+
+  return (
+    <div className="space-y-4" data-testid="templates-tab">
+      <div className="rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-card to-violet-500/8 p-4">
+        <h2 className="text-lg font-black text-foreground">Quiz templates</h2>
+        <p className="mt-1 text-xs font-semibold leading-relaxed text-foreground/60">One-tap rules for the Create screen: timer, marking, pass mark and explanations. The <b className="text-foreground">★ Default</b> template is applied by itself when you paste questions and press Start, so a plain Start always uses it.</p>
+      </div>
+
+      <ul className="space-y-2.5" data-testid="template-list">
+        {rows.map((t, i) => (
+          <li key={t.id} data-testid="template-row" data-template-id={t.id} className="rounded-3xl border border-border bg-card p-3.5">
+            <div className="flex items-start gap-3">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-border bg-foreground/[0.05] text-2xl" aria-hidden>{t.emoji}</div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <h3 className="truncate text-[0.95rem] font-black text-foreground" data-testid="template-name">{t.name}</h3>
+                  {t.id === defaultId && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary" data-testid="template-default-badge">★ Default</span>}
+                  {t.builtIn && <span className="rounded-full border border-border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-foreground/45">Built-in</span>}
+                </div>
+                <p className="mt-0.5 text-[11px] font-semibold leading-snug text-foreground/55">{templateDescription(t)}</p>
+                <p className="mt-1 text-[10px] font-bold text-foreground/40">{describeRules(t.rules)}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <button type="button" onClick={() => { hapticTap(); setEditing(toDraft(t)); }} data-testid="template-edit" className="flex items-center gap-1.5 rounded-full bg-foreground px-3.5 py-2 text-xs font-black text-background active:scale-95"><Pencil className="h-3.5 w-3.5" aria-hidden /> Edit</button>
+              {t.id !== defaultId && <button type="button" onClick={() => { hapticTap(); setDefaultTemplate(t.id); toast.success(`★ ${t.name} is now the default`); }} data-testid="template-make-default" className="flex items-center gap-1.5 rounded-full border border-border px-3 py-2 text-xs font-bold text-foreground/70 active:scale-95"><Star className="h-3.5 w-3.5" aria-hidden /> Make default</button>}
+              <button type="button" disabled={full} onClick={() => { duplicateTemplate(t.id); toast.success('Template duplicated'); }} aria-label={`Duplicate ${t.name}`} data-testid="template-duplicate" className="grid h-9 w-9 place-items-center rounded-full border border-border text-foreground/60 active:scale-90 disabled:opacity-30"><Copy className="h-4 w-4" aria-hidden /></button>
+              <button type="button" disabled={i === 0} onClick={() => moveTemplate(t.id, -1)} aria-label={`Move ${t.name} up`} data-testid="template-up" className="grid h-9 w-9 place-items-center rounded-full border border-border text-foreground/60 active:scale-90 disabled:opacity-30"><ArrowUp className="h-4 w-4" aria-hidden /></button>
+              <button type="button" disabled={i === rows.length - 1} onClick={() => moveTemplate(t.id, 1)} aria-label={`Move ${t.name} down`} data-testid="template-down" className="grid h-9 w-9 place-items-center rounded-full border border-border text-foreground/60 active:scale-90 disabled:opacity-30"><ArrowDown className="h-4 w-4" aria-hidden /></button>
+              <button type="button" disabled={only} onClick={() => setConfirm({ kind: 'delete', t })} aria-label={`Delete ${t.name}`} data-testid="template-delete" className="ml-auto grid h-9 w-9 place-items-center rounded-full border border-red-500/30 text-red-600 active:scale-90 disabled:opacity-30 dark:text-red-400"><Trash2 className="h-4 w-4" aria-hidden /></button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div className="flex flex-wrap gap-2">
+        <button type="button" disabled={full} onClick={() => setEditing(blank())} data-testid="template-new" className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-dashed border-primary/50 bg-primary/8 px-4 py-3 text-sm font-black text-foreground active:scale-[0.98] disabled:opacity-40"><Plus className="h-4 w-4" aria-hidden /> New template</button>
+        <button type="button" onClick={() => setConfirm({ kind: 'restore' })} data-testid="template-restore" className="flex items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 text-xs font-bold text-foreground/65 active:scale-[0.98]"><RotateCcw className="h-4 w-4" aria-hidden /> Restore factory templates</button>
+      </div>
+      <p className="px-1 text-[11px] font-semibold text-foreground/45">{templates.length} of {MAX_TEMPLATES} templates{only ? ' · the last template can not be deleted' : ''}.</p>
+
+      {editing && <Editor draft={editing} onClose={() => setEditing(null)} />}
+      {confirm?.kind === 'delete' && <Confirm title={`Delete “${confirm.t.name}”?`} body={confirm.t.id === defaultId ? 'This is your default template. The first template left becomes the default.' : 'This removes the template from the Create screen. You can bring the built-in ones back with “Restore factory templates”.'} action="Delete" onYes={() => { deleteTemplate(confirm.t.id); toast.success('Template deleted'); }} onClose={() => setConfirm(null)} />}
+      {confirm?.kind === 'restore' && <Confirm title="Restore factory templates?" body="Default, Practice and Exam go back to how they shipped (edited or deleted ones come back). Your own templates stay." action="Restore" onYes={() => { restoreFactoryTemplates(); toast.success('Factory templates restored'); }} onClose={() => setConfirm(null)} />}
+    </div>
   );
 }

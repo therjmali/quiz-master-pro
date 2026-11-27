@@ -32,7 +32,8 @@ export interface SectionInfo { key: string; label: string; group: SectionGroup }
 const LS_SECTIONS: SectionInfo[] = [
   // library / content
   { key: 'qmp_user_subjects', label: 'Subjects', group: 'library' },
-  { key: 'qmp_user_templates', label: 'Quiz templates', group: 'library' },
+  { key: 'qmp_user_templates', label: 'Quiz templates (older)', group: 'library' },
+  { key: 'qmp_quiz_templates_v2', label: 'Quiz templates', group: 'library' },
   { key: 'qmp_templates', label: 'Quiz templates (legacy)', group: 'library' },
   { key: 'qmp_pinned', label: 'Pinned quizzes', group: 'library' },
   { key: 'qmp_offline_notes', label: 'Offline notes', group: 'library' },

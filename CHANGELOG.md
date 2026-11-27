@@ -4,6 +4,31 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.16.0] - 2026-11-24
+
+Dispute & fix: correct a question and everything follows. Three editable quiz templates.
+
+### Added
+- **Dispute & fix** (replaces the AI-only dispute dialog). From any review card: **✅ Answer** (tap the option that is really correct; tags show the pasted *Key*, *You* and the *AI*'s suggestion), **✏️ Edit** (question text, options - add / remove / rename, explanation, difficulty) and **🤖 AI check** (as before, now with "Use the AI's answer"). A live preview says what will change ("❌ Wrong → ✅ Correct · moves to the Correct list · score 0.5 → 1.75 · 13% → 44%"). **Save & re-score** then updates, in one go:
+  - the attempt: status, correct / wrong / skipped, gain, penalty, net score, percentage, accuracy, the lists and filters, the stats panel, reports and PDFs (they all read the corrected question);
+  - **everywhere** (default, untick for "this attempt only"): every other attempt of the same question, the saved quiz in the Library, bookmarks, and the mistakes list (a mistake that is not a mistake any more leaves it);
+  - the stored "before negative marking" numbers, so removing the marking cannot bring back the old key.
+  Corrected questions show a **✏️ Corrected** chip and a **Fixed** button; **Restore original** undoes it (the first original is always kept). Answers given on an edited option follow its new text. Old attempts get their marking rules worked out from their numbers; new attempts store them (`scoring`).
+- **Quiz templates**: Default, Practice and Exam on the Create screen (Quick Mode), all editable, deletable and duplicable, plus your own. **Default** (the ★ one): classic submit-at-end, clock = 1 minute x number of questions (50 questions = 50 minutes), +1 / −0.25, pass 50%. It switches on by itself when you paste questions, so paste → Start just works; picking another template or changing a rule first keeps your choice.
+- **Settings → Templates** (rewritten): list with ★ Default badge, Edit (style, timer: off / per question / total / minutes per question with a live example, marks, negative marking, pass mark, live marks, explanations), Make default, Duplicate, Move up / down, Delete (the last one stays), New template, Restore factory templates. Up to 12 templates; synced with your account (`qmp_quiz_templates_v2`); older user templates are carried over.
+
+### Changed
+- Quick Mode on Create lists every template (3 columns, then 2), shows the active one, and has a *Manage* link. A short note says when the default was applied.
+- Removed the unused older `utils/templates.ts`.
+
+### Tests
+- Unit: `tests/questionFix.test.ts` (13: key change both ways, option edits keep answers, revert, marks per question, preview, library lists, frozen inputs), `tests/quizTemplates.test.ts` (13: defaults, 50-minute rule, compatibility with the old Practice / Exam, clamping, CRUD, last template, restore, cloud rewrite, migration).
+- `scripts/ui-qa-v316.mjs` (`npm run test:ui:v316`, 82 checks): the owner's exact case end to end (key says "Knee chest", the right answer is "Side lying"): preview, save, the question moves to ✅, counts, hero, the other attempt, Library file, mistakes list, reload, Progress totals, edit + validation, this-attempt-only, undo, fixing from Progress; templates on phone and tablet, paste → Default → Start with 50 minutes, manual pick wins, the whole Settings manager.
+- `verify-repo` contracts, including one that bans JSX generics (found while building: `tsc` accepts `<Component<T>>`, the production build does not).
+
+### Not tested
+- Real device. Zite-account (non-Supabase) cloud copies of old attempts are not rewritten by a correction; Supabase sync picks the change up through the normal sync.
+
 ## [3.15.0] - 2026-11-23
 
 Bookmark icon fix, multi-select filters, one stats panel, a quiz switcher on the top strip and a premium quiz dashboard.

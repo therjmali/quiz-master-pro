@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, memo } from 'react';
 import React from 'react';
 import { Loader2, Sparkles, BookOpen, BrainCircuit, Bookmark, Shield } from 'lucide-react';
 import { hapticTap } from '../../utils/haptics';
-import { QuizQuestion } from '../../types/quiz';
+import { QuizQuestion, QuizResult } from '../../types/quiz';
 import { getMergedBadge } from '../../utils/difficultyBadge';
 import AiRationaleText from '../AiRationaleText';
 import QuestionImage from '../QuestionImage';
@@ -21,6 +21,8 @@ interface Props {
   aiEnabled?: boolean;
   bookmarked?: boolean;
   onToggleBookmark?: () => void;
+  /** where this card lives (lets Dispute fix just this attempt and show the exact score change) */
+  fixContext?: { resultKey: string; index: number; result?: QuizResult };
   onAskAI?: (context: { question: string; options: string[]; correctAnswer: string; userAnswer: string | null; rationale?: string; difficulty?: string; questionType?: string }) => void;
 }
 
@@ -66,7 +68,7 @@ function ReviewOptionItem({ opt, index, visual }: ReviewOptionItemProps) {
 function ReviewCardInner({
   q, index, userAnswer, rationaleCache, getAiRationale,
   showBook = true, showAi = true, aiEnabled = true,
-  bookmarked = false, onToggleBookmark, onAskAI,
+  bookmarked = false, onToggleBookmark, onAskAI, fixContext,
 }: Props) {
   // Double-tap to bookmark
   const lastTapRef = useRef(0);
@@ -161,6 +163,7 @@ function ReviewCardInner({
         <span className="text-xl leading-none" role="img" aria-label={statusText}>{statusEmoji}</span>
         <span className="text-base font-black tabular-nums text-foreground">Q{index + 1}.</span>
         {diffEmoji && <span className="text-lg leading-none" role="img" aria-label={`${mergedBadge.label || lvl} difficulty`}>{diffEmoji}</span>}
+        {q.fix && <span className="shrink-0 rounded-md border border-indigo-500/30 bg-indigo-500/12 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-300" data-testid="corrected-chip" title={`Corrected ${new Date(q.fix.at).toLocaleDateString()}`}>✏️ Corrected</span>}
         {mergedBadge.label && !/^(easy|medium|hard)$/i.test(mergedBadge.label) && (
           <span className={`truncate rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${mergedBadge.classes}`}>{mergedBadge.label}</span>
         )}
@@ -229,7 +232,7 @@ function ReviewCardInner({
         </button>
         <button type="button" aria-label="Dispute this question" onClick={(e) => { e.stopPropagation(); setShowDispute(true); }}
           className={`${act} border-border bg-background/60 text-foreground/65`}>
-          <span className="text-sm leading-none">⚖️</span><span>Dispute</span>
+          <span className="text-sm leading-none">⚖️</span><span>{q.fix ? 'Fixed' : 'Dispute'}</span>
           {disputeDot && <span className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${disputeDot}`} aria-hidden="true" />}
         </button>
         <button type="button" aria-pressed={bookmarked} aria-label={bookmarked ? 'Saved' : 'Save'} onClick={(e) => { e.stopPropagation(); hapticTap(); onToggleBookmark?.(); }} disabled={!onToggleBookmark && !bookmarked}
@@ -243,7 +246,7 @@ function ReviewCardInner({
         </button>
       </div>
 
-      {showDispute && <DisputeModal question={q} onClose={() => setShowDispute(false)} />}
+      {showDispute && <DisputeModal question={q} userAnswer={userAnswer} resultKey={fixContext?.resultKey} index={fixContext?.index} result={fixContext?.result} onClose={() => setShowDispute(false)} />}
     </div>
   );
 }
@@ -257,6 +260,9 @@ const ReviewCard = memo(ReviewCardInner, (prev, next) => {
     prev.showAi === next.showAi &&
     prev.aiEnabled === next.aiEnabled &&
     prev.bookmarked === next.bookmarked &&
+    prev.fixContext?.resultKey === next.fixContext?.resultKey &&
+    prev.fixContext?.index === next.fixContext?.index &&
+    prev.fixContext?.result === next.fixContext?.result &&
     // Compare only this question's cache entry instead of entire object reference
     prev.rationaleCache[prev.q.question] === next.rationaleCache[next.q.question]
   );

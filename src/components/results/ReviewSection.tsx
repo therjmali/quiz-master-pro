@@ -6,7 +6,7 @@ import { QuizResult, QuizSettings, ReportOrder, RationalePrefs, AIMode } from '.
 import ReviewCard from './ReviewCard';
 import StatusFilterBar, { type BarCounts } from '../shared/StatusFilterBar';
 import { useStatusFilter } from '../../hooks/useStatusFilter';
-import { flattenAttempts, orderAttemptItems, type AttemptItem, type FacetKey } from '../../utils/attemptStats';
+import { flattenAttempts, orderAttemptItems, resultKey, type AttemptItem, type FacetKey } from '../../utils/attemptStats';
 import { useQuestionBookmarks } from '../../hooks/useQuestionBookmarks';
 
 
@@ -200,6 +200,7 @@ export default function ReviewSection({
               bookmarked={bookmarkedSet.has(q.question)}
               onToggleBookmark={() => handleToggleBookmark(q, userAnswer)}
               onAskAI={onAskAI}
+              fixContext={{ resultKey: resultKey(result), index: attemptIdx, result }}
             />
           ))}
         </div>

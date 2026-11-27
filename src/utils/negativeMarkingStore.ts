@@ -5,6 +5,7 @@
 
 import { QuizResult } from '../types/quiz';
 import { getHistorySync, setHistory } from './historyStore';
+import { rescoreResult } from './questionFix';
 
 const ORIGINAL_KEY = 'qmp_original_scores';
 const NM_CONFIG_KEY = 'qmp_nm_config';
@@ -313,3 +314,19 @@ export function getAppliedQuizIds(): string[] {
 
 /** Utility: get quiz key from a result */
 export { getQuizKey };
+
+/**
+ * A question of this quiz was corrected: the stored "before negative marking" numbers must follow, otherwise
+ * "Remove marking" would bring back scores that still count the old answer key.
+ */
+export function refreshOriginalScoreAfterFix(quizId: string, fixed: QuizResult): void {
+  const originals = loadOriginals();
+  const o = originals[quizId];
+  if (!o) return;
+  const total = fixed.totalQuestions || fixed.quizData?.length || 0;
+  const marks = total > 0 && o.maxScore > 0 ? o.maxScore / total : 1;
+  const neg = o.wrong > 0 && o.penalty > 0 ? o.penalty / o.wrong : 0;
+  const re = rescoreResult({ quizData: fixed.quizData, userAnswers: fixed.userAnswers }, { marksPerQuestion: marks, negativeMarking: neg > 0, negativeMarks: neg });
+  originals[quizId] = { ...o, correct: re.correct, wrong: re.wrong, skipped: re.skipped, gain: re.gain, penalty: re.penalty, netScore: re.netScore, maxScore: re.maxScore, percentage: re.percentage, accuracy: re.accuracy, score: re.netScore };
+  saveOriginals(originals);
+}

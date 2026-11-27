@@ -304,6 +304,7 @@ export function useQuizSession(settingsRef: React.MutableRefObject<QuizSettings>
       quizTitle: s.quizTitle?.trim() || undefined,
       subject: s.subject?.trim() || undefined,
       passMark: s.passMark, questionTimings,
+      scoring: { marksPerQuestion: s.marksPerQuestion, negativeMarking: s.negativeMarking, negativeMarks: s.negativeMarks },
       confidenceLevels: confidences.some(c => c !== null) ? [...confidences] : undefined,
       attemptType: practiceMetaRef.current?.attemptType || 'main',
       attemptNumber: practiceMetaRef.current?.attemptNumber,

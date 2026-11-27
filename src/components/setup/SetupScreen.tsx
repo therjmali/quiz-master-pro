@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import QuizPreview from './QuizPreview';
 import { Clipboard, Upload, X, Rocket, Play, BookOpen, Loader2, FileText, FileSpreadsheet, ChevronDown, ChevronRight, Camera, Check, Sparkles, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePersistedState } from '../../hooks/usePersistedState';
+import { hapticTap } from '../../utils/haptics';
 import { QuizQuestion, QuizSettings, UploadedFile, QuizResult, AIPrefs, RationalePrefs, AIMode } from '../../types/quiz';
 import { localOfflineParser, looksLikeMCQ, parseMcqText, MCQ_SAMPLE, COPY_PROMPT_TEXT } from '../../utils/quizParser';
 import { getUserApiKeys } from '../../utils/apiKeys';
@@ -21,10 +23,12 @@ import HighlighterView from './HighlighterView';
 import GenerationErrorCard from './GenerationErrorCard';
 import FormatGuideModal from './FormatGuideModal';
 import { generateQuiz } from 'zitejs/api';
-import { PRACTICE_MODES, isModeActive, PracticeMode } from '../../utils/examModes';
+import { TEMPLATES_EVENT, applyTemplateToSettings, getDefaultTemplate, getTemplates, isTemplateActive, loadTemplateStore, templateDescription, templateRationale, type QuizTemplate } from '../../utils/quizTemplates';
 import { FeatureVisibility } from '../../hooks/useProfileStore';
 
 interface Props {
+  /** opens Settings -> Templates (add, edit, delete, set the default) */
+  onOpenTemplates?: () => void;
   settings: QuizSettings;
   onSettingsChange: (s: QuizSettings) => void;
   onStartQuiz: (questions: QuizQuestion[], targetFolderId?: string | null) => void;
@@ -63,62 +67,52 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Practice-mode presets: Normal · NORCET · AAO. One tap applies the whole configuration. */
-function TemplateSlider({ settings, onSettingsChange, rationalePrefs, onRationalePrefsChange }: {
+/**
+ * Quick templates: Default · Practice · Exam (and any you add in Settings -> Templates). One tap applies the whole
+ * set of rules. The default one is applied by itself when you paste questions, so a plain Start just works.
+ */
+function TemplateSlider({ settings, onApply, rationalePrefs, onManage }: {
   settings: QuizSettings;
-  onSettingsChange: (s: QuizSettings) => void;
+  onApply: (t: QuizTemplate) => void;
   rationalePrefs: RationalePrefs;
-  onRationalePrefsChange: (p: RationalePrefs) => void;
+  onManage?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(() => {
-    const stored = localStorage.getItem('qmp_templates_expanded');
-    return stored !== null ? stored === 'true' : true;
-  });
-
-  const toggle = () => {
-    const next = !expanded;
-    setExpanded(next);
-    localStorage.setItem('qmp_templates_expanded', String(next));
-  };
-
-  const applyMode = (m: PracticeMode) => {
-    onSettingsChange({ ...settings, ...m.patch });
-    if (m.rationale) onRationalePrefsChange({ ...rationalePrefs, ...m.rationale });
-    toast.success(`${m.emoji} ${m.label} mode applied`);
-  };
+  const [open, setOpen] = usePersistedState<boolean>('templates_open', true);
+  const [, bump] = useState(0);
+  useEffect(() => {
+    const on = () => bump(n => n + 1);
+    window.addEventListener(TEMPLATES_EVENT, on);
+    return () => window.removeEventListener(TEMPLATES_EVENT, on);
+  }, []);
+  const templates = getTemplates();
+  const defaultId = loadTemplateStore().defaultId;
+  const active = templates.find(t => isTemplateActive(t, settings, rationalePrefs));
 
   return (
-    <div>
-      <button onClick={toggle} className="flex items-center gap-1.5 mb-2.5 group w-full text-left">
-        {expanded
-          ? <ChevronDown className="w-3.5 h-3.5 text-foreground/30" />
-          : <ChevronRight className="w-3.5 h-3.5 text-foreground/30" />}
-        <span className="text-[10px] font-black text-foreground/40 uppercase tracking-[0.12em]">🎮 Quick Mode</span>
-        <span className="text-[10px] font-bold text-foreground/15 ml-1">{PRACTICE_MODES.length}</span>
-        {!expanded && (
-          <span className="ml-auto text-[9px] text-foreground/20 font-medium group-hover:text-foreground/40 transition-colors">tap to expand</span>
-        )}
-      </button>
-
-      {expanded && (
-        <div className="grid grid-cols-2 gap-2.5 animate-fade-in">
-          {PRACTICE_MODES.map(m => {
-            const active = isModeActive(m, settings, rationalePrefs);
+    <div data-testid="template-slider">
+      <div className="flex items-center justify-between mb-2">
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex items-center gap-1.5">
+          <ChevronDown className={`w-3.5 h-3.5 text-foreground/40 transition-transform ${open ? '' : '-rotate-90'}`} aria-hidden />
+          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-[0.12em]">🎮 Quick Mode</span>
+          <span className="text-[10px] font-black text-primary/70 bg-primary/10 px-1.5 py-0.5 rounded-full">{templates.length}</span>
+        </button>
+        <div className="flex items-center gap-2">
+          {active && <span className="text-[10px] font-bold text-foreground/45" data-testid="template-active-name">{active.emoji} {active.name}</span>}
+          {onManage && <button type="button" onClick={onManage} data-testid="template-manage" className="rounded-full border border-border px-2.5 py-1 text-[10px] font-bold text-foreground/60 active:scale-95">Manage</button>}
+        </div>
+      </div>
+      {open && (
+        <div className={`grid gap-2 ${templates.length <= 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3'}`} role="radiogroup" aria-label="Quick mode templates">
+          {templates.map(t => {
+            const on = active?.id === t.id;
             return (
-              <button
-                key={m.id}
-                onClick={() => applyMode(m)}
-                aria-pressed={active}
-                className={`relative flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-all active:scale-95 text-center ${
-                  active
-                    ? 'border-primary/60 bg-primary/10 shadow-sm shadow-primary/10'
-                    : 'border-border bg-foreground/[0.03] hover:bg-foreground/[0.07] hover:border-foreground/20'
-                }`}
-              >
-                {active && <Check className="absolute top-1.5 right-1.5 w-3 h-3 text-primary" aria-hidden="true" />}
-                <span className="text-lg leading-none">{m.emoji}</span>
-                <span className={`text-[11px] font-black leading-tight ${active ? 'text-primary' : 'text-foreground/70'}`}>{m.label}</span>
-                <span className="text-[9px] text-foreground/35 leading-tight line-clamp-2">{m.desc}</span>
+              <button key={t.id} type="button" role="radio" aria-checked={on} data-testid={`template-${t.id}`} data-active={on}
+                onClick={() => { hapticTap(); onApply(t); }}
+                className={`relative flex min-w-0 flex-col items-center gap-1 rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.97] ${on ? 'border-primary/60 bg-primary/12 ring-2 ring-primary/25' : 'border-border bg-foreground/[0.04] hover:bg-foreground/[0.07]'}`}>
+                {t.id === defaultId && <span className="absolute right-1.5 top-1.5 rounded-full bg-primary/15 px-1.5 py-px text-[8px] font-black uppercase tracking-wider text-primary" data-testid={`template-default-${t.id}`}>★ Default</span>}
+                <span className="text-2xl leading-none" aria-hidden>{t.emoji}</span>
+                <span className="max-w-full truncate text-[0.8rem] font-black text-foreground">{t.name}</span>
+                <span className="line-clamp-2 text-[10px] font-semibold leading-tight text-foreground/50">{templateDescription(t)}</span>
               </button>
             );
           })}
@@ -248,6 +242,7 @@ export default function SetupScreen({
   aiPrefs, onAiPrefsChange,
   rationalePrefs, onRationalePrefsChange, onReportHelperChange,
   isEditingActiveQuiz, onReturnToQuiz, featureVisibility, onOpenApiKeys,
+  onOpenTemplates,
 }: Props) {
   const [text, setText] = useState(() => localStorage.getItem('qmp_input') || '');
   const hasSavedDraft = !text.trim() && !!(localStorage.getItem('qmp_input')?.trim());
@@ -430,7 +425,50 @@ export default function SetupScreen({
     if (!text.trim()) autoDetectedForTextRef.current = '';
   }, [text]);
 
-  const set = (patch: Partial<QuizSettings>) => onSettingsChange({ ...settings, ...patch });
+  // ── Quick-mode templates ──
+  // Latest values for timers/effects (a timeout must not act on stale props).
+  const settingsRef = useRef(settings); settingsRef.current = settings;
+  const ratRef = useRef(rationalePrefs); ratRef.current = rationalePrefs;
+  // Set once you pick a template or change a rule by hand: from then on the default template stays out of the way.
+  const rulesTouchedRef = useRef(false);
+  const RULE_FREE_KEYS: (keyof QuizSettings)[] = ['quizTitle', 'subject'];
+  const touchedBy = (patch: Partial<QuizSettings>) => { if ((Object.keys(patch) as (keyof QuizSettings)[]).some(k => !RULE_FREE_KEYS.includes(k))) rulesTouchedRef.current = true; };
+  const set = (patch: Partial<QuizSettings>) => { touchedBy(patch); onSettingsChange({ ...settings, ...patch }); };
+  const userSettingsChange = (next: QuizSettings) => {
+    const cur = settingsRef.current;
+    const diff: Partial<QuizSettings> = {};
+    (Object.keys(next) as (keyof QuizSettings)[]).forEach(k => { if (next[k] !== cur[k]) (diff as Record<string, unknown>)[k] = next[k]; });
+    touchedBy(diff);
+    onSettingsChange(next);
+  };
+
+  const applyTemplate = useCallback((t: QuizTemplate, silent = false) => {
+    rulesTouchedRef.current = true;
+    onSettingsChange(applyTemplateToSettings(settingsRef.current, t));
+    const rat = templateRationale(t);
+    if (rat) onRationalePrefsChange({ ...ratRef.current, ...rat });
+    if (!silent) toast.success(`${t.emoji} ${t.name} template applied`, { duration: 2200 });
+  }, [onSettingsChange, onRationalePrefsChange]);
+
+  // Paste questions into an empty form and press Start: the DEFAULT template is what runs (unless you picked something).
+  const hasText = text.trim().length > 0;
+  const formWasEmptyRef = useRef(!hasText);
+  const [defaultNote, setDefaultNote] = useState<{ id: string; label: string } | null>(null);
+  useEffect(() => {
+    if (!hasText) { rulesTouchedRef.current = false; formWasEmptyRef.current = true; setDefaultNote(null); return; }
+    if (formWasEmptyRef.current && !rulesTouchedRef.current && !isEditingActiveQuiz) {
+      formWasEmptyRef.current = false;
+      // after the auto-detect of title/subject has landed, so neither overwrites the other
+      const id = window.setTimeout(() => {
+        if (rulesTouchedRef.current) return;
+        const t = getDefaultTemplate();
+        applyTemplate(t, true);
+        rulesTouchedRef.current = false; // applying the default is not "touching" the rules
+        setDefaultNote({ id: t.id, label: `${t.emoji} ${t.name} template` });
+      }, 80);
+      return () => window.clearTimeout(id);
+    }
+  }, [hasText]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getFileMimeType = (file: File): string => {
     if (file.type && file.type !== 'application/octet-stream') return file.type;
@@ -987,12 +1025,19 @@ export default function SetupScreen({
         <div className="cq-card-body space-y-4">
           {/* Quick Templates — Collapsible + Horizontal Slider */}
           {featureVisibility?.templates !== false && (
+            <>
             <TemplateSlider
               settings={settings}
-              onSettingsChange={onSettingsChange}
+              onApply={t => applyTemplate(t)}
               rationalePrefs={rationalePrefs}
-              onRationalePrefsChange={onRationalePrefsChange}
+              onManage={onOpenTemplates}
             />
+            {defaultNote && settings.templateId === defaultNote.id && (
+              <p className="mb-2 flex items-center gap-1.5 rounded-xl border border-primary/25 bg-primary/10 px-3 py-1.5 text-[11px] font-bold text-foreground/75" data-testid="default-template-note">
+                <span aria-hidden>✅</span> {defaultNote.label} is on for this quiz. Pick another Quick Mode or change a rule to override it.
+              </p>
+            )}
+            </>
           )}
 
           {/* Subject / Topic */}
@@ -1052,7 +1097,7 @@ export default function SetupScreen({
 
           {advancedSettingsOpen && (
             <div className="pt-3 animate-fade-in border-t border-border/40 mt-3">
-              <SettingsPanel settings={settings} onChange={onSettingsChange} collapsible={true} />
+              <SettingsPanel settings={settings} onChange={userSettingsChange} collapsible={true} />
             </div>
           )}
         </div>

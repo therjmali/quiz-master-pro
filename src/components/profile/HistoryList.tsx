@@ -148,7 +148,7 @@ const HistoryList = memo(function HistoryList({
         </div>
       ) : (
         <div className="space-y-5 pr-1">
-          {displayItems.slice(0, visibleCount).map(({ key, q, userAnswer, date, quizTitle, subject }, i) => (
+          {displayItems.slice(0, visibleCount).map(({ key, q, userAnswer, date, quizTitle, subject, resultKey: rk, index: attemptIdx }, i) => (
             <div key={key}>
               <div className="text-[10px] text-foreground/30 font-bold mb-2 px-1 truncate">{date}{quizTitle ? ` · ${quizTitle}` : ''}</div>
               <ReviewCard
@@ -156,6 +156,7 @@ const HistoryList = memo(function HistoryList({
                 rationaleCache={rationaleCache} getAiRationale={getAiRationale}
                 showBook={rationalePrefs.showBook} showAi={rationalePrefs.showAi}
                 aiEnabled={reportHelper !== 'off'}
+                fixContext={{ resultKey: rk, index: attemptIdx }}
                 bookmarked={bookmarkedSet?.has(q.question)}
                 onToggleBookmark={onToggleBookmark ? () => onToggleBookmark(q, userAnswer, { quizTitle, subject }) : undefined}
               />

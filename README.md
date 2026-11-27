@@ -31,7 +31,8 @@ emulator, including a cold start in airplane mode. Each release lists the file's
 
 ## What's inside
 
-- **Quiz engine** — timed and untimed sessions, negative marking, review with rationales, per-question difficulty ratings and disputes.
+- **Quiz engine** — timed and untimed sessions, negative marking, review with rationales, per-question difficulty ratings, and **Dispute & fix**: correct a wrong answer key or edit a question after the quiz and the status, marks, reports, other attempts, saved quizzes, bookmarks and mistakes all follow (with undo).
+- **Quiz templates** — Default, Practice and Exam (plus your own) for one-tap rules; the Default one (submit at end, 1 min per question, +1 / −0.25, pass 50%) runs when you simply paste and press Start. Edit, add or delete them in Settings → Templates.
 - **Flashcards & spaced repetition** — bookmark questions, revise them as cards, get due-for-review nudges.
 - **Practice & mastery tracking** — weak-question panels, practice goals, session comparisons, mastery heat-maps.
 - **Analytics** — streaks, time-of-day performance, radar by subject, confidence charts, exam-readiness and score prediction.
@@ -115,6 +116,7 @@ npm run test:offline   # real-Chrome test: install SW, go offline, reload, deep 
 | `npm run test:ui:v313` | Real-Chrome test (phone, small phone, tablet portrait/landscape, phone landscape, Dark) that the Progress pills, Question Breakdown strip and Reports & downloads tiles show the same numbers, that filters never change a count or lose a question, the difficulty scope, the one-tap PDF question counts, the per-quiz report bar and quizzes without saved questions (after `npm run build`) |
 | `npm run test:ui:v314` | Real-Chrome test of Home → Overview vs Progress, the one-line `All \| ✅ \| ❌ \| ⏭️ \| 🔖` bar (320 px to tablet), All / bookmark lists, reading typography (size, weight, font, contrast) and the hidden status bar modes with a faked native bridge (after `npm run build`) |
 | `npm run test:ui:v315` | Real-Chrome test of the quiz-screen 🔖 icon, the merged stats panel, multi-select filters, the premium hero, the top strip and its "Jump to a quiz" popup (name, subject, date, sort) and Progress multi-select (after `npm run build`) |
+| `npm run test:ui:v316` | Real-Chrome test of Dispute & fix (change the key, edit the question, preview, re-score everywhere, undo, this-attempt-only) and the quiz templates (Default applied on paste, Quick Mode row, the Settings manager) (after `npm run build`) |
 | `npm run test:offline` | Headless Chrome offline test, screenshots in `test-results/` |
 | `scripts/android-prepare.sh` | Generates the native project, branding, version numbers |
 | `scripts/verify-apk.sh` | Static APK inspection (used by CI) |

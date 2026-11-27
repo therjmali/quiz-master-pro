@@ -9,7 +9,7 @@ import { reapplyStoredNegativeMarking } from '../utils/negativeMarkingStore';
 import { idbGet, idbSet, idbGetMulti } from '../utils/indexedDB';
 import { getHistory as getHistoryAsync, getHistorySync as getHistoryFromStore, setHistory as setHistoryStore } from '../utils/historyStore';
 
-const IDB_HISTORY_KEY = 'qmp_history_cache';
+export const IDB_HISTORY_KEY = 'qmp_history_cache';
 const IDB_SYNC_TS_KEY = 'qmp_last_sync_ts';
 const IDB_DETAIL_PREFIX = 'qmp_detail_';
 const LRU_MAX = 30;
@@ -403,6 +403,8 @@ export function useHistorySync(user: any, isLoading: boolean) {
       isMockExam: result.isMockExam,
       isAdaptive: result.isAdaptive,
       adaptiveSkillLevel: result.adaptiveSkillLevel,
+      scoring: result.scoring,
+      fixedAt: result.fixedAt,
     };
 
     const newHist = [summary, ...historyRef.current];
